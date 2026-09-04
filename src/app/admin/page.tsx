@@ -128,8 +128,39 @@ export default function AdminPage() {
     });
   };
 
-  const totalRevenue = orders.reduce((sum, o) => sum + o.subtotal, 0);
-  const filteredOrders = orders.filter(o => statusFilter === 'All' || o.status === statusFilter);
+  const [localOrders, setLocalOrders] = useState<Order[]>([]);
+  const [localEnquiries, setLocalEnquiries] = useState<WholesaleEnquiry[]>([]);
+
+  const loadFromStorage = () => {
+    try {
+      const stored = localStorage.getItem('inveins_orders');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setLocalOrders(parsed);
+      }
+      const storedEnq = localStorage.getItem('inveins_wholesale_enquiries');
+      if (storedEnq) {
+        const parsed = JSON.parse(storedEnq);
+        if (Array.isArray(parsed)) setLocalEnquiries(parsed);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    loadFromStorage();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'inveins_orders' || e.key === 'inveins_wholesale_enquiries') {
+        loadFromStorage();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const activeOrders = orders.length > 0 ? orders : localOrders;
+  const activeEnquiries = wholesaleEnquiries.length > 0 ? wholesaleEnquiries : localEnquiries;
+  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.subtotal, 0);
+  const filteredOrders = activeOrders.filter(o => statusFilter === 'All' || o.status === statusFilter);
 
   if (!isAuthenticated) {
     return (
@@ -231,7 +262,7 @@ export default function AdminPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">TOTAL ORDERS</p>
             <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
-              {orders.length}
+              {activeOrders.length}
             </p>
           </div>
           <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
@@ -243,7 +274,7 @@ export default function AdminPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">WHOLESALE ENQUIRIES</p>
             <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
-              {wholesaleEnquiries.length}
+              {activeEnquiries.length}
             </p>
           </div>
           <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
@@ -272,7 +303,7 @@ export default function AdminPage() {
             activeTab === 'orders' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
           }`}
         >
-          ORDERS ({orders.length})
+          ORDERS ({activeOrders.length})
         </button>
 
         <button
@@ -299,7 +330,7 @@ export default function AdminPage() {
             activeTab === 'wholesale' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
           }`}
         >
-          WHOLESALE ENQUIRIES ({wholesaleEnquiries.length})
+          WHOLESALE ENQUIRIES ({activeEnquiries.length})
         </button>
       </div>
 

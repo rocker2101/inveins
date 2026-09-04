@@ -270,19 +270,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
   }, [savedAddress]);
 
-  useEffect(() => {
-    if (!isLoaded.current) return;
-    try {
-      localStorage.setItem('inveins_orders', JSON.stringify(orders));
-    } catch (e) {}
-  }, [orders]);
 
-  useEffect(() => {
-    if (!isLoaded.current) return;
-    try {
-      localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(wholesaleEnquiries));
-    } catch (e) {}
-  }, [wholesaleEnquiries]);
 
   useEffect(() => {
     if (!isLoaded.current) return;
@@ -387,13 +375,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return p;
     }));
 
-    setOrders(prev => {
-      const updated = [newOrder, ...prev];
-      try {
-        localStorage.setItem('inveins_orders', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    // Read directly from storage to ensure existing orders are never lost
+    let existingList: Order[] = [];
+    try {
+      const stored = localStorage.getItem('inveins_orders');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) existingList = parsed;
+      }
+    } catch (e) {}
+
+    const updated = [newOrder, ...existingList.filter(o => o.id !== newOrder.id)];
+    try {
+      localStorage.setItem('inveins_orders', JSON.stringify(updated));
+    } catch (e) {}
+
+    setOrders(updated);
     return newOrder;
   };
 
