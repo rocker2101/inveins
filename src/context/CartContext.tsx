@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product, PRODUCTS } from '@/data/products';
 
 export interface CartItem {
@@ -157,6 +157,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [expressProduct, setExpressProduct] = useState<Product | null>(null);
   const [expressSize, setExpressSize] = useState<string>('M');
 
+  const isLoaded = useRef(false);
+
   // Load from localStorage on client side
   useEffect(() => {
     try {
@@ -178,10 +180,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
 
       const savedOrders = localStorage.getItem('inveins_orders');
-      if (savedOrders) setOrders(JSON.parse(savedOrders));
+      if (savedOrders) {
+        const parsed = JSON.parse(savedOrders);
+        if (Array.isArray(parsed)) setOrders(parsed);
+      }
 
       const savedEnquiries = localStorage.getItem('inveins_wholesale_enquiries');
-      if (savedEnquiries) setWholesaleEnquiries(JSON.parse(savedEnquiries));
+      if (savedEnquiries) {
+        const parsed = JSON.parse(savedEnquiries);
+        if (Array.isArray(parsed)) setWholesaleEnquiries(parsed);
+      }
 
       // 1. Load deleted product IDs
       const savedDeleted = localStorage.getItem('inveins_deleted_product_ids');
@@ -215,41 +223,69 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {
       console.error('Failed to load local storage state', e);
+    } finally {
+      isLoaded.current = true;
     }
   }, []);
 
-  // Save changes to localStorage
+  // Listen for storage events across tabs (e.g. order placed in store tab appears immediately in admin tab)
   useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'inveins_orders' && e.newValue) {
+        try {
+          const fresh = JSON.parse(e.newValue);
+          if (Array.isArray(fresh)) setOrders(fresh);
+        } catch (err) {}
+      }
+      if (e.key === 'inveins_wholesale_enquiries' && e.newValue) {
+        try {
+          const fresh = JSON.parse(e.newValue);
+          if (Array.isArray(fresh)) setWholesaleEnquiries(fresh);
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Save changes to localStorage (Only after initial load to prevent empty overwrites!)
+  useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       localStorage.setItem('inveins_cart', JSON.stringify(items));
     } catch (e) {}
   }, [items]);
 
   useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       localStorage.setItem('inveins_wishlist', JSON.stringify(wishlist));
     } catch (e) {}
   }, [wishlist]);
 
   useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       if (savedAddress) localStorage.setItem('inveins_saved_address', JSON.stringify(savedAddress));
     } catch (e) {}
   }, [savedAddress]);
 
   useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       localStorage.setItem('inveins_orders', JSON.stringify(orders));
     } catch (e) {}
   }, [orders]);
 
   useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(wholesaleEnquiries));
     } catch (e) {}
   }, [wholesaleEnquiries]);
 
   useEffect(() => {
+    if (!isLoaded.current) return;
     try {
       localStorage.setItem('inveins_products', JSON.stringify(productsList));
     } catch (e) {}
@@ -351,12 +387,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return p;
     }));
 
-    setOrders(prev => [newOrder, ...prev]);
+    setOrders(prev => {
+      const updated = [newOrder, ...prev];
+      try {
+        localStorage.setItem('inveins_orders', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
     return newOrder;
   };
 
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    setOrders(prev => {
+      const updated = prev.map(o => o.id === orderId ? { ...o, status } : o);
+      try {
+        localStorage.setItem('inveins_orders', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   const addWholesaleEnquiry = (enquiryData: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => {
@@ -365,7 +413,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `WS-${Math.floor(1000 + Math.random() * 9000)}`,
       createdAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
     };
-    setWholesaleEnquiries(prev => [newEnquiry, ...prev]);
+    setWholesaleEnquiries(prev => {
+      const updated = [newEnquiry, ...prev];
+      try {
+        localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   const updateProductStock = (productId: string, newStock: number, newBadge?: Product['badge']) => {

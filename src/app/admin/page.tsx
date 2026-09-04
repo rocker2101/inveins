@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
 import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, Image as ImageIcon } from 'lucide-react';
@@ -25,6 +25,16 @@ export default function AdminPage() {
   const [pinError, setPinError] = useState(false);
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product'>('orders');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
+
+  // Persist admin session across page refreshes
+  useEffect(() => {
+    try {
+      const storedAuth = localStorage.getItem('inveins_admin_auth');
+      if (storedAuth === 'true') {
+        setIsAuthenticated(true);
+      }
+    } catch (e) {}
+  }, []);
 
   // Temporary stock edit state
   const [editingStock, setEditingStock] = useState<Record<string, number>>({});
@@ -51,9 +61,20 @@ export default function AdminPage() {
     if (pinInput.trim() === ADMIN_PIN) {
       setIsAuthenticated(true);
       setPinError(false);
+      try {
+        localStorage.setItem('inveins_admin_auth', 'true');
+      } catch (e) {}
     } else {
       setPinError(true);
     }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setPinInput('');
+    try {
+      localStorage.removeItem('inveins_admin_auth');
+    } catch (e) {}
   };
 
   const handleAddProductSubmit = (e: React.FormEvent) => {
@@ -184,7 +205,7 @@ export default function AdminPage() {
             <Plus size={16} /> ADD NEW CLOTH
           </button>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={handleLogout}
             className="text-xs font-bold uppercase tracking-wider text-[#737373] hover:text-[#171717] underline"
           >
             LOCK DASHBOARD
