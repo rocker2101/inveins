@@ -749,7 +749,7 @@ export default function AdminPage() {
       {/* TAB 4: WHOLESALE ENQUIRIES */}
       {activeTab === 'wholesale' && (
         <div className="space-y-4">
-          {wholesaleEnquiries.length === 0 ? (
+          {activeEnquiries.length === 0 ? (
             <div className="p-12 text-center bg-white border border-[#e5e4df] text-xs text-[#737373]">
               No B2B wholesale enquiries submitted yet.
             </div>
@@ -767,7 +767,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-                  {wholesaleEnquiries.map(enq => (
+                  {activeEnquiries.map(enq => (
                     <tr key={enq.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
                       <td className="p-3.5">
                         <div className="font-bold font-mono">{enq.id}</div>

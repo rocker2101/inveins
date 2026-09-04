@@ -410,13 +410,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `WS-${Math.floor(1000 + Math.random() * 9000)}`,
       createdAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
     };
-    setWholesaleEnquiries(prev => {
-      const updated = [newEnquiry, ...prev];
-      try {
-        localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    let existingFromStorage: WholesaleEnquiry[] = [];
+    try {
+      const stored = localStorage.getItem('inveins_wholesale_enquiries');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) existingFromStorage = parsed;
+      }
+    } catch (e) {}
+
+    const updated = [newEnquiry, ...existingFromStorage.filter(e => e.id !== newEnquiry.id)];
+    try {
+      localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(updated));
+    } catch (e) {}
+
+    setWholesaleEnquiries(updated);
   };
 
   const updateProductStock = (productId: string, newStock: number, newBadge?: Product['badge']) => {
