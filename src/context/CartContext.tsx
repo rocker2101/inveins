@@ -15,6 +15,7 @@ export interface SavedAddress {
   phone: string;
   address: string;
   city: string;
+  state?: string;
   pincode: string;
 }
 
@@ -23,8 +24,12 @@ export interface Order {
   customer: SavedAddress;
   items: CartItem[];
   subtotal: number;
-  paymentMethod: 'upi' | 'cod' | 'card';
-  status: 'Pending' | 'Dispatched' | 'Delivered';
+  discount: number;
+  shippingFee: number;
+  grandTotal: number;
+  paymentMethod: 'upi' | 'cod' | 'card' | 'whatsapp';
+  status: 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered';
+  trackingNumber?: string;
   createdAt: string;
 }
 
@@ -41,6 +46,12 @@ export interface WholesaleEnquiry {
   createdAt: string;
 }
 
+export interface Coupon {
+  code: string;
+  discountPercent: number;
+  discountAmount: number;
+}
+
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: Product, selectedSize: string, quantity?: number) => void;
@@ -49,9 +60,23 @@ interface CartContextType {
   clearCart: () => void;
   totalCount: number;
   subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  grandTotal: number;
   freeShippingThreshold: number;
   amountNeededForFreeShipping: number;
-  
+
+  // Coupons
+  coupon: Coupon | null;
+  applyCoupon: (code: string) => { success: boolean; message: string };
+  removeCoupon: () => void;
+
+  // Wishlist
+  wishlist: string[];
+  wishlistCount: number;
+  toggleWishlist: (productId: string) => void;
+  isInWishlist: (productId: string) => boolean;
+
   // Saved Customer Address Memory
   savedAddress: SavedAddress | null;
   saveAddress: (address: SavedAddress) => void;
@@ -67,9 +92,11 @@ interface CartContextType {
 
   // Inventory Stock & Product Management
   productsList: Product[];
+  deletedProductIds: string[];
   updateProductStock: (productId: string, newStock: number, newBadge?: Product['badge']) => void;
   addNewProduct: (product: Omit<Product, 'id'>) => Product;
   deleteProduct: (productId: string) => void;
+  restoreDefaultProducts: () => void;
 
   // Modals & Drawers State
   isCartOpen: boolean;
@@ -83,6 +110,11 @@ interface CartContextType {
   isShippingPolicyOpen: boolean;
   setIsShippingPolicyOpen: (open: boolean) => void;
 
+  // Quick View Modal
+  quickViewProduct: Product | null;
+  openQuickView: (product: Product) => void;
+  closeQuickView: () => void;
+
   // 1-Click Express Buy State
   isExpressOpen: boolean;
   expressProduct: Product | null;
@@ -91,16 +123,26 @@ interface CartContextType {
   setIsExpressOpen: (open: boolean) => void;
 }
 
-const FREE_SHIPPING_THRESHOLD = 4000;
+const FREE_SHIPPING_THRESHOLD = 999;
+const STANDARD_SHIPPING_FEE = 70;
+
+const VALID_COUPONS: Record<string, number> = {
+  FIRST10: 10,
+  INVEINS15: 15,
+  HEAVY20: 20,
+};
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [savedAddress, setSavedAddress] = useState<SavedAddress | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wholesaleEnquiries, setWholesaleEnquiries] = useState<WholesaleEnquiry[]>([]);
   const [productsList, setProductsList] = useState<Product[]>(PRODUCTS);
+  const [deletedProductIds, setDeletedProductIds] = useState<string[]>([]);
 
   // Modals State
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -108,6 +150,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isShippingPolicyOpen, setIsShippingPolicyOpen] = useState(false);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   // Express 1-Click Buy State
   const [isExpressOpen, setIsExpressOpen] = useState(false);
@@ -118,7 +161,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem('inveins_cart');
-      if (savedCart) setItems(JSON.parse(savedCart));
+      if (savedCart) {
+        const parsedCart: CartItem[] = JSON.parse(savedCart);
+        // Refresh product prices from latest catalog definitions
+        const updatedCart = parsedCart.map(item => {
+          const fresh = PRODUCTS.find(p => p.id === item.product.id);
+          return fresh ? { ...item, product: { ...item.product, price: fresh.price } } : item;
+        });
+        setItems(updatedCart);
+      }
+
+      const savedWishlist = localStorage.getItem('inveins_wishlist');
+      if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
 
       const savedAddr = localStorage.getItem('inveins_saved_address');
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
@@ -129,31 +183,35 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedEnquiries = localStorage.getItem('inveins_wholesale_enquiries');
       if (savedEnquiries) setWholesaleEnquiries(JSON.parse(savedEnquiries));
 
-      const savedProducts = localStorage.getItem('inveins_products');
-      if (savedProducts) {
-        const parsed: Product[] = JSON.parse(savedProducts);
-        // Find any newly added user custom products (products not in master PRODUCTS)
-        const customProducts = parsed.filter(p => !PRODUCTS.some(dp => dp.id === p.id));
-        
-        // Merge stock/badge edits for master PRODUCTS, keeping latest images & category details
-        const mergedDefaultProducts = PRODUCTS.map(dp => {
-          const saved = parsed.find(p => p.id === dp.id);
-          if (saved) {
-            return {
-              ...dp,
-              availableStock: saved.availableStock !== undefined ? saved.availableStock : dp.availableStock,
-              badge: saved.badge || dp.badge,
-            };
-          }
-          return dp;
-        });
+      // 1. Load deleted product IDs
+      const savedDeleted = localStorage.getItem('inveins_deleted_product_ids');
+      const deletedIds: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+      setDeletedProductIds(deletedIds);
 
-        const fullList = [...mergedDefaultProducts, ...customProducts];
-        setProductsList(fullList);
-        localStorage.setItem('inveins_products', JSON.stringify(fullList));
+      // 2. Load products list and synchronize with new IndiaMART prices
+      const CATALOG_VERSION = 'v2_indiamart_prices';
+      const storedVersion = localStorage.getItem('inveins_catalog_version');
+      const savedProducts = localStorage.getItem('inveins_products');
+
+      if (savedProducts && storedVersion === CATALOG_VERSION) {
+        const parsed: Product[] = JSON.parse(savedProducts);
+        const activeList = parsed.filter(p => !deletedIds.includes(p.id));
+        setProductsList(activeList);
+        localStorage.setItem('inveins_products', JSON.stringify(activeList));
       } else {
-        setProductsList(PRODUCTS);
-        localStorage.setItem('inveins_products', JSON.stringify(PRODUCTS));
+        // Upgrade prices from PRODUCTS while preserving any custom user-added products
+        let customAdded: Product[] = [];
+        if (savedProducts) {
+          try {
+            const parsed: Product[] = JSON.parse(savedProducts);
+            customAdded = parsed.filter(p => !PRODUCTS.some(dp => dp.id === p.id));
+          } catch (err) {}
+        }
+        const activeDefault = PRODUCTS.filter(p => !deletedIds.includes(p.id));
+        const combined = [...activeDefault, ...customAdded];
+        setProductsList(combined);
+        localStorage.setItem('inveins_products', JSON.stringify(combined));
+        localStorage.setItem('inveins_catalog_version', CATALOG_VERSION);
       }
     } catch (e) {
       console.error('Failed to load local storage state', e);
@@ -166,6 +224,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('inveins_cart', JSON.stringify(items));
     } catch (e) {}
   }, [items]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('inveins_wishlist', JSON.stringify(wishlist));
+    } catch (e) {}
+  }, [wishlist]);
 
   useEffect(() => {
     try {
@@ -226,6 +290,39 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setItems([]);
+    setCoupon(null);
+  };
+
+  // Wishlist actions
+  const toggleWishlist = (productId: string) => {
+    setWishlist(prev => {
+      if (prev.includes(productId)) {
+        return prev.filter(id => id !== productId);
+      }
+      return [...prev, productId];
+    });
+  };
+
+  const isInWishlist = (productId: string) => wishlist.includes(productId);
+
+  // Coupon action
+  const applyCoupon = (code: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    if (VALID_COUPONS[cleanCode]) {
+      const discountPercent = VALID_COUPONS[cleanCode];
+      const discountAmount = Math.round((subtotal * discountPercent) / 100);
+      setCoupon({
+        code: cleanCode,
+        discountPercent,
+        discountAmount,
+      });
+      return { success: true, message: `Coupon applied: ${discountPercent}% off!` };
+    }
+    return { success: false, message: 'Invalid promo code. Try FIRST10 for 10% off.' };
+  };
+
+  const removeCoupon = () => {
+    setCoupon(null);
   };
 
   const saveAddress = (address: SavedAddress) => {
@@ -236,6 +333,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newOrder: Order = {
       ...orderData,
       id: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
+      trackingNumber: `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`,
       createdAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
     };
 
@@ -291,7 +389,36 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteProduct = (productId: string) => {
-    setProductsList(prev => prev.filter(p => p.id !== productId));
+    // 1. Update deleted product IDs in state and localStorage
+    setDeletedProductIds(prev => {
+      const updated = prev.includes(productId) ? prev : [...prev, productId];
+      try {
+        localStorage.setItem('inveins_deleted_product_ids', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 2. Remove product from productsList state and localStorage immediately
+    setProductsList(prev => {
+      const updated = prev.filter(p => p.id !== productId);
+      try {
+        localStorage.setItem('inveins_products', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 3. Remove from active cart items and wishlist if present
+    setItems(prev => prev.filter(i => i.product.id !== productId));
+    setWishlist(prev => prev.filter(id => id !== productId));
+  };
+
+  const restoreDefaultProducts = () => {
+    try {
+      localStorage.removeItem('inveins_deleted_product_ids');
+      localStorage.setItem('inveins_products', JSON.stringify(PRODUCTS));
+    } catch (e) {}
+    setDeletedProductIds([]);
+    setProductsList(PRODUCTS);
   };
 
   const openExpressBuy = (product: Product, size?: string) => {
@@ -300,9 +427,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsExpressOpen(true);
   };
 
+  const openQuickView = (product: Product) => {
+    setQuickViewProduct(product);
+  };
+
+  const closeQuickView = () => {
+    setQuickViewProduct(null);
+  };
+
   const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const amountNeededForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+  const shippingFee = subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD ? STANDARD_SHIPPING_FEE : 0;
+  const discountAmount = coupon ? Math.round((subtotal * coupon.discountPercent) / 100) : 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
 
   return (
     <CartContext.Provider
@@ -314,8 +452,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearCart,
         totalCount,
         subtotal,
+        discountAmount,
+        shippingFee,
+        grandTotal,
         freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
         amountNeededForFreeShipping,
+        coupon,
+        applyCoupon,
+        removeCoupon,
+        wishlist,
+        wishlistCount: wishlist.length,
+        toggleWishlist,
+        isInWishlist,
         savedAddress,
         saveAddress,
         orders,
@@ -324,9 +472,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         wholesaleEnquiries,
         addWholesaleEnquiry,
         productsList,
+        deletedProductIds,
         updateProductStock,
         addNewProduct,
         deleteProduct,
+        restoreDefaultProducts,
         isCartOpen,
         setIsCartOpen,
         isSearchOpen,
@@ -337,6 +487,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsCheckoutOpen,
         isShippingPolicyOpen,
         setIsShippingPolicyOpen,
+        quickViewProduct,
+        openQuickView,
+        closeQuickView,
         isExpressOpen,
         expressProduct,
         expressSize,

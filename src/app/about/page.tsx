@@ -25,8 +25,8 @@ export default function AboutPage() {
       {/* Hero Editorial Image Showcase */}
       <div className="relative aspect-[16/9] w-full bg-[#e5e4df] border border-[#e5e4df] overflow-hidden">
         <Image
-          src="https://images.unsplash.com/photo-1582999226946-a7e53d258254?auto=format&fit=crop&w=1600&q=85"
-          alt="INVEINS studio portrait"
+          src="https://5.imimg.com/data5/SELLER/Default/2026/3/590885404/MA/PR/OG/180956315/t-shirt-printing-services-500x500.jpeg"
+          alt="INVEINS Kanpur Studio Production"
           fill
           priority
           className="object-cover"

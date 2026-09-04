@@ -29,7 +29,7 @@ export const ShippingPolicyModal: React.FC = () => {
             <div>
               <h3 className="font-bold uppercase tracking-wider mb-1">PAN-INDIA DELIVERY</h3>
               <p className="text-[#737373]">
-                Complimentary standard shipping on all orders over ₹4,000. Orders under ₹4,000 incur a flat ₹150 delivery charge. Orders are dispatched within 24-48 business hours.
+                Complimentary standard shipping on all orders over ₹999. Orders under ₹999 incur a flat ₹70 delivery charge. Orders are dispatched within 24-48 business hours.
               </p>
             </div>
           </div>

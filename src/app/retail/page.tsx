@@ -15,10 +15,7 @@ export default function RetailPage() {
     return productsList.filter(product => {
       const matchesCategory =
         selectedCategory === 'All' ||
-        product.category === selectedCategory ||
-        (selectedCategory === 'Essentials' && product.category === 'Tees') ||
-        (selectedCategory === 'Layers' && (product.category === 'Outerwear' || product.category === 'Layers')) ||
-        (selectedCategory === 'Bottoms' && product.category === 'Denim');
+        product.category === selectedCategory;
 
       const matchesSearch =
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,10 +38,10 @@ export default function RetailPage() {
           INDIVIDUAL COLLECTION
         </span>
         <h1 className="font-heading font-extrabold text-4xl sm:text-5xl text-[#171717] tracking-tight mt-1">
-          RETAIL
+          RETAIL CATALOG
         </h1>
         <p className="text-xs sm:text-sm text-[#737373] mt-2 max-w-lg">
-          The complete INVEINS collection, made for your everyday rotation.
+          The complete INVEINS collection, direct from our Kanpur studio.
         </p>
       </div>
 
@@ -71,10 +68,13 @@ export default function RetailPage() {
             onChange={e => setSelectedCategory(e.target.value)}
             className="bg-[#f5f4f0] border border-[#e5e4df] px-3 py-2 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
           >
-            <option value="All">All</option>
-            <option value="Essentials">Essentials</option>
-            <option value="Layers">Layers</option>
-            <option value="Bottoms">Bottoms</option>
+            <option value="All">All Categories</option>
+            <option value="Tees">Heavyweight Tees</option>
+            <option value="Gym Compression">Gym Compression</option>
+            <option value="Joggers">Baggies & Lowers</option>
+            <option value="Shirts">Polos & Shirts</option>
+            <option value="Outerwear">Hoodies & Sweatshirts</option>
+            <option value="Custom B2B">Custom B2B Services</option>
           </select>
 
           <select

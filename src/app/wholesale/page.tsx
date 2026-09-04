@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { CheckCircle2, Send, Building2, Package, ShieldCheck, Clock } from 'lucide-react';
 
 export default function WholesalePage() {
@@ -77,6 +78,91 @@ export default function WholesalePage() {
           <p className="text-xs text-[#737373] leading-relaxed">
             Start with the right volume for your store and scale seamlessly as you grow.
           </p>
+        </div>
+      </div>
+
+      {/* Real IndiaMART B2B Services Showcase */}
+      <div className="space-y-6">
+        <div className="border-b border-[#e5e4df] pb-4">
+          <span className="text-[10px] font-bold tracking-widest text-[#cc785c] uppercase">
+            KANPUR FACTORY PRODUCTION
+          </span>
+          <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#141413] tracking-tight mt-0.5">
+            CUSTOM MERCHANDISING & B2B APPAREL
+          </h2>
+          <p className="text-xs text-[#6c6a64] mt-1">
+            Genuine manufacturing capabilities directly from our Kanpur studio. High-definition prints, embroidery, and blank supplies.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              title: 'T-Shirt DTF Printing Service',
+              price: '₹100 / piece',
+              moq: 'MOQ: 50 Pieces',
+              image: 'https://5.imimg.com/data5/SELLER/Default/2026/3/590885404/MA/PR/OG/180956315/t-shirt-printing-services-500x500.jpeg',
+              desc: 'High-density Direct-to-Film transfer with vibrant multi-color reproduction on combed cotton and French Terry.',
+            },
+            {
+              title: 'Machine Embroidery Service',
+              price: '₹150 / piece',
+              moq: 'MOQ: 50 Pieces',
+              image: 'https://5.imimg.com/data5/SELLER/Default/2026/3/590934041/EV/YM/MP/180956315/embroidery-500x500.jpeg',
+              desc: 'Precision computerized multi-head embroidery for chest insignia, sleeve badges, and back artwork.',
+            },
+            {
+              title: 'Jersey Customization Service',
+              price: '₹450 / piece',
+              moq: 'MOQ: 15 Pieces',
+              image: 'https://5.imimg.com/data5/SELLER/Default/2026/4/598343279/DS/SE/FU/180956315/imported-jersey-customization-500x500.jpeg',
+              desc: 'Sublimation printing, personalized squad numbering, names, and team crests for athletic clubs.',
+            },
+            {
+              title: 'Promotional Bio-Washed Tees',
+              price: '₹210 / piece',
+              moq: 'MOQ: 100 Pieces',
+              image: 'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg',
+              desc: '180–200 GSM 100% bio-washed cotton blanks ready for corporate branding and startup merchandise.',
+            },
+          ].map(item => (
+            <div key={item.title} className="bg-white border border-[#e5e4df] overflow-hidden flex flex-col group">
+              <div className="relative aspect-square w-full bg-[#f4f1ea] overflow-hidden">
+                <Image
+                  src={item.image}
+                  alt={item.title}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <span className="absolute top-2 left-2 bg-[#141413] text-[#faf9f5] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5">
+                  {item.moq}
+                </span>
+              </div>
+              <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                <div>
+                  <h3 className="font-heading font-extrabold text-sm text-[#141413] leading-snug">
+                    {item.title}
+                  </h3>
+                  <p className="text-[11px] text-[#6c6a64] mt-1 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-[#e5e4df] flex items-center justify-between">
+                  <span className="font-heading font-extrabold text-xs text-[#cc785c]">
+                    {item.price}
+                  </span>
+                  <a
+                    href={`https://wa.me/917985232434?text=${encodeURIComponent(`Hi INVEINS, I want to inquire about bulk ordering for ${item.title}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-extrabold uppercase tracking-wider text-[#141413] hover:text-[#cc785c]"
+                  >
+                    Quick WhatsApp MOQ &rarr;
+                  </a>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

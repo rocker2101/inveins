@@ -13,20 +13,24 @@ export default function AdminPage() {
     updateOrderStatus,
     wholesaleEnquiries,
     productsList,
+    deletedProductIds,
     updateProductStock,
     addNewProduct,
-    deleteProduct
+    deleteProduct,
+    restoreDefaultProducts,
   } = useCart();
 
   const [pinInput, setPinInput] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinError, setPinError] = useState(false);
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product'>('orders');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Dispatched' | 'Delivered'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
 
   // Temporary stock edit state
   const [editingStock, setEditingStock] = useState<Record<string, number>>({});
   const [productAddedSuccess, setProductAddedSuccess] = useState(false);
+  const [deleteToast, setDeleteToast] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // New Product Form State
   const [newProductForm, setNewProductForm] = useState({
@@ -78,7 +82,7 @@ export default function AdminPage() {
         '100% Certified Organic Cotton',
         'Machine wash cold, dry flat in shade'
       ],
-      shippingInfo: 'Complimentary shipping across India on orders above ₹4,000.',
+      shippingInfo: 'Complimentary shipping across India on orders above ₹999.',
       returnsInfo: 'Hassle-free 7-day exchange & return policy.'
     });
 
@@ -283,7 +287,7 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-xs">
             <span className="font-bold text-[#737373] uppercase tracking-wider">Filter Status:</span>
-            {(['All', 'Pending', 'Dispatched', 'Delivered'] as const).map(st => (
+            {(['All', 'Pending', 'Confirmed', 'Dispatched', 'Delivered'] as const).map(st => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
@@ -318,7 +322,12 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
                   {filteredOrders.map(order => (
                     <tr key={order.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
-                      <td className="p-3.5 font-bold font-mono text-[#171717]">{order.id}</td>
+                      <td className="p-3.5 font-bold font-mono text-[#171717]">
+                        {order.id}
+                        {order.trackingNumber && (
+                          <div className="text-[10px] text-[#6c6a64] font-normal">{order.trackingNumber}</div>
+                        )}
+                      </td>
                       <td className="p-3.5 text-[#737373]">{order.createdAt}</td>
                       <td className="p-3.5">
                         <div className="font-bold">{order.customer.name}</div>
@@ -335,7 +344,7 @@ export default function AdminPage() {
                           </div>
                         ))}
                       </td>
-                      <td className="p-3.5 font-extrabold">₹{order.subtotal.toLocaleString('en-IN')}</td>
+                      <td className="p-3.5 font-extrabold">₹{(order.grandTotal || order.subtotal).toLocaleString('en-IN')}</td>
                       <td className="p-3.5">
                         <span className="px-2 py-0.5 bg-neutral-100 border text-[10px] font-bold uppercase">
                           {order.paymentMethod}
@@ -347,11 +356,13 @@ export default function AdminPage() {
                           onChange={e => updateOrderStatus(order.id, e.target.value as any)}
                           className={`text-xs font-bold px-2 py-1 border focus:outline-none ${
                             order.status === 'Pending' ? 'bg-amber-100 text-amber-900 border-amber-300' :
+                            order.status === 'Confirmed' ? 'bg-purple-100 text-purple-900 border-purple-300' :
                             order.status === 'Dispatched' ? 'bg-blue-100 text-blue-900 border-blue-300' :
                             'bg-emerald-100 text-emerald-900 border-emerald-300'
                           }`}
                         >
                           <option value="Pending">Pending</option>
+                          <option value="Confirmed">Confirmed</option>
                           <option value="Dispatched">Dispatched</option>
                           <option value="Delivered">Delivered</option>
                         </select>
@@ -367,84 +378,171 @@ export default function AdminPage() {
 
       {/* TAB 2: INVENTORY MANAGEMENT */}
       {activeTab === 'inventory' && (
-        <div className="bg-white border border-[#e5e4df] overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
-              <tr>
-                <th className="p-3.5">Product</th>
-                <th className="p-3.5">Category</th>
-                <th className="p-3.5">Price (₹)</th>
-                <th className="p-3.5">Available Stock</th>
-                <th className="p-3.5">Status Badge</th>
-                <th className="p-3.5">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-              {productsList.map(prod => {
-                const stockVal = editingStock[prod.id] !== undefined ? editingStock[prod.id] : prod.availableStock;
-                const isLowStock = prod.availableStock > 0 && prod.availableStock < 5;
+        <div className="space-y-4">
+          {/* Toast Notification Banner */}
+          {deleteToast && (
+            <div className="p-3 bg-red-50 border border-red-200 text-xs font-bold text-red-800 flex items-center justify-between rounded animate-fade-in">
+              <span className="flex items-center gap-1.5">
+                <Trash2 size={14} className="text-red-600" /> {deleteToast}
+              </span>
+              <button
+                onClick={() => setDeleteToast(null)}
+                className="text-red-700 hover:text-red-900 text-[11px] font-extrabold uppercase ml-4"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
-                return (
-                  <tr key={prod.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
-                    <td className="p-3.5">
-                      <div className="font-bold text-sm flex items-center gap-2">
-                        {prod.name}
-                        {isLowStock && (
-                          <span className="bg-amber-100 text-amber-900 text-[9px] font-extrabold px-2 py-0.5 border border-amber-300 flex items-center gap-1">
-                            <AlertTriangle size={10} /> LOW STOCK
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-[#737373] line-clamp-1">{prod.tagline}</div>
-                    </td>
-                    <td className="p-3.5 font-semibold text-[#737373]">{prod.category}</td>
-                    <td className="p-3.5 font-bold">₹{prod.price.toLocaleString('en-IN')}</td>
-                    <td className="p-3.5">
-                      <input
-                        type="number"
-                        min={0}
-                        value={stockVal}
-                        onChange={e => setEditingStock({ ...editingStock, [prod.id]: parseInt(e.target.value) || 0 })}
-                        className="w-20 bg-[#f5f4f0] border border-[#e5e4df] p-1.5 font-bold text-center"
-                      />
-                    </td>
-                    <td className="p-3.5">
-                      <select
-                        value={prod.badge || (prod.availableStock === 0 ? 'SOLD OUT' : 'NEW')}
-                        onChange={e => updateProductStock(prod.id, stockVal, e.target.value as any)}
-                        className="text-xs font-bold p-1.5 border border-[#e5e4df] bg-[#f5f4f0]"
-                      >
-                        <option value="NEW">NEW</option>
-                        <option value="LIMITED">LIMITED</option>
-                        <option value="SOLD OUT">SOLD OUT</option>
-                      </select>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateProductStock(prod.id, stockVal)}
-                          className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-[10px] font-bold uppercase tracking-wider py-1.5 px-3 flex items-center gap-1 transition-colors"
+          {/* Catalog Status & Restore Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 border border-[#e5e4df]">
+            <div className="text-xs">
+              <span className="font-bold text-[#171717]">{productsList.length} Active Products</span>
+              {deletedProductIds && deletedProductIds.length > 0 && (
+                <span className="ml-2 text-red-600 font-semibold text-[11px]">
+                  ({deletedProductIds.length} item{deletedProductIds.length > 1 ? 's' : ''} deleted)
+                </span>
+              )}
+            </div>
+
+            {deletedProductIds && deletedProductIds.length > 0 && (
+              <button
+                onClick={() => {
+                  restoreDefaultProducts();
+                  setDeleteToast('All original IndiaMART catalog products have been restored!');
+                }}
+                className="bg-[#faf9f5] hover:bg-neutral-100 text-[#141413] border border-[#e6e2d8] text-[10px] font-extrabold uppercase tracking-wider py-1.5 px-3.5 flex items-center gap-1.5 transition-colors"
+              >
+                <Sparkles size={12} className="text-[#cc785c]" /> Restore Original Catalog ({deletedProductIds.length})
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white border border-[#e5e4df] overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
+                <tr>
+                  <th className="p-3.5">Product</th>
+                  <th className="p-3.5">Category</th>
+                  <th className="p-3.5">Price (₹)</th>
+                  <th className="p-3.5">Available Stock</th>
+                  <th className="p-3.5">Status Badge</th>
+                  <th className="p-3.5">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
+                {productsList.map(prod => {
+                  const stockVal = editingStock[prod.id] !== undefined ? editingStock[prod.id] : prod.availableStock;
+                  const isLowStock = prod.availableStock > 0 && prod.availableStock < 5;
+
+                  return (
+                    <tr key={prod.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
+                      <td className="p-3.5">
+                        <div className="font-bold text-sm flex items-center gap-2">
+                          {prod.name}
+                          {isLowStock && (
+                            <span className="bg-amber-100 text-amber-900 text-[9px] font-extrabold px-2 py-0.5 border border-amber-300 flex items-center gap-1">
+                              <AlertTriangle size={10} /> LOW STOCK
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-[#737373] line-clamp-1">{prod.tagline}</div>
+                      </td>
+                      <td className="p-3.5 font-semibold text-[#737373]">{prod.category}</td>
+                      <td className="p-3.5 font-bold">₹{prod.price.toLocaleString('en-IN')}</td>
+                      <td className="p-3.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={stockVal}
+                          onChange={e => setEditingStock({ ...editingStock, [prod.id]: parseInt(e.target.value) || 0 })}
+                          className="w-20 bg-[#f5f4f0] border border-[#e5e4df] p-1.5 font-bold text-center"
+                        />
+                      </td>
+                      <td className="p-3.5">
+                        <select
+                          value={prod.badge || (prod.availableStock === 0 ? 'SOLD OUT' : 'NEW')}
+                          onChange={e => updateProductStock(prod.id, stockVal, e.target.value as any)}
+                          className="text-xs font-bold p-1.5 border border-[#e5e4df] bg-[#f5f4f0]"
                         >
-                          <Check size={12} /> SAVE STOCK
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete "${prod.name}" from the store catalog?`)) {
-                              deleteProduct(prod.id);
-                            }
-                          }}
-                          className="border border-red-300 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1.5 px-2.5 transition-colors"
-                          title="Delete product"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          <option value="NEW">NEW</option>
+                          <option value="LIMITED">LIMITED</option>
+                          <option value="SOLD OUT">SOLD OUT</option>
+                        </select>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => updateProductStock(prod.id, stockVal)}
+                            className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-[10px] font-bold uppercase tracking-wider py-1.5 px-3 flex items-center gap-1 transition-colors"
+                          >
+                            <Check size={12} /> SAVE STOCK
+                          </button>
+                          <button
+                            onClick={() => setProductToDelete(prod)}
+                            className="border border-red-300 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1.5 px-2.5 transition-colors flex items-center gap-1"
+                            title={`Delete ${prod.name} from catalog`}
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Delete Confirmation In-App Modal */}
+          {productToDelete && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white border border-[#e5e4df] max-w-md w-full p-6 shadow-2xl space-y-4">
+                <div className="flex items-center gap-3 text-red-600">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <Trash2 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-extrabold text-base text-[#171717]">
+                      Delete Product From Catalog?
+                    </h3>
+                    <p className="text-[11px] text-[#737373]">
+                      This item will be removed immediately from the online store and catalog.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-[#f5f4f0] p-3.5 border border-[#e5e4df] text-xs space-y-1">
+                  <div className="font-bold text-[#171717]">{productToDelete.name}</div>
+                  <div className="text-[11px] text-[#737373]">
+                    Category: <span className="font-semibold">{productToDelete.category}</span> • Price: <span className="font-bold">₹{productToDelete.price}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setProductToDelete(null)}
+                    className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const name = productToDelete.name;
+                      deleteProduct(productToDelete.id);
+                      setProductToDelete(null);
+                      setDeleteToast(`"${name}" was successfully deleted from catalog.`);
+                      setTimeout(() => setDeleteToast(null), 5000);
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Trash2 size={13} /> Confirm Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -71,8 +71,11 @@ export const ExpressCheckoutModal: React.FC = () => {
       customer: formData,
       items: [{ product: expressProduct, selectedSize, quantity }],
       subtotal: totalAmount,
+      discount: 0,
+      shippingFee: 0,
+      grandTotal: totalAmount,
       paymentMethod,
-      status: 'Pending',
+      status: 'Confirmed',
     });
 
     setPlacedOrder(newOrder);
