@@ -9,6 +9,8 @@ import { sanitizeString } from '@/lib/sanitize';
 export default function WholesalePage() {
   const { addWholesaleEnquiry } = useCart();
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     company: '',
@@ -20,9 +22,12 @@ export default function WholesalePage() {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addWholesaleEnquiry({
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    const res = await addWholesaleEnquiry({
       name: sanitizeString(formData.name),
       company: sanitizeString(formData.company),
       email: sanitizeString(formData.email),
@@ -32,7 +37,14 @@ export default function WholesalePage() {
       quantity: sanitizeString(formData.quantity),
       message: sanitizeString(formData.message),
     });
-    setSubmitted(true);
+
+    setIsSubmitting(false);
+
+    if (res.success) {
+      setSubmitted(true);
+    } else {
+      setErrorMessage(res.message || 'Failed to submit enquiry. Please check the details.');
+    }
   };
 
   return (
@@ -210,6 +222,12 @@ export default function WholesalePage() {
               </p>
             </div>
 
+            {errorMessage && (
+              <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 font-semibold text-center">
+                ⚠️ {errorMessage}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
@@ -330,9 +348,16 @@ export default function WholesalePage() {
 
             <button
               type="submit"
-              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors"
+              disabled={isSubmitting}
+              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
             >
-              <Send size={15} /> SUBMIT WHOLESALE ENQUIRY
+              {isSubmitting ? (
+                <span>SUBMITTING ENQUIRY...</span>
+              ) : (
+                <>
+                  <Send size={15} /> SUBMIT WHOLESALE ENQUIRY
+                </>
+              )}
             </button>
           </form>
         )}

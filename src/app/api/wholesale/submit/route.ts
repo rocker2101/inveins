@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { sanitizeString, isValidEmail, isValidPhone } from '@/lib/sanitize';
+import { sanitizeString, isValidEmail, isValidPhone, normalizePhone } from '@/lib/sanitize';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,14 +18,14 @@ export async function POST(req: NextRequest) {
 
     if (!isValidPhone(phone)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid 10-digit mobile number.' },
+        { success: false, message: 'Please enter a valid 10-digit mobile number (e.g. 9876543210).' },
         { status: 400 }
       );
     }
 
     if (!isValidEmail(email)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid email address.' },
+        { success: false, message: 'Please enter a valid email address.' },
         { status: 400 }
       );
     }
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
       name: sanitizeString(name),
       company: sanitizeString(company || ''),
       email: sanitizeString(email),
-      phone: sanitizeString(phone),
+      phone: normalizePhone(phone),
       city_country: sanitizeString(cityCountry || ''),
       product_interest: sanitizeString(productInterest || 'Custom B2B Order'),
       quantity: sanitizeString(quantity || '50-100 pcs'),

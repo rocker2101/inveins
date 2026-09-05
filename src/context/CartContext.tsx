@@ -86,18 +86,19 @@ interface CartContextType {
   orders: Order[];
   addOrder: (order: Partial<Order> & Omit<Order, 'id' | 'createdAt'>) => Order;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<boolean>;
   refreshDatabaseData: () => Promise<void>;
 
-  // Wholesale Enquiries
   wholesaleEnquiries: WholesaleEnquiry[];
-  addWholesaleEnquiry: (enquiry: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => Promise<void>;
+  addWholesaleEnquiry: (enquiry: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => Promise<{ success: boolean; message?: string }>;
+  deleteWholesaleEnquiry: (enquiryId: string) => Promise<boolean>;
 
   // Inventory Stock & Product Management
   productsList: Product[];
   deletedProductIds: string[];
-  updateProductStock: (productId: string, newStock: number, newBadge?: Product['badge']) => void;
-  addNewProduct: (product: Omit<Product, 'id'>) => Product;
-  deleteProduct: (productId: string) => void;
+  updateProductStock: (productId: string, newStock: number, newBadge?: Product['badge']) => Promise<void>;
+  addNewProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
+  deleteProduct: (productId: string) => Promise<boolean>;
   restoreDefaultProducts: () => void;
 
   // Modals & Drawers State
@@ -161,13 +162,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isLoaded = useRef(false);
 
-  // Load from localStorage on client side
+  // Load user client preferences (cart, wishlist, address) from localStorage on mount
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem('inveins_cart');
       if (savedCart) {
         const parsedCart: CartItem[] = JSON.parse(savedCart);
-        // Refresh product prices from latest catalog definitions
         const updatedCart = parsedCart.map(item => {
           const fresh = PRODUCTS.find(p => p.id === item.product.id);
           return fresh ? { ...item, product: { ...item.product, price: fresh.price } } : item;
@@ -180,74 +180,29 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const savedAddr = localStorage.getItem('inveins_saved_address');
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
-
-      const savedOrders = localStorage.getItem('inveins_orders');
-      if (savedOrders) {
-        const parsed = JSON.parse(savedOrders);
-        if (Array.isArray(parsed)) setOrders(parsed);
-      }
-
-      const savedEnquiries = localStorage.getItem('inveins_wholesale_enquiries');
-      if (savedEnquiries) {
-        const parsed = JSON.parse(savedEnquiries);
-        if (Array.isArray(parsed)) setWholesaleEnquiries(parsed);
-      }
-
-      // 1. Load deleted product IDs
-      const savedDeleted = localStorage.getItem('inveins_deleted_product_ids');
-      const deletedIds: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
-      setDeletedProductIds(deletedIds);
-
-      // 2. Load products list and synchronize with new IndiaMART prices
-      const CATALOG_VERSION = 'v2_indiamart_prices';
-      const storedVersion = localStorage.getItem('inveins_catalog_version');
-      const savedProducts = localStorage.getItem('inveins_products');
-
-      if (savedProducts && storedVersion === CATALOG_VERSION) {
-        const parsed: Product[] = JSON.parse(savedProducts);
-        const activeList = parsed.filter(p => !deletedIds.includes(p.id));
-        setProductsList(activeList);
-        localStorage.setItem('inveins_products', JSON.stringify(activeList));
-      } else {
-        // Upgrade prices from PRODUCTS while preserving any custom user-added products
-        let customAdded: Product[] = [];
-        if (savedProducts) {
-          try {
-            const parsed: Product[] = JSON.parse(savedProducts);
-            customAdded = parsed.filter(p => !PRODUCTS.some(dp => dp.id === p.id));
-          } catch (err) {}
-        }
-        const activeDefault = PRODUCTS.filter(p => !deletedIds.includes(p.id));
-        const combined = [...activeDefault, ...customAdded];
-        setProductsList(combined);
-        localStorage.setItem('inveins_products', JSON.stringify(combined));
-        localStorage.setItem('inveins_catalog_version', CATALOG_VERSION);
-      }
     } catch (e) {
       console.error('Failed to load local storage state', e);
     } finally {
       isLoaded.current = true;
     }
 
-    // Immediately fetch live orders & wholesale enquiries from Supabase PostgreSQL
+    // Immediately fetch live authoritative data from Supabase PostgreSQL
     refreshDatabaseData();
   }, []);
 
-  // Synchronize orders and enquiries from Supabase PostgreSQL database
+  // Synchronize orders, enquiries, and products from Supabase PostgreSQL database
   const refreshDatabaseData = async () => {
     try {
-      const [ordersRes, wsRes] = await Promise.allSettled([
+      const [ordersRes, wsRes, prodRes] = await Promise.allSettled([
         fetch('/api/orders/list', { cache: 'no-store' }),
         fetch('/api/wholesale/list', { cache: 'no-store' }),
+        fetch('/api/products', { cache: 'no-store' }),
       ]);
 
       if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
         const data = await ordersRes.value.json();
         if (data.success && Array.isArray(data.orders)) {
           setOrders(data.orders);
-          try {
-            localStorage.setItem('inveins_orders', JSON.stringify(data.orders));
-          } catch (e) {}
         }
       }
 
@@ -255,9 +210,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const wsData = await wsRes.value.json();
         if (wsData.success && Array.isArray(wsData.enquiries)) {
           setWholesaleEnquiries(wsData.enquiries);
-          try {
-            localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(wsData.enquiries));
-          } catch (e) {}
+        }
+      }
+
+      if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
+        const prodData = await prodRes.value.json();
+        if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
+          setProductsList(prodData.products);
         }
       }
     } catch (err) {
@@ -287,27 +246,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Listen for storage events across tabs (e.g. order placed in store tab appears immediately in admin tab)
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'inveins_orders' && e.newValue) {
-        try {
-          const fresh = JSON.parse(e.newValue);
-          if (Array.isArray(fresh)) setOrders(fresh);
-        } catch (err) {}
-      }
-      if (e.key === 'inveins_wholesale_enquiries' && e.newValue) {
-        try {
-          const fresh = JSON.parse(e.newValue);
-          if (Array.isArray(fresh)) setWholesaleEnquiries(fresh);
-        } catch (err) {}
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  // Save changes to localStorage (Only after initial load to prevent empty overwrites!)
+  // Save cart & wishlist changes to localStorage
   useEffect(() => {
     if (!isLoaded.current) return;
     try {
@@ -328,15 +267,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedAddress) localStorage.setItem('inveins_saved_address', JSON.stringify(savedAddress));
     } catch (e) {}
   }, [savedAddress]);
-
-
-
-  useEffect(() => {
-    if (!isLoaded.current) return;
-    try {
-      localStorage.setItem('inveins_products', JSON.stringify(productsList));
-    } catch (e) {}
-  }, [productsList]);
 
   const addToCart = (product: Product, selectedSize: string, quantity = 1) => {
     setItems(prev => {
@@ -421,7 +351,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       verificationToken: orderData.verificationToken,
     };
 
-    // Auto-reduce stock count
+    // Auto-reduce stock count in state
     setProductsList(prev => prev.map(p => {
       const orderedItem = orderData.items.find(i => i.product.id === p.id);
       if (orderedItem) {
@@ -435,36 +365,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return p;
     }));
 
-    // Read directly from storage to ensure existing orders are never lost
-    let existingList: Order[] = [];
-    try {
-      const stored = localStorage.getItem('inveins_orders');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) existingList = parsed;
-      }
-    } catch (e) {}
-
-    const updated = [newOrder, ...existingList.filter(o => o.id !== newOrder.id)];
-    try {
-      localStorage.setItem('inveins_orders', JSON.stringify(updated));
-    } catch (e) {}
-
-    setOrders(updated);
+    setOrders(prev => [newOrder, ...prev.filter(o => o.id !== newOrder.id)]);
     return newOrder;
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
-    // Optimistic update
-    setOrders(prev => {
-      const updated = prev.map(o => o.id === orderId ? { ...o, status } : o);
-      try {
-        localStorage.setItem('inveins_orders', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    // Optimistic state update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
 
-    // Synchronize to Supabase PostgreSQL database
     try {
       await fetch('/api/orders/update-status', {
         method: 'POST',
@@ -476,41 +384,70 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const addWholesaleEnquiry = async (enquiryData: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => {
-    const newEnquiry: WholesaleEnquiry = {
-      ...enquiryData,
-      id: `WS-${Math.floor(1000 + Math.random() * 9000)}`,
-      createdAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
-    };
-    let existingFromStorage: WholesaleEnquiry[] = [];
-    try {
-      const stored = localStorage.getItem('inveins_wholesale_enquiries');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) existingFromStorage = parsed;
-      }
-    } catch (e) {}
+  const deleteOrder = async (orderId: string): Promise<boolean> => {
+    // Optimistic removal
+    setOrders(prev => prev.filter(o => o.id !== orderId));
 
-    const updated = [newEnquiry, ...existingFromStorage.filter(e => e.id !== newEnquiry.id)];
     try {
-      localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(updated));
-    } catch (e) {}
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      return Boolean(res.ok && data.success);
+    } catch (err) {
+      console.error('Failed to delete order from Supabase:', err);
+      // Revert by re-fetching
+      refreshDatabaseData();
+      return false;
+    }
+  };
 
-    setWholesaleEnquiries(updated);
-
-    // Persist to Supabase PostgreSQL database
+  const addWholesaleEnquiry = async (enquiryData: Omit<WholesaleEnquiry, 'id' | 'createdAt'>): Promise<{ success: boolean; message?: string }> => {
     try {
-      await fetch('/api/wholesale/submit', {
+      const res = await fetch('/api/wholesale/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(enquiryData),
       });
-    } catch (err) {
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        return { success: false, message: data.message || 'Submission failed. Please check your information.' };
+      }
+
+      const savedEnquiry: WholesaleEnquiry = {
+        ...enquiryData,
+        id: data.enquiry?.id || `WS-${Math.floor(1000 + Math.random() * 9000)}`,
+        createdAt: data.enquiry?.createdAt || new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+      };
+
+      setWholesaleEnquiries(prev => [savedEnquiry, ...prev.filter(e => e.id !== savedEnquiry.id)]);
+      return { success: true };
+    } catch (err: any) {
       console.error('Failed to sync wholesale enquiry to Supabase:', err);
+      return { success: false, message: 'Network connection failed. Please try again.' };
     }
   };
 
-  const updateProductStock = (productId: string, newStock: number, newBadge?: Product['badge']) => {
+  const deleteWholesaleEnquiry = async (enquiryId: string): Promise<boolean> => {
+    // Optimistic removal
+    setWholesaleEnquiries(prev => prev.filter(e => e.id !== enquiryId));
+
+    try {
+      const res = await fetch(`/api/wholesale/${enquiryId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      return Boolean(res.ok && data.success);
+    } catch (err) {
+      console.error('Failed to delete enquiry from Supabase:', err);
+      refreshDatabaseData();
+      return false;
+    }
+  };
+
+  const updateProductStock = async (productId: string, newStock: number, newBadge?: Product['badge']) => {
+    // Optimistic state update
     setProductsList(prev => prev.map(p => {
       if (p.id === productId) {
         const badge = newBadge !== undefined ? newBadge : (newStock === 0 ? 'SOLD OUT' : (p.badge === 'SOLD OUT' ? 'NEW' : p.badge));
@@ -518,49 +455,69 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return p;
     }));
+
+    // Server-side persistence in Supabase
+    try {
+      await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ availableStock: newStock, badge: newBadge }),
+      });
+    } catch (err) {
+      console.error('Failed to update product stock in Supabase:', err);
+    }
   };
 
-  const addNewProduct = (productData: Omit<Product, 'id'>): Product => {
-    const newId = productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `item-${Date.now()}`;
-    const newProduct: Product = {
+  const addNewProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
+    const tempId = productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `item-${Date.now()}`;
+    const optimisticProduct: Product = {
       ...productData,
-      id: newId,
+      id: tempId,
     };
-    setProductsList(prev => [newProduct, ...prev]);
-    return newProduct;
+
+    setProductsList(prev => [optimisticProduct, ...prev]);
+
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.product) {
+        setProductsList(prev => [data.product, ...prev.filter(p => p.id !== tempId)]);
+        return data.product;
+      }
+    } catch (err) {
+      console.error('Failed to persist new product to Supabase:', err);
+    }
+
+    return optimisticProduct;
   };
 
-  const deleteProduct = (productId: string) => {
-    // 1. Update deleted product IDs in state and localStorage
-    setDeletedProductIds(prev => {
-      const updated = prev.includes(productId) ? prev : [...prev, productId];
-      try {
-        localStorage.setItem('inveins_deleted_product_ids', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
-
-    // 2. Remove product from productsList state and localStorage immediately
-    setProductsList(prev => {
-      const updated = prev.filter(p => p.id !== productId);
-      try {
-        localStorage.setItem('inveins_products', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
-
-    // 3. Remove from active cart items and wishlist if present
+  const deleteProduct = async (productId: string): Promise<boolean> => {
+    // Optimistic removal from product list, cart, and wishlist
+    setProductsList(prev => prev.filter(p => p.id !== productId));
     setItems(prev => prev.filter(i => i.product.id !== productId));
     setWishlist(prev => prev.filter(id => id !== productId));
+
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      return Boolean(res.ok && data.success);
+    } catch (err) {
+      console.error('Failed to delete product from Supabase:', err);
+      refreshDatabaseData();
+      return false;
+    }
   };
 
-  const restoreDefaultProducts = () => {
+  const restoreDefaultProducts = async () => {
     try {
-      localStorage.removeItem('inveins_deleted_product_ids');
-      localStorage.setItem('inveins_products', JSON.stringify(PRODUCTS));
+      await refreshDatabaseData();
     } catch (e) {}
-    setDeletedProductIds([]);
-    setProductsList(PRODUCTS);
   };
 
   const openExpressBuy = (product: Product, size?: string) => {
@@ -611,9 +568,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         orders,
         addOrder,
         updateOrderStatus,
+        deleteOrder,
         refreshDatabaseData,
         wholesaleEnquiries,
         addWholesaleEnquiry,
+        deleteWholesaleEnquiry,
         productsList,
         deletedProductIds,
         updateProductStock,

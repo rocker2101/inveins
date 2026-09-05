@@ -22,11 +22,23 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email.trim()) && email.length <= 120;
 }
 
+// Normalize phone numbers (strips +91, leading 0, spaces, dashes)
+export function normalizePhone(phone: unknown): string {
+  if (typeof phone !== 'string') return '';
+  let cleaned = phone.replace(/[^0-9]/g, '');
+  if (cleaned.startsWith('91') && cleaned.length === 12) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length === 11) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned;
+}
+
 // Strictly validate and sanitize 10-digit Indian phone numbers
 export function isValidPhone(phone: string): boolean {
   if (!phone || typeof phone !== 'string') return false;
-  const cleaned = phone.replace(/[^0-9]/g, '');
-  return cleaned.length === 10;
+  const cleaned = normalizePhone(phone);
+  return cleaned.length === 10 && /^[6-9]\d{9}$/.test(cleaned);
 }
 
 // Strictly validate 6-digit Indian PIN Code

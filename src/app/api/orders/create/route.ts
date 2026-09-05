@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PRODUCTS } from '@/data/products';
-import { sanitizeString, isValidEmail, isValidPhone, isValidPincode } from '@/lib/sanitize';
+import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePhone } from '@/lib/sanitize';
 import { supabase } from '@/lib/supabase';
 
 const ORDER_SIGNING_SECRET = process.env.ORDER_SIGNING_SECRET || 'inveins-order-integrity-hmac-secret-2026';
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const sanitizedCustomer = {
       name: sanitizeString(customer.name),
       email: sanitizeString(customer.email),
-      phone: sanitizeString(customer.phone),
+      phone: normalizePhone(customer.phone),
       address: sanitizeString(customer.address),
       city: sanitizeString(customer.city),
       state: sanitizeString(customer.state || 'Uttar Pradesh'),

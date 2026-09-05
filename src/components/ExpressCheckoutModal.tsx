@@ -46,7 +46,7 @@ export const ExpressCheckoutModal: React.FC = () => {
     setErrorMsg('');
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -66,19 +66,67 @@ export const ExpressCheckoutModal: React.FC = () => {
 
     const totalAmount = expressProduct.price * quantity;
 
-    // Create Order
-    const newOrder = addOrder({
-      customer: formData,
-      items: [{ product: expressProduct, selectedSize, quantity }],
-      subtotal: totalAmount,
-      discount: 0,
-      shippingFee: 0,
-      grandTotal: totalAmount,
-      paymentMethod,
-      status: 'Confirmed',
-    });
+    try {
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: formData,
+          items: [{
+            productId: expressProduct.id,
+            selectedSize,
+            quantity,
+          }],
+          paymentMethod,
+        }),
+      });
 
-    setPlacedOrder(newOrder);
+      const data = await res.json();
+      if (res.ok && data.success && data.order) {
+        const verified = data.order;
+        addOrder({
+          id: verified.id,
+          trackingNumber: verified.trackingNumber,
+          verificationToken: verified.verificationToken,
+          createdAt: verified.createdAt,
+          customer: verified.customer,
+          items: verified.items,
+          subtotal: verified.subtotal,
+          discount: verified.discount,
+          shippingFee: verified.shippingFee,
+          grandTotal: verified.grandTotal,
+          paymentMethod: verified.paymentMethod,
+          status: verified.status,
+        });
+        setPlacedOrder(verified);
+      } else {
+        // Local fallback
+        const newOrder = addOrder({
+          customer: formData,
+          items: [{ product: expressProduct, selectedSize, quantity }],
+          subtotal: totalAmount,
+          discount: 0,
+          shippingFee: 0,
+          grandTotal: totalAmount,
+          paymentMethod,
+          status: 'Confirmed',
+        });
+        setPlacedOrder(newOrder);
+      }
+    } catch (err) {
+      const newOrder = addOrder({
+        customer: formData,
+        items: [{ product: expressProduct, selectedSize, quantity }],
+        subtotal: totalAmount,
+        discount: 0,
+        shippingFee: 0,
+        grandTotal: totalAmount,
+        paymentMethod,
+        status: 'Confirmed',
+      });
+      setPlacedOrder(newOrder);
+    }
+
     setStep('success');
   };
 

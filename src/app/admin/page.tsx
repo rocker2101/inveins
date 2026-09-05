@@ -1,16 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, Image as ImageIcon, RefreshCw, Database } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database } from 'lucide-react';
+
+interface DashboardStats {
+  totalRevenue: number;
+  totalOrders: number;
+  wholesaleEnquiries: number;
+  catalogItems: number;
+}
 
 export default function AdminPage() {
   const {
     orders,
     updateOrderStatus,
+    deleteOrder,
     refreshDatabaseData,
     wholesaleEnquiries,
+    deleteWholesaleEnquiry,
     productsList,
     deletedProductIds,
     updateProductStock,
@@ -28,6 +37,48 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product'>('orders');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
 
+  // Authoritative server-side stats from Supabase
+  const [serverStats, setServerStats] = useState<DashboardStats | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Temporary stock edit state
+  const [editingStock, setEditingStock] = useState<Record<string, number>>({});
+  const [productAddedSuccess, setProductAddedSuccess] = useState(false);
+  const [actionToast, setActionToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Modals for confirmation
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [enquiryToDelete, setEnquiryToDelete] = useState<WholesaleEnquiry | null>(null);
+
+  // New Product Form State
+  const [newProductForm, setNewProductForm] = useState({
+    name: '',
+    price: '',
+    currency: '₹',
+    category: 'Tees' as Product['category'],
+    badge: 'NEW' as Product['badge'],
+    tagline: '',
+    description: '',
+    availableStock: '25',
+    imageUrl: '',
+    sizes: ['S', 'M', 'L', 'XL'],
+  });
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/dashboard', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.stats) {
+          setServerStats(data.stats);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    }
+  }, []);
+
   // Verify server-side HttpOnly session cookie on mount
   useEffect(() => {
     async function verifySession() {
@@ -37,7 +88,6 @@ export default function AdminPage() {
         if (data.authenticated) {
           setIsAuthenticated(true);
         } else {
-          // Fallback to local storage session check
           const storedAuth = localStorage.getItem('inveins_admin_auth');
           if (storedAuth === 'true') {
             setIsAuthenticated(true);
@@ -53,25 +103,27 @@ export default function AdminPage() {
     verifySession();
   }, []);
 
-  // Temporary stock edit state
-  const [editingStock, setEditingStock] = useState<Record<string, number>>({});
-  const [productAddedSuccess, setProductAddedSuccess] = useState(false);
-  const [deleteToast, setDeleteToast] = useState<string | null>(null);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  // Fetch stats when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshDatabaseData();
+      fetchDashboardStats();
+    }
+  }, [isAuthenticated, refreshDatabaseData, fetchDashboardStats]);
 
-  // New Product Form State
-  const [newProductForm, setNewProductForm] = useState({
-    name: '',
-    price: '',
-    currency: '₹',
-    category: 'Tees' as Product['category'],
-    badge: 'NEW' as Product['badge'],
-    tagline: '',
-    description: '',
-    availableStock: '25',
-    imageUrl: '',
-    sizes: ['S', 'M', 'L', 'XL'],
-  });
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refreshDatabaseData(),
+        fetchDashboardStats(),
+      ]);
+      setActionToast({ message: 'Authoritative data synchronized with Supabase.', type: 'info' });
+      setTimeout(() => setActionToast(null), 3500);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,13 +168,13 @@ export default function AdminPage() {
     } catch (e) {}
   };
 
-  const handleAddProductSubmit = (e: React.FormEvent) => {
+  const handleAddProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const priceNum = parseFloat(newProductForm.price) || 1490;
     const stockNum = parseInt(newProductForm.availableStock) || 20;
     const img = newProductForm.imageUrl.trim() || 'https://images.unsplash.com/photo-1579809011670-aa21121f5ec6?auto=format&fit=crop&w=1200&q=85';
 
-    addNewProduct({
+    await addNewProduct({
       name: newProductForm.name,
       price: priceNum,
       currency: '₹',
@@ -136,23 +188,24 @@ export default function AdminPage() {
       details: [
         '260-340 GSM organic combed cotton jersey',
         'Pre-shrunk architectural cut',
-        'Reinforced coverstitching'
+        'Reinforced coverstitching',
       ],
       materialCare: [
         '100% Certified Organic Cotton',
-        'Machine wash cold, dry flat in shade'
+        'Machine wash cold, dry flat in shade',
       ],
       shippingInfo: 'Complimentary shipping across India on orders above ₹999.',
-      returnsInfo: 'Hassle-free 7-day exchange & return policy.'
+      returnsInfo: 'Hassle-free 7-day exchange & return policy.',
     });
 
     setProductAddedSuccess(true);
+    fetchDashboardStats();
+
     setTimeout(() => {
       setProductAddedSuccess(false);
       setActiveTab('inventory');
     }, 1500);
 
-    // Reset Form
     setNewProductForm({
       name: '',
       price: '',
@@ -167,53 +220,57 @@ export default function AdminPage() {
     });
   };
 
-  const [localOrders, setLocalOrders] = useState<Order[]>([]);
-  const [localEnquiries, setLocalEnquiries] = useState<WholesaleEnquiry[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const loadFromStorage = () => {
-    try {
-      const stored = localStorage.getItem('inveins_orders');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setLocalOrders(parsed);
-      }
-      const storedEnq = localStorage.getItem('inveins_wholesale_enquiries');
-      if (storedEnq) {
-        const parsed = JSON.parse(storedEnq);
-        if (Array.isArray(parsed)) setLocalEnquiries(parsed);
-      }
-    } catch (e) {}
+  const handleConfirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    const id = orderToDelete.id;
+    setOrderToDelete(null);
+    const success = await deleteOrder(id);
+    if (success) {
+      setActionToast({ message: `Order ${id} deleted successfully from Supabase.`, type: 'success' });
+      fetchDashboardStats();
+    } else {
+      setActionToast({ message: `Failed to delete order ${id}.`, type: 'error' });
+    }
+    setTimeout(() => setActionToast(null), 4000);
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refreshDatabaseData();
-      loadFromStorage();
-    } finally {
-      setIsRefreshing(false);
+  const handleConfirmDeleteEnquiry = async () => {
+    if (!enquiryToDelete) return;
+    const id = enquiryToDelete.id;
+    setEnquiryToDelete(null);
+    const success = await deleteWholesaleEnquiry(id);
+    if (success) {
+      setActionToast({ message: `Wholesale enquiry ${id} deleted successfully.`, type: 'success' });
+      fetchDashboardStats();
+    } else {
+      setActionToast({ message: `Failed to delete enquiry ${id}.`, type: 'error' });
     }
+    setTimeout(() => setActionToast(null), 4000);
   };
 
-  useEffect(() => {
-    loadFromStorage();
-    if (isAuthenticated) {
-      refreshDatabaseData();
+  const handleConfirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    const name = productToDelete.name;
+    const id = productToDelete.id;
+    setProductToDelete(null);
+    const success = await deleteProduct(id);
+    if (success) {
+      setActionToast({ message: `"${name}" removed from catalog and database.`, type: 'success' });
+      fetchDashboardStats();
+    } else {
+      setActionToast({ message: `Failed to delete "${name}".`, type: 'error' });
     }
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'inveins_orders' || e.key === 'inveins_wholesale_enquiries') {
-        loadFromStorage();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [isAuthenticated]);
+    setTimeout(() => setActionToast(null), 4000);
+  };
 
-  const activeOrders = orders.length > 0 ? orders : localOrders;
-  const activeEnquiries = wholesaleEnquiries.length > 0 ? wholesaleEnquiries : localEnquiries;
-  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.subtotal, 0);
-  const filteredOrders = activeOrders.filter(o => statusFilter === 'All' || o.status === statusFilter);
+  // Calculated metrics
+  const calculatedRevenue = orders.reduce((sum, o) => sum + (Number(o.subtotal) || 0), 0);
+  const displayRevenue = serverStats ? serverStats.totalRevenue : calculatedRevenue;
+  const displayOrdersCount = serverStats ? serverStats.totalOrders : orders.length;
+  const displayWholesaleCount = serverStats ? serverStats.wholesaleEnquiries : wholesaleEnquiries.length;
+  const displayCatalogCount = serverStats ? serverStats.catalogItems : productsList.length;
+
+  const filteredOrders = orders.filter(o => statusFilter === 'All' || o.status === statusFilter);
 
   if (isCheckingSession) {
     return (
@@ -309,8 +366,8 @@ export default function AdminPage() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="bg-white border border-[#e5e4df] hover:border-[#171717] text-[#171717] text-xs font-bold uppercase tracking-wider py-2 px-3 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            title="Fetch latest live orders from Supabase"
+            className="bg-white border border-[#e5e4df] hover:border-[#171717] text-[#171717] text-xs font-bold uppercase tracking-wider py-2 px-3 flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-xs"
+            title="Fetch authoritative live data from Supabase"
           >
             <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-emerald-600' : ''} />
             <span>{isRefreshing ? 'SYNCING...' : 'SYNC DATABASE'}</span>
@@ -331,13 +388,34 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Stats Cards Row */}
+      {/* Action Toast Banner */}
+      {actionToast && (
+        <div
+          className={`p-3.5 border text-xs font-bold flex items-center justify-between transition-all ${
+            actionToast.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-800'
+              : actionToast.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-neutral-50 border-neutral-200 text-neutral-800'
+          }`}
+        >
+          <span>{actionToast.message}</span>
+          <button
+            onClick={() => setActionToast(null)}
+            className="text-[10px] font-extrabold uppercase ml-4 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Authoritative Stats Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 border border-[#e5e4df] flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">TOTAL REVENUE</p>
             <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
-              ₹{totalRevenue.toLocaleString('en-IN')}
+              ₹{displayRevenue.toLocaleString('en-IN')}
             </p>
           </div>
           <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
@@ -349,7 +427,7 @@ export default function AdminPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">TOTAL ORDERS</p>
             <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
-              {activeOrders.length}
+              {displayOrdersCount}
             </p>
           </div>
           <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
@@ -361,7 +439,7 @@ export default function AdminPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">WHOLESALE ENQUIRIES</p>
             <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
-              {activeEnquiries.length}
+              {displayWholesaleCount}
             </p>
           </div>
           <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
@@ -373,7 +451,7 @@ export default function AdminPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">CATALOG ITEMS</p>
             <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
-              {productsList.length}
+              {displayCatalogCount}
             </p>
           </div>
           <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
@@ -390,7 +468,7 @@ export default function AdminPage() {
             activeTab === 'orders' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
           }`}
         >
-          ORDERS ({activeOrders.length})
+          ORDERS ({orders.length})
         </button>
 
         <button
@@ -417,7 +495,7 @@ export default function AdminPage() {
             activeTab === 'wholesale' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
           }`}
         >
-          WHOLESALE ENQUIRIES ({activeEnquiries.length})
+          WHOLESALE ENQUIRIES ({wholesaleEnquiries.length})
         </button>
       </div>
 
@@ -455,7 +533,8 @@ export default function AdminPage() {
                     <th className="p-3.5">Item(s) & Size</th>
                     <th className="p-3.5">Total</th>
                     <th className="p-3.5">Payment</th>
-                    <th className="p-3.5">Status Toggle</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
@@ -504,7 +583,18 @@ export default function AdminPage() {
                           <option value="Confirmed">Confirmed</option>
                           <option value="Dispatched">Dispatched</option>
                           <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
                         </select>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <button
+                          onClick={() => setOrderToDelete(order)}
+                          className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
+                          title={`Delete Order ${order.id}`}
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -518,25 +608,10 @@ export default function AdminPage() {
       {/* TAB 2: INVENTORY MANAGEMENT */}
       {activeTab === 'inventory' && (
         <div className="space-y-4">
-          {/* Toast Notification Banner */}
-          {deleteToast && (
-            <div className="p-3 bg-red-50 border border-red-200 text-xs font-bold text-red-800 flex items-center justify-between rounded animate-fade-in">
-              <span className="flex items-center gap-1.5">
-                <Trash2 size={14} className="text-red-600" /> {deleteToast}
-              </span>
-              <button
-                onClick={() => setDeleteToast(null)}
-                className="text-red-700 hover:text-red-900 text-[11px] font-extrabold uppercase ml-4"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-
           {/* Catalog Status & Restore Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 border border-[#e5e4df]">
             <div className="text-xs">
-              <span className="font-bold text-[#171717]">{productsList.length} Active Products</span>
+              <span className="font-bold text-[#171717]">{productsList.length} Active Products in Database</span>
               {deletedProductIds && deletedProductIds.length > 0 && (
                 <span className="ml-2 text-red-600 font-semibold text-[11px]">
                   ({deletedProductIds.length} item{deletedProductIds.length > 1 ? 's' : ''} deleted)
@@ -548,11 +623,11 @@ export default function AdminPage() {
               <button
                 onClick={() => {
                   restoreDefaultProducts();
-                  setDeleteToast('All original IndiaMART catalog products have been restored!');
+                  setActionToast({ message: 'Catalog restored from database.', type: 'info' });
                 }}
                 className="bg-[#faf9f5] hover:bg-neutral-100 text-[#141413] border border-[#e6e2d8] text-[10px] font-extrabold uppercase tracking-wider py-1.5 px-3.5 flex items-center gap-1.5 transition-colors"
               >
-                <Sparkles size={12} className="text-[#cc785c]" /> Restore Original Catalog ({deletedProductIds.length})
+                <Sparkles size={12} className="text-[#cc785c]" /> Restore Catalog ({deletedProductIds.length})
               </button>
             )}
           </div>
@@ -612,7 +687,11 @@ export default function AdminPage() {
                       <td className="p-3.5">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => updateProductStock(prod.id, stockVal)}
+                            onClick={async () => {
+                              await updateProductStock(prod.id, stockVal);
+                              setActionToast({ message: `Stock updated for ${prod.name}`, type: 'success' });
+                              setTimeout(() => setActionToast(null), 3000);
+                            }}
                             className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-[10px] font-bold uppercase tracking-wider py-1.5 px-3 flex items-center gap-1 transition-colors"
                           >
                             <Check size={12} /> SAVE STOCK
@@ -620,7 +699,7 @@ export default function AdminPage() {
                           <button
                             onClick={() => setProductToDelete(prod)}
                             className="border border-red-300 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1.5 px-2.5 transition-colors flex items-center gap-1"
-                            title={`Delete ${prod.name} from catalog`}
+                            title={`Delete ${prod.name} from database`}
                           >
                             <Trash2 size={13} />
                             <span>Delete</span>
@@ -633,55 +712,6 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
-
-          {/* Delete Confirmation In-App Modal */}
-          {productToDelete && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-              <div className="bg-white border border-[#e5e4df] max-w-md w-full p-6 shadow-2xl space-y-4">
-                <div className="flex items-center gap-3 text-red-600">
-                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                    <Trash2 size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-extrabold text-base text-[#171717]">
-                      Delete Product From Catalog?
-                    </h3>
-                    <p className="text-[11px] text-[#737373]">
-                      This item will be removed immediately from the online store and catalog.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-[#f5f4f0] p-3.5 border border-[#e5e4df] text-xs space-y-1">
-                  <div className="font-bold text-[#171717]">{productToDelete.name}</div>
-                  <div className="text-[11px] text-[#737373]">
-                    Category: <span className="font-semibold">{productToDelete.category}</span> • Price: <span className="font-bold">₹{productToDelete.price}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    onClick={() => setProductToDelete(null)}
-                    className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      const name = productToDelete.name;
-                      deleteProduct(productToDelete.id);
-                      setProductToDelete(null);
-                      setDeleteToast(`"${name}" was successfully deleted from catalog.`);
-                      setTimeout(() => setDeleteToast(null), 5000);
-                    }}
-                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Trash2 size={13} /> Confirm Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -693,13 +723,13 @@ export default function AdminPage() {
               ADD NEW CLOTHING ITEM
             </h2>
             <p className="text-xs text-[#737373] mt-1">
-              Publish a new garment directly to the live catalog and storefront.
+              Publish a new garment directly to the Supabase database and storefront.
             </p>
           </div>
 
           {productAddedSuccess && (
             <div className="p-4 bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 flex items-center gap-2">
-              <CheckCircle2 size={18} /> PRODUCT PUBLISHED SUCCESSFULLY! Redirecting to inventory...
+              <CheckCircle2 size={18} /> PRODUCT SAVED TO DATABASE! Redirecting to inventory...
             </div>
           )}
 
@@ -827,7 +857,7 @@ export default function AdminPage() {
               type="submit"
               className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors shadow-md"
             >
-              <Sparkles size={16} /> PUBLISH PRODUCT TO CATALOG
+              <Sparkles size={16} /> PUBLISH PRODUCT TO DATABASE
             </button>
           </form>
         </div>
@@ -836,7 +866,7 @@ export default function AdminPage() {
       {/* TAB 4: WHOLESALE ENQUIRIES */}
       {activeTab === 'wholesale' && (
         <div className="space-y-4">
-          {activeEnquiries.length === 0 ? (
+          {wholesaleEnquiries.length === 0 ? (
             <div className="p-12 text-center bg-white border border-[#e5e4df] text-xs text-[#737373]">
               No B2B wholesale enquiries submitted yet.
             </div>
@@ -851,10 +881,11 @@ export default function AdminPage() {
                     <th className="p-3.5">Location</th>
                     <th className="p-3.5">Product Interest & Qty</th>
                     <th className="p-3.5">Message</th>
+                    <th className="p-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-                  {activeEnquiries.map(enq => (
+                  {wholesaleEnquiries.map(enq => (
                     <tr key={enq.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
                       <td className="p-3.5">
                         <div className="font-bold font-mono">{enq.id}</div>
@@ -874,12 +905,144 @@ export default function AdminPage() {
                         <div className="text-[11px] text-[#737373]">Qty: {enq.quantity}</div>
                       </td>
                       <td className="p-3.5 text-[#737373] max-w-xs">{enq.message}</td>
+                      <td className="p-3.5 text-right">
+                        <button
+                          onClick={() => setEnquiryToDelete(enq)}
+                          className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
+                          title={`Delete Enquiry ${enq.id}`}
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL: Delete Product Confirmation */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-[#e5e4df] max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-base text-[#171717]">
+                  Delete Product From Database?
+                </h3>
+                <p className="text-[11px] text-[#737373]">
+                  This item will be permanently removed from Supabase and the live storefront.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#f5f4f0] p-3.5 border border-[#e5e4df] text-xs space-y-1">
+              <div className="font-bold text-[#171717]">{productToDelete.name}</div>
+              <div className="text-[11px] text-[#737373]">
+                Category: <span className="font-semibold">{productToDelete.category}</span> • Price: <span className="font-bold">₹{productToDelete.price}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setProductToDelete(null)}
+                className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteProduct}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Trash2 size={13} /> Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Order Confirmation */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-[#e5e4df] max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-base text-[#171717]">
+                  Delete Order Record?
+                </h3>
+                <p className="text-[11px] text-[#737373]">
+                  Order {orderToDelete.id} will be permanently removed from Supabase PostgreSQL.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#f5f4f0] p-3.5 border border-[#e5e4df] text-xs space-y-1">
+              <div className="font-bold text-[#171717]">Customer: {orderToDelete.customer.name}</div>
+              <div className="text-[11px] text-[#737373]">
+                Total: <span className="font-bold">₹{orderToDelete.grandTotal || orderToDelete.subtotal}</span> • Status: <span className="font-semibold">{orderToDelete.status}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setOrderToDelete(null)}
+                className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteOrder}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Trash2 size={13} /> Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Wholesale Enquiry Confirmation */}
+      {enquiryToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-[#e5e4df] max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-base text-[#171717]">
+                  Delete Wholesale Enquiry?
+                </h3>
+                <p className="text-[11px] text-[#737373]">
+                  Enquiry {enquiryToDelete.id} from {enquiryToDelete.company || enquiryToDelete.name} will be deleted.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setEnquiryToDelete(null)}
+                className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteEnquiry}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Trash2 size={13} /> Confirm Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
