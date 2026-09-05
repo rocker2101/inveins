@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Product, PRODUCTS } from '@/data/products';
 
 export interface CartItem {
@@ -190,8 +190,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshDatabaseData();
   }, []);
 
+  const isSyncingRef = useRef(false);
+
   // Synchronize orders, enquiries, and products from Supabase PostgreSQL database
-  const refreshDatabaseData = async () => {
+  const refreshDatabaseData = useCallback(async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
       const [ordersRes, wsRes, prodRes] = await Promise.allSettled([
         fetch('/api/orders/list', { cache: 'no-store' }),
@@ -221,8 +225,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error('Supabase synchronization error:', err);
+    } finally {
+      isSyncingRef.current = false;
     }
-  };
+  }, []);
 
   // Sync with Supabase on tab focus and periodically (every 25 seconds)
   useEffect(() => {

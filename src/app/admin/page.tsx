@@ -103,13 +103,14 @@ export default function AdminPage() {
     verifySession();
   }, []);
 
-  // Fetch stats when authenticated
+  // Fetch stats once when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       refreshDatabaseData();
       fetchDashboardStats();
     }
-  }, [isAuthenticated, refreshDatabaseData, fetchDashboardStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
