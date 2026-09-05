@@ -299,11 +299,12 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     name="name"
+                    autoComplete="name"
                     value={formData.name}
                     onChange={handleInputChange}
                     required
                     placeholder="e.g. Arjun Sharma"
-                    className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                    className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                   />
                 </div>
 
@@ -313,13 +314,16 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="tel"
                     name="phone"
                     maxLength={10}
                     value={formData.phone}
-                    onChange={handleInputChange}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                     required
                     placeholder="10-digit mobile number"
-                    className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                    className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                   />
                 </div>
               </div>
@@ -330,12 +334,14 @@ export default function CheckoutPage() {
                 </label>
                 <input
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   required
                   placeholder="name@domain.com"
-                  className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                  className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                 />
               </div>
 
@@ -345,12 +351,13 @@ export default function CheckoutPage() {
                 </label>
                 <input
                   type="text"
+                  autoComplete="street-address"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
                   required
                   placeholder="Flat / House No., Landmark, Road"
-                  className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                  className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                 />
               </div>
 
@@ -361,12 +368,13 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="text"
+                    autoComplete="address-level2"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
                     required
                     placeholder="e.g. Kanpur / Delhi"
-                    className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                    className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                   />
                 </div>
 
@@ -376,9 +384,10 @@ export default function CheckoutPage() {
                   </label>
                   <select
                     name="state"
+                    autoComplete="address-level1"
                     value={formData.state}
                     onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                    className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                   >
                     {INDIAN_STATES.map(s => (
                       <option key={s} value={s}>{s}</option>
@@ -392,28 +401,31 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="postal-code"
                     name="pincode"
                     maxLength={6}
                     value={formData.pincode}
-                    onChange={handleInputChange}
+                    onChange={e => setFormData({ ...formData, pincode: e.target.value.replace(/\D/g, '') })}
                     required
                     placeholder="6 digits"
-                    className="w-full px-3.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
+                    className="w-full px-3.5 h-12 sm:h-10 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-semibold text-[#141413] focus:outline-none focus:border-[#141413]"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[#e6e2d8] flex items-center justify-between">
+              <div className="pt-4 border-t border-[#e6e2d8] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <Link
                   href="/cart"
-                  className="text-xs font-bold text-[#6c6a64] hover:text-[#141413] flex items-center gap-1"
+                  className="min-h-[44px] flex items-center justify-center text-xs font-bold text-[#6c6a64] hover:text-[#141413] gap-1"
                 >
                   <ArrowLeft size={14} /> Back to Bag
                 </Link>
 
                 <button
                   type="submit"
-                  className="py-3.5 px-8 bg-[#141413] hover:bg-black text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 transition-all shadow-md"
+                  className="min-h-[48px] py-3.5 px-8 bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <span>Continue to Payment</span>
                   <ArrowRight size={14} />
@@ -476,7 +488,7 @@ export default function CheckoutPage() {
                         value={upiId}
                         onChange={e => setUpiId(e.target.value)}
                         placeholder="Enter your VPA (e.g. yourname@okhdfcbank or yourphone@upi)"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2d8] text-xs font-semibold focus:outline-none focus:border-[#141413]"
+                        className="w-full px-3.5 h-12 sm:h-10 bg-white border border-[#e6e2d8] text-base sm:text-xs font-semibold focus:outline-none focus:border-[#141413]"
                       />
                       <p className="text-[10px] text-[#6c6a64]">
                         You can also pay directly via WhatsApp UPI after order submission.
@@ -486,7 +498,7 @@ export default function CheckoutPage() {
                 </label>
 
                 {/* Cash on Delivery Option */}
-                <label className={`block p-4 border transition-all cursor-pointer ${
+                <label className={`block p-4 border transition-all cursor-pointer min-h-[56px] ${
                   paymentMethod === 'cod' ? 'border-[#141413] bg-[#faf9f5]' : 'border-[#e6e2d8] hover:border-neutral-400'
                 }`}>
                   <div className="flex items-center gap-3">
@@ -495,7 +507,7 @@ export default function CheckoutPage() {
                       name="paymentMethod"
                       checked={paymentMethod === 'cod'}
                       onChange={() => setPaymentMethod('cod')}
-                      className="accent-[#141413]"
+                      className="accent-[#141413] w-4 h-4"
                     />
                     <div>
                       <span className="text-xs font-extrabold uppercase tracking-wider text-[#141413]">
@@ -507,7 +519,7 @@ export default function CheckoutPage() {
                 </label>
 
                 {/* Card Option */}
-                <label className={`block p-4 border transition-all cursor-pointer ${
+                <label className={`block p-4 border transition-all cursor-pointer min-h-[56px] ${
                   paymentMethod === 'card' ? 'border-[#141413] bg-[#faf9f5]' : 'border-[#e6e2d8] hover:border-neutral-400'
                 }`}>
                   <div className="flex items-center gap-3">
@@ -516,7 +528,7 @@ export default function CheckoutPage() {
                       name="paymentMethod"
                       checked={paymentMethod === 'card'}
                       onChange={() => setPaymentMethod('card')}
-                      className="accent-[#141413]"
+                      className="accent-[#141413] w-4 h-4"
                     />
                     <div>
                       <span className="text-xs font-extrabold uppercase tracking-wider text-[#141413]">
@@ -528,11 +540,11 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-[#e6e2d8] flex items-center justify-between">
+              <div className="pt-4 border-t border-[#e6e2d8] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setStep('address')}
-                  className="text-xs font-bold text-[#6c6a64] hover:text-[#141413] flex items-center gap-1"
+                  className="min-h-[44px] flex items-center justify-center text-xs font-bold text-[#6c6a64] hover:text-[#141413] gap-1"
                 >
                   <ArrowLeft size={14} /> Back to Address
                 </button>
@@ -541,7 +553,7 @@ export default function CheckoutPage() {
                   type="button"
                   onClick={handlePlaceOrder}
                   disabled={isProcessing}
-                  className="py-4 px-8 bg-[#141413] hover:bg-black text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 transition-all shadow-md disabled:opacity-50"
+                  className="min-h-[50px] py-4 px-8 bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <span>CONFIRMING ORDER...</span>

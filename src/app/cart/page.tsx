@@ -45,7 +45,7 @@ export default function CartPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 lg:pb-10 space-y-6 sm:space-y-8">
       
       {/* Page Header */}
       <div className="border-b border-[#e6e2d8] pb-6">
@@ -109,12 +109,12 @@ export default function CartPage() {
                 return (
                   <div 
                     key={`${item.product.id}-${item.selectedSize}-${idx}`} 
-                    className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
                   >
-                    <div className="flex gap-4 items-center">
+                    <div className="flex gap-3 sm:gap-4 items-center w-full sm:w-auto">
                       <Link 
                         href={`/product/${item.product.id}`}
-                        className="relative w-20 h-24 bg-[#f4f1ea] flex-shrink-0 border border-[#e6e2d8] overflow-hidden"
+                        className="relative w-20 h-24 sm:w-24 sm:h-28 bg-[#f4f1ea] flex-shrink-0 border border-[#e6e2d8] overflow-hidden"
                       >
                         <Image
                           src={item.product.images[0]}
@@ -123,21 +123,31 @@ export default function CartPage() {
                           className="object-cover"
                         />
                       </Link>
-                      <div className="space-y-1">
-                        <Link href={`/product/${item.product.id}`}>
-                          <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#141413] hover:underline">
-                            {item.product.name}
-                          </h3>
-                        </Link>
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-start justify-between sm:block">
+                          <Link href={`/product/${item.product.id}`}>
+                            <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#141413] hover:underline line-clamp-1">
+                              {item.product.name}
+                            </h3>
+                          </Link>
+                          {/* Mobile trash button at top right of card */}
+                          <button
+                            onClick={() => removeFromCart(item.product.id, item.selectedSize)}
+                            className="sm:hidden text-[#6c6a64] hover:text-red-600 min-w-[36px] min-h-[36px] flex items-center justify-center -mr-1 -mt-1"
+                            aria-label="Remove item"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                         <p className="text-xs text-[#6c6a64]">
-                          Size: <span className="font-bold text-[#141413]">{item.selectedSize}</span>
+                          Size: <span className="font-bold text-[#141413] uppercase bg-[#faf9f5] px-1.5 py-0.5 border border-[#e6e2d8]">{item.selectedSize}</span>
                         </p>
                         <p className="text-xs font-bold text-[#141413]">
                           ₹{item.product.price.toLocaleString('en-IN')} each
                         </p>
                         <button
                           onClick={() => toggleWishlist(item.product.id)}
-                          className={`text-[11px] font-semibold flex items-center gap-1 pt-1 ${
+                          className={`text-[11px] font-semibold flex items-center gap-1 pt-0.5 min-h-[32px] ${
                             isWish ? 'text-red-600' : 'text-[#6c6a64] hover:text-[#141413]'
                           }`}
                         >
@@ -147,12 +157,12 @@ export default function CartPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between w-full sm:w-auto sm:gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-[#e6e2d8]">
+                    <div className="flex items-center justify-between w-full sm:w-auto sm:gap-6 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-[#e6e2d8]">
                       {/* Stepper */}
                       <div className="flex items-center border border-[#e6e2d8] bg-[#faf9f5]">
                         <button
                           onClick={() => updateQuantity(item.product.id, item.selectedSize, -1)}
-                          className="p-1.5 hover:bg-white text-[#141413] transition-colors"
+                          className="min-w-[40px] min-h-[38px] flex items-center justify-center hover:bg-white active:bg-neutral-200 text-[#141413] transition-colors"
                           aria-label="Decrease quantity"
                         >
                           <Minus size={14} />
@@ -162,7 +172,7 @@ export default function CartPage() {
                         </span>
                         <button
                           onClick={() => updateQuantity(item.product.id, item.selectedSize, 1)}
-                          className="p-1.5 hover:bg-white text-[#141413] transition-colors"
+                          className="min-w-[40px] min-h-[38px] flex items-center justify-center hover:bg-white active:bg-neutral-200 text-[#141413] transition-colors"
                           aria-label="Increase quantity"
                         >
                           <Plus size={14} />
@@ -170,14 +180,14 @@ export default function CartPage() {
                       </div>
 
                       <div className="text-right">
-                        <span className="font-heading font-extrabold text-sm text-[#141413]">
+                        <span className="font-heading font-extrabold text-sm sm:text-base text-[#141413]">
                           ₹{(item.product.price * item.quantity).toLocaleString('en-IN')}
                         </span>
                       </div>
 
                       <button
                         onClick={() => removeFromCart(item.product.id, item.selectedSize)}
-                        className="text-[#6c6a64] hover:text-red-600 p-1 transition-colors"
+                        className="hidden sm:flex text-[#6c6a64] hover:text-red-600 p-2 min-w-[36px] min-h-[36px] items-center justify-center transition-colors"
                         aria-label="Remove item"
                       >
                         <Trash2 size={16} />
@@ -221,11 +231,11 @@ export default function CartPage() {
                     value={couponInput}
                     onChange={e => setCouponInput(e.target.value)}
                     placeholder="e.g. FIRST10"
-                    className="flex-1 px-3 py-2 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-bold uppercase focus:outline-none focus:border-[#141413]"
+                    className="flex-1 px-3 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-bold uppercase focus:outline-none focus:border-[#141413]"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-[#141413] hover:bg-black text-white text-xs font-bold uppercase tracking-wider transition-colors"
+                    className="px-4 min-h-[44px] bg-[#141413] hover:bg-black text-white text-xs font-bold uppercase tracking-wider transition-colors"
                   >
                     Apply
                   </button>
@@ -240,7 +250,7 @@ export default function CartPage() {
             </div>
 
             {/* Order Summary */}
-            <div className="bg-white border border-[#e6e2d8] p-6 space-y-4 shadow-sm">
+            <div className="bg-white border border-[#e6e2d8] p-5 sm:p-6 space-y-4 shadow-sm">
               <h3 className="font-heading font-extrabold text-sm uppercase tracking-wider text-[#141413] border-b border-[#e6e2d8] pb-3">
                 ORDER SUMMARY
               </h3>
@@ -282,7 +292,7 @@ export default function CartPage() {
               <div className="space-y-2.5 pt-2">
                 <Link
                   href="/checkout"
-                  className="w-full py-4 bg-[#141413] hover:bg-black text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full min-h-[48px] bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <span>PROCEED TO CHECKOUT</span>
                   <ArrowRight size={14} />
@@ -290,7 +300,7 @@ export default function CartPage() {
 
                 <button
                   onClick={handleWhatsAppCheckout}
-                  className="w-full py-3 bg-[#15803D] hover:bg-[#166534] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+                  className="w-full min-h-[44px] bg-[#15803D] hover:bg-[#166534] active:bg-green-800 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
                 >
                   <Zap size={14} className="fill-white" />
                   Instant WhatsApp Checkout
@@ -308,6 +318,26 @@ export default function CartPage() {
           </div>
 
         </div>
+      )}
+
+      {/* Mobile Sticky Bottom Checkout Bar */}
+      {items.length > 0 && (
+        <aside aria-label="Mobile checkout bar" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#e6e2d8] px-4 py-3 pb-[calc(0.6rem+env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 animate-slide-up">
+          <div>
+            <span className="text-[10px] font-bold text-[#6c6a64] uppercase tracking-wider block">Total Amount</span>
+            <span className="font-heading font-extrabold text-base text-[#141413]">
+              ₹{grandTotal.toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          <Link
+            href="/checkout"
+            className="flex-1 max-w-[220px] min-h-[44px] bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md"
+          >
+            <span>CHECKOUT</span>
+            <ArrowRight size={14} />
+          </Link>
+        </aside>
       )}
 
     </div>

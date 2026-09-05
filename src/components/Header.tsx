@@ -128,11 +128,11 @@ export const Header: React.FC = () => {
         }`}
       >
         {/* ==================== LEFT: LOGO / WORDMARK ==================== */}
-        <div className="flex items-center gap-3">
-          {/* Mobile Menu Hamburger Trigger */}
+        <div className="flex items-center gap-1 sm:gap-3">
+          {/* Mobile Menu Hamburger Trigger (44x44px touch target) */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="p-2 -ml-2 text-[#141413] hover:text-black focus:outline-none lg:hidden"
+            className="w-11 h-11 flex items-center justify-center -ml-2 text-[#141413] hover:text-black focus:outline-none lg:hidden active:bg-[#f4f1ea]"
             aria-label="Open Navigation Menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -140,7 +140,7 @@ export const Header: React.FC = () => {
           </button>
 
           <Link href="/" className="flex items-center gap-2.5 group py-1">
-            <div className="relative h-9 sm:h-10 w-28 sm:w-32 flex items-center">
+            <div className="relative h-8 sm:h-10 w-26 sm:w-32 flex items-center">
               <Image
                 src="/images/logo/inveins-logo-dark.png"
                 alt="Inveins™"
@@ -272,51 +272,51 @@ export const Header: React.FC = () => {
         </nav>
 
         {/* ==================== RIGHT: SEARCH, WISHLIST, ACCOUNT, BAG ==================== */}
-        <div className="flex items-center space-x-1 sm:space-x-3">
-          {/* Desktop Search Trigger / Input Simulation */}
+        <div className="flex items-center space-x-1 sm:space-x-2">
+          {/* Desktop Search Trigger / Input Simulation (Hidden on mobile, mobile has dedicated full-width bar below) */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 text-xs font-medium text-[#6c6a64] bg-white border border-[#e6e2d8] hover:border-[#141413] hover:text-[#141413] px-3 py-1.5 transition-all shadow-2xs"
+            className="hidden md:flex items-center gap-2 text-xs font-medium text-[#6c6a64] bg-white border border-[#e6e2d8] hover:border-[#141413] hover:text-[#141413] px-3.5 py-2 transition-all shadow-2xs"
             aria-label="Search catalog"
           >
             <Search size={15} className="text-[#6c6a64]" />
-            <span className="hidden sm:inline pr-4">Search catalog...</span>
-            <kbd className="hidden md:inline-block text-[9px] font-mono font-bold bg-[#faf9f5] border border-[#e6e2d8] px-1.5 py-0.5 rounded-xs text-[#6c6a64]">
+            <span className="pr-4">Search catalog...</span>
+            <kbd className="text-[9px] font-mono font-bold bg-[#faf9f5] border border-[#e6e2d8] px-1.5 py-0.5 rounded-xs text-[#6c6a64]">
               ⌘K
             </kbd>
           </button>
 
-          {/* Wishlist Link with Dynamic Count Badge */}
+          {/* Wishlist Link with Dynamic Count Badge (44x44px minimum touch target) */}
           <Link
             href="/wishlist"
-            className="relative p-2 text-[#141413] hover:text-[#cc785c] transition-colors"
+            className="relative w-11 h-11 flex items-center justify-center text-[#141413] hover:text-[#cc785c] active:bg-[#f4f1ea] transition-colors"
             aria-label={`Wishlist (${wishlistCount} items)`}
           >
-            <Heart size={19} />
+            <Heart size={20} />
             {wishlistCount > 0 && (
-              <span className="absolute top-1 right-1 bg-[#cc785c] text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-scale-in">
+              <span className="absolute top-2 right-2 bg-[#cc785c] text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-scale-in">
                 {wishlistCount}
               </span>
             )}
           </Link>
 
-          {/* Account Dropdown Trigger */}
+          {/* Account Dropdown Trigger (Hidden on small mobile, accessible in drawer) */}
           <div
-            className="relative py-2"
+            className="relative hidden sm:block py-2"
             onMouseEnter={handleAccountMouseEnter}
             onMouseLeave={handleAccountMouseLeave}
           >
             <button
               onClick={() => router.push('/account')}
-              className="p-2 text-[#141413] hover:text-[#cc785c] transition-colors flex items-center gap-1"
+              className="w-11 h-11 flex items-center justify-center text-[#141413] hover:text-[#cc785c] transition-colors gap-1"
               aria-label="User Account"
               aria-haspopup="true"
               aria-expanded={isAccountOpen}
             >
-              <User size={19} />
+              <User size={20} />
               <ChevronDown
                 size={11}
-                className={`hidden md:block transition-transform duration-150 ${
+                className={`transition-transform duration-150 ${
                   isAccountOpen ? 'rotate-180 text-[#cc785c]' : 'text-[#6c6a64]'
                 }`}
               />
@@ -374,13 +374,13 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Shopping Bag Button (Shows count badge ONLY when > 0, NO "Bag 0") */}
+          {/* Shopping Bag Button (44px touch height, accessible thumb tap) */}
           <button
             onClick={() => setIsCartOpen(true)}
-            className="relative flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-[#141413] text-[#faf9f5] hover:bg-black px-3 py-2 transition-all shadow-2xs"
+            className="relative h-11 px-3 sm:px-3.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-[#141413] text-[#faf9f5] hover:bg-black active:bg-neutral-800 transition-all shadow-2xs"
             aria-label={`Shopping Bag ${totalCount > 0 ? `(${totalCount} items)` : ''}`}
           >
-            <ShoppingBag size={16} />
+            <ShoppingBag size={18} />
             <span className="hidden sm:inline">Bag</span>
             {totalCount > 0 && (
               <span className="ml-1 bg-[#cc785c] text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-scale-in">
@@ -389,6 +389,21 @@ export const Header: React.FC = () => {
             )}
           </button>
         </div>
+      </div>
+
+      {/* ==================== MOBILE SEARCH BAR ROW (VISIBLE ON MOBILE ONLY) ==================== */}
+      <div className="md:hidden px-4 pb-2.5 pt-0.5 border-t border-[#e6e2d8]/60 bg-[#faf9f5]">
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="w-full h-11 px-3.5 bg-white border border-[#e6e2d8] flex items-center justify-between text-xs text-[#6c6a64] active:bg-[#f4f1ea] transition-colors shadow-2xs"
+          aria-label="Search catalog"
+        >
+          <div className="flex items-center gap-2.5">
+            <Search size={16} className="text-[#6c6a64]" />
+            <span className="font-medium text-xs text-[#6c6a64]">Search products, fits, fabrics...</span>
+          </div>
+          <span className="text-[10px] font-bold text-[#cc785c] uppercase tracking-wider">Search</span>
+        </button>
       </div>
 
       {/* ==================== DESKTOP MEGA MENUS (HOVER-TRIGGERED) ==================== */}
@@ -1022,23 +1037,23 @@ export const Header: React.FC = () => {
               </Link>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-2 text-[#141413] hover:text-[#cc785c]"
+                className="w-11 h-11 flex items-center justify-center text-[#141413] hover:text-[#cc785c] active:bg-[#f4f1ea]"
                 aria-label="Close menu"
               >
                 <X size={22} />
               </button>
             </div>
 
-            {/* Mobile Search Bar */}
+            {/* Mobile Search Bar inside Drawer */}
             <div className="p-4 bg-white border-b border-[#e6e2d8]">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   setIsSearchOpen(true);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-medium text-[#6c6a64]"
+                className="w-full flex items-center gap-2.5 px-3.5 h-11 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-medium text-[#6c6a64] active:bg-[#f4f1ea]"
               >
-                <Search size={15} />
+                <Search size={16} />
                 <span>Search 280 GSM, compression, baggy lowers...</span>
               </button>
             </div>
@@ -1049,7 +1064,7 @@ export const Header: React.FC = () => {
               <div className="py-2">
                 <button
                   onClick={() => toggleMobileSection('men')}
-                  className="w-full flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="w-full min-h-[44px] flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
                 >
                   <span className="flex items-center gap-2">
                     <span>MEN</span>
@@ -1062,39 +1077,39 @@ export const Header: React.FC = () => {
                   />
                 </button>
                 {expandedMobileSection === 'men' && (
-                  <div className="pl-4 py-2 space-y-2 text-xs font-medium border-l-2 border-[#cc785c] ml-1 my-1">
+                  <div className="pl-4 py-2 space-y-1 text-xs font-medium border-l-2 border-[#cc785c] ml-1 my-1">
                     <Link
                       href="/shop?category=Tees"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Topwear & T-Shirts (from ₹149)
                     </Link>
                     <Link
                       href="/shop?category=Gym+Compression"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Gym Compression Activewear (₹299)
                     </Link>
                     <Link
                       href="/shop?category=Joggers"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Baggy Lowers & Bamboo Pants (₹319–₹349)
                     </Link>
                     <Link
                       href="/shop?category=Outerwear"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Hoodies & Heavy Loopknit (₹299–₹499)
                     </Link>
                     <Link
                       href="/shop"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#cc785c] font-bold pt-1"
+                      className="block text-[#cc785c] font-bold py-2"
                     >
                       Browse Entire Catalog →
                     </Link>
@@ -1106,7 +1121,7 @@ export const Header: React.FC = () => {
               <div className="py-2">
                 <button
                   onClick={() => toggleMobileSection('new')}
-                  className="w-full flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="w-full min-h-[44px] flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
                 >
                   <span className="flex items-center gap-2">
                     <span>NEW ARRIVALS</span>
@@ -1120,32 +1135,32 @@ export const Header: React.FC = () => {
                   />
                 </button>
                 {expandedMobileSection === 'new' && (
-                  <div className="pl-4 py-2 space-y-2 text-xs font-medium border-l-2 border-[#cc785c] ml-1 my-1">
+                  <div className="pl-4 py-2 space-y-1 text-xs font-medium border-l-2 border-[#cc785c] ml-1 my-1">
                     <Link
                       href="/product/imported-oversized-acid-wash-french-terry-tshirt"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Acid Wash French Terry Tee (₹250)
                     </Link>
                     <Link
                       href="/product/men-french-terry-printed-t-shirt"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Men French Terry Printed Tee (₹249)
                     </Link>
                     <Link
                       href="/product/cotton-men-drop-shoulder-pullover-hoodie"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       430 GSM Heavyweight Hoodie (₹499)
                     </Link>
                     <Link
                       href="/shop?badge=NEW"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#cc785c] font-bold pt-1"
+                      className="block text-[#cc785c] font-bold py-2"
                     >
                       View All New Releases →
                     </Link>
@@ -1157,7 +1172,7 @@ export const Header: React.FC = () => {
               <div className="py-2">
                 <button
                   onClick={() => toggleMobileSection('categories')}
-                  className="w-full flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="w-full min-h-[44px] flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
                 >
                   <span>CATEGORIES</span>
                   <ChevronRight
@@ -1168,39 +1183,39 @@ export const Header: React.FC = () => {
                   />
                 </button>
                 {expandedMobileSection === 'categories' && (
-                  <div className="pl-4 py-2 space-y-2 text-xs font-medium border-l-2 border-[#cc785c] ml-1 my-1">
+                  <div className="pl-4 py-2 space-y-1 text-xs font-medium border-l-2 border-[#cc785c] ml-1 my-1">
                     <Link
                       href="/shop?category=Tees"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Tees & Graphic Tops
                     </Link>
                     <Link
                       href="/shop?category=Gym+Compression"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Gym Compression Performance
                     </Link>
                     <Link
                       href="/shop?category=Joggers"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Lowers & Trousers
                     </Link>
                     <Link
                       href="/shop?category=Shirts"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Polos & Collared Shirts
                     </Link>
                     <Link
                       href="/shop?category=Outerwear"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block text-[#6c6a64] hover:text-[#141413] py-1"
+                      className="block text-[#6c6a64] hover:text-[#141413] py-2"
                     >
                       Hoodies & Outerwear
                     </Link>
@@ -1213,7 +1228,7 @@ export const Header: React.FC = () => {
                 <Link
                   href="/wholesale"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="w-full min-h-[44px] flex items-center justify-between py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
                 >
                   <span>B2B WHOLESALE</span>
                   <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 bg-[#141413] text-[#faf9f5]">
@@ -1222,12 +1237,12 @@ export const Header: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Direct Link 6: OUR STORY */}
+              {/* Direct Link 5: OUR STORY */}
               <div className="py-2">
                 <Link
                   href="/about"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="block min-h-[44px] flex items-center py-2 text-xs font-bold uppercase tracking-wider text-[#141413]"
                 >
                   OUR STORY
                 </Link>
@@ -1236,22 +1251,30 @@ export const Header: React.FC = () => {
 
             {/* Drawer Footer Actions */}
             <div className="p-4 bg-white border-t border-[#e6e2d8] space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Link
                   href="/wishlist"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-1.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="flex flex-col items-center justify-center gap-1 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-[11px] font-bold uppercase tracking-wider text-[#141413] active:bg-[#f4f1ea]"
                 >
-                  <Heart size={14} />
+                  <Heart size={15} />
                   <span>Wishlist ({wishlistCount})</span>
                 </Link>
                 <Link
                   href="/account"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-1.5 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-bold uppercase tracking-wider text-[#141413]"
+                  className="flex flex-col items-center justify-center gap-1 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-[11px] font-bold uppercase tracking-wider text-[#141413] active:bg-[#f4f1ea]"
                 >
-                  <User size={14} />
+                  <User size={15} />
                   <span>Account</span>
+                </Link>
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex flex-col items-center justify-center gap-1 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-[11px] font-bold uppercase tracking-wider text-[#141413] active:bg-[#f4f1ea]"
+                >
+                  <ShieldCheck size={15} />
+                  <span>Admin</span>
                 </Link>
               </div>
 

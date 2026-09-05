@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
@@ -11,6 +11,13 @@ import { CheckoutModal } from "@/components/CheckoutModal";
 import { ShippingPolicyModal } from "@/components/ShippingPolicyModal";
 import { ExpressCheckoutModal } from "@/components/ExpressCheckoutModal";
 import { QuickViewModal } from "@/components/QuickViewModal";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#faf9f5",
+};
 
 export const metadata: Metadata = {
   title: "INVEINS — Form Follows Feeling | Heavyweight Essentials & Gym Activewear",

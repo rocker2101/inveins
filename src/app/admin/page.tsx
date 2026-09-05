@@ -314,17 +314,18 @@ export default function AdminPage() {
               <input
                 type="password"
                 required
+                inputMode="numeric"
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value)}
                 placeholder="Enter passcode"
-                className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717] font-mono tracking-widest"
+                className="w-full bg-[#f5f4f0] border border-[#e5e4df] h-12 sm:h-10 px-3.5 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717] font-mono tracking-widest"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-3.5 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              className="w-full bg-[#171717] hover:bg-black active:bg-neutral-800 text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest min-h-[48px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
             >
               {isLoggingIn ? (
                 <span>VERIFYING CREDENTIALS...</span>
@@ -341,50 +342,51 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
       
       {/* Admin Top Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#e5e4df] pb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#e5e4df] pb-5 sm:pb-6">
         <div>
           <div className="flex items-center gap-2">
-            <span className="bg-emerald-800 text-emerald-100 text-[10px] font-bold tracking-widest px-2.5 py-0.5 uppercase">
+            <span className="bg-emerald-800 text-emerald-100 text-[9px] sm:text-[10px] font-bold tracking-widest px-2.5 py-0.5 uppercase">
               AUTHENTICATED
             </span>
-            <span className="text-xs text-[#737373]">INVEINS STORE MANAGER</span>
+            <span className="text-[11px] sm:text-xs text-[#737373]">INVEINS STORE MANAGER</span>
           </div>
-          <h1 className="font-heading font-extrabold text-3xl text-[#171717] tracking-tight mt-1">
+          <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#171717] tracking-tight mt-1">
             ADMIN CONTROL PANEL
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold tracking-wider px-3 py-2 uppercase">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold tracking-wider px-2.5 py-1.5 sm:px-3 sm:py-2 uppercase">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <Database size={13} className="text-emerald-700" />
-            <span>SUPABASE POSTGRESQL</span>
+            <span className="hidden xs:inline">SUPABASE POSTGRESQL</span>
+            <span className="xs:hidden">SUPABASE</span>
           </div>
 
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="bg-white border border-[#e5e4df] hover:border-[#171717] text-[#171717] text-xs font-bold uppercase tracking-wider py-2 px-3 flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-xs"
+            className="bg-white border border-[#e5e4df] hover:border-[#171717] active:bg-neutral-100 text-[#171717] text-xs font-bold uppercase tracking-wider py-2 px-3 flex items-center gap-1.5 transition-colors disabled:opacity-50 min-h-[38px] shadow-xs"
             title="Fetch authoritative live data from Supabase"
           >
             <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-emerald-600' : ''} />
-            <span>{isRefreshing ? 'SYNCING...' : 'SYNC DATABASE'}</span>
+            <span>{isRefreshing ? 'SYNCING...' : 'SYNC'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('add-product')}
-            className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-wider py-2.5 px-4 flex items-center gap-1.5 transition-colors"
+            className="bg-[#171717] hover:bg-black active:bg-neutral-800 text-[#f5f4f0] text-xs font-bold uppercase tracking-wider py-2 px-3.5 flex items-center gap-1.5 transition-colors min-h-[38px]"
           >
-            <Plus size={16} /> ADD NEW CLOTH
+            <Plus size={16} /> <span className="hidden xs:inline">ADD NEW CLOTH</span><span className="xs:hidden">ADD ITEM</span>
           </button>
           <button
             onClick={handleLogout}
-            className="text-xs font-bold uppercase tracking-wider text-[#737373] hover:text-[#171717] underline"
+            className="text-xs font-bold uppercase tracking-wider text-[#737373] hover:text-[#171717] underline ml-auto sm:ml-0 py-2"
           >
-            LOCK DASHBOARD
+            LOCK
           </button>
         </div>
       </div>
@@ -410,53 +412,53 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Authoritative Stats Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 border border-[#e5e4df] flex items-center justify-between">
+      {/* Authoritative Stats Cards Row (2 columns on mobile, 4 on desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 border border-[#e5e4df] flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">TOTAL REVENUE</p>
-            <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#737373]">REVENUE</p>
+            <p className="font-heading font-extrabold text-base sm:text-2xl text-[#171717] mt-0.5 sm:mt-1 truncate">
               ₹{displayRevenue.toLocaleString('en-IN')}
             </p>
           </div>
-          <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold text-xs sm:text-base flex-shrink-0">
             ₹
           </div>
         </div>
 
-        <div className="bg-white p-5 border border-[#e5e4df] flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-5 border border-[#e5e4df] flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">TOTAL ORDERS</p>
-            <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#737373]">ORDERS</p>
+            <p className="font-heading font-extrabold text-base sm:text-2xl text-[#171717] mt-0.5 sm:mt-1">
               {displayOrdersCount}
             </p>
           </div>
-          <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
-            <ShoppingBag size={20} />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold flex-shrink-0">
+            <ShoppingBag size={18} />
           </div>
         </div>
 
-        <div className="bg-white p-5 border border-[#e5e4df] flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-5 border border-[#e5e4df] flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">WHOLESALE ENQUIRIES</p>
-            <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#737373]">WHOLESALE</p>
+            <p className="font-heading font-extrabold text-base sm:text-2xl text-[#171717] mt-0.5 sm:mt-1">
               {displayWholesaleCount}
             </p>
           </div>
-          <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
-            <MessageSquare size={20} />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold flex-shrink-0">
+            <MessageSquare size={18} />
           </div>
         </div>
 
-        <div className="bg-white p-5 border border-[#e5e4df] flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-5 border border-[#e5e4df] flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">CATALOG ITEMS</p>
-            <p className="font-heading font-extrabold text-2xl text-[#171717] mt-1">
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#737373]">CATALOG</p>
+            <p className="font-heading font-extrabold text-base sm:text-2xl text-[#171717] mt-0.5 sm:mt-1">
               {displayCatalogCount}
             </p>
           </div>
-          <div className="w-10 h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold">
-            <Package size={20} />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#f5f4f0] text-[#171717] flex items-center justify-center font-bold flex-shrink-0">
+            <Package size={18} />
           </div>
         </div>
       </div>
@@ -523,57 +525,72 @@ export default function AdminPage() {
               No orders found matching the "{statusFilter}" filter.
             </div>
           ) : (
-            <div className="bg-white border border-[#e5e4df] overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="p-3.5">Order ID</th>
-                    <th className="p-3.5">Date</th>
-                    <th className="p-3.5">Customer & Phone</th>
-                    <th className="p-3.5">Delivery Address</th>
-                    <th className="p-3.5">Item(s) & Size</th>
-                    <th className="p-3.5">Total</th>
-                    <th className="p-3.5">Payment</th>
-                    <th className="p-3.5">Status</th>
-                    <th className="p-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-                  {filteredOrders.map(order => (
-                    <tr key={order.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
-                      <td className="p-3.5 font-bold font-mono text-[#171717]">
-                        {order.id}
-                        {order.trackingNumber && (
-                          <div className="text-[10px] text-[#6c6a64] font-normal">{order.trackingNumber}</div>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-[#737373]">{order.createdAt}</td>
-                      <td className="p-3.5">
-                        <div className="font-bold">{order.customer.name}</div>
-                        <div className="text-[11px] text-[#737373]">{order.customer.phone}</div>
-                        <div className="text-[10px] text-[#737373]">{order.customer.email}</div>
-                      </td>
-                      <td className="p-3.5 text-[#737373] max-w-xs">
-                        {order.customer.address}, {order.customer.city} ({order.customer.pincode})
-                      </td>
-                      <td className="p-3.5">
-                        {order.items.map((it, idx) => (
-                          <div key={idx} className="font-medium">
-                            {it.product.name} (<span className="font-bold">{it.selectedSize}</span>) x{it.quantity}
-                          </div>
-                        ))}
-                      </td>
-                      <td className="p-3.5 font-extrabold">₹{(order.grandTotal || order.subtotal).toLocaleString('en-IN')}</td>
-                      <td className="p-3.5">
-                        <span className="px-2 py-0.5 bg-neutral-100 border text-[10px] font-bold uppercase">
-                          {order.paymentMethod}
+            <>
+              {/* Mobile View: Order Cards (< md) */}
+              <div className="md:hidden space-y-3">
+                {filteredOrders.map(order => (
+                  <div key={order.id} className="bg-white border border-[#e5e4df] p-4 space-y-3 shadow-xs">
+                    <div className="flex items-start justify-between gap-2 border-b border-[#e5e4df] pb-2.5">
+                      <div>
+                        <div className="font-bold font-mono text-sm text-[#171717]">
+                          {order.id}
+                        </div>
+                        <div className="text-[10px] text-[#737373] mt-0.5">
+                          {order.createdAt} {order.trackingNumber && `• Trk: ${order.trackingNumber}`}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span className="font-heading font-extrabold text-sm text-[#171717]">
+                          ₹{(order.grandTotal || order.subtotal).toLocaleString('en-IN')}
                         </span>
-                      </td>
-                      <td className="p-3.5">
+                        <div className="text-[10px] font-bold uppercase text-[#737373]">
+                          {order.paymentMethod}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs space-y-1">
+                      <div className="font-bold text-[#171717]">{order.customer.name}</div>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={`tel:${order.customer.phone}`}
+                          className="text-[#cc785c] font-bold hover:underline py-0.5"
+                        >
+                          📞 {order.customer.phone}
+                        </a>
+                        {order.customer.email && (
+                          <span className="text-[#737373] text-[10px] truncate max-w-[160px]">
+                            • {order.customer.email}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[#737373] text-[11px] leading-relaxed">
+                        📍 {order.customer.address}, {order.customer.city} ({order.customer.pincode})
+                      </p>
+                    </div>
+
+                    {/* Ordered items breakdown */}
+                    <div className="bg-[#faf9f5] p-2.5 border border-[#e5e4df] text-xs space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#737373] block">
+                        ITEMS:
+                      </span>
+                      {order.items.map((it, idx) => (
+                        <div key={idx} className="flex justify-between text-[11px]">
+                          <span className="font-medium text-[#171717]">
+                            {it.product.name} (<span className="font-bold">{it.selectedSize}</span>)
+                          </span>
+                          <span className="font-bold text-[#737373]">x{it.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Order Status & Actions */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#e5e4df]">
+                      <div className="flex-1">
                         <select
                           value={order.status}
                           onChange={e => updateOrderStatus(order.id, e.target.value as any)}
-                          className={`text-xs font-bold px-2 py-1 border focus:outline-none ${
+                          className={`w-full min-h-[40px] text-xs font-bold px-2.5 py-1.5 border focus:outline-none ${
                             order.status === 'Pending' ? 'bg-amber-100 text-amber-900 border-amber-300' :
                             order.status === 'Confirmed' ? 'bg-purple-100 text-purple-900 border-purple-300' :
                             order.status === 'Dispatched' ? 'bg-blue-100 text-blue-900 border-blue-300' :
@@ -586,22 +603,102 @@ export default function AdminPage() {
                           <option value="Delivered">Delivered</option>
                           <option value="Cancelled">Cancelled</option>
                         </select>
-                      </td>
-                      <td className="p-3.5 text-right">
-                        <button
-                          onClick={() => setOrderToDelete(order)}
-                          className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
-                          title={`Delete Order ${order.id}`}
-                        >
-                          <Trash2 size={12} />
-                          <span>Delete</span>
-                        </button>
-                      </td>
+                      </div>
+
+                      <button
+                        onClick={() => setOrderToDelete(order)}
+                        className="min-h-[40px] px-3 border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1 flex-shrink-0"
+                        title={`Delete Order ${order.id}`}
+                      >
+                        <Trash2 size={14} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop View: Wide Table (>= md) */}
+              <div className="hidden md:block bg-white border border-[#e5e4df] overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
+                    <tr>
+                      <th className="p-3.5">Order ID</th>
+                      <th className="p-3.5">Date</th>
+                      <th className="p-3.5">Customer & Phone</th>
+                      <th className="p-3.5">Delivery Address</th>
+                      <th className="p-3.5">Item(s) & Size</th>
+                      <th className="p-3.5">Total</th>
+                      <th className="p-3.5">Payment</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
+                    {filteredOrders.map(order => (
+                      <tr key={order.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
+                        <td className="p-3.5 font-bold font-mono text-[#171717]">
+                          {order.id}
+                          {order.trackingNumber && (
+                            <div className="text-[10px] text-[#6c6a64] font-normal">{order.trackingNumber}</div>
+                          )}
+                        </td>
+                        <td className="p-3.5 text-[#737373]">{order.createdAt}</td>
+                        <td className="p-3.5">
+                          <div className="font-bold">{order.customer.name}</div>
+                          <div className="text-[11px] text-[#737373]">{order.customer.phone}</div>
+                          <div className="text-[10px] text-[#737373]">{order.customer.email}</div>
+                        </td>
+                        <td className="p-3.5 text-[#737373] max-w-xs">
+                          {order.customer.address}, {order.customer.city} ({order.customer.pincode})
+                        </td>
+                        <td className="p-3.5">
+                          {order.items.map((it, idx) => (
+                            <div key={idx} className="font-medium">
+                              {it.product.name} (<span className="font-bold">{it.selectedSize}</span>) x{it.quantity}
+                            </div>
+                          ))}
+                        </td>
+                        <td className="p-3.5 font-extrabold">₹{(order.grandTotal || order.subtotal).toLocaleString('en-IN')}</td>
+                        <td className="p-3.5">
+                          <span className="px-2 py-0.5 bg-neutral-100 border text-[10px] font-bold uppercase">
+                            {order.paymentMethod}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <select
+                            value={order.status}
+                            onChange={e => updateOrderStatus(order.id, e.target.value as any)}
+                            className={`text-xs font-bold px-2 py-1 border focus:outline-none ${
+                              order.status === 'Pending' ? 'bg-amber-100 text-amber-900 border-amber-300' :
+                              order.status === 'Confirmed' ? 'bg-purple-100 text-purple-900 border-purple-300' :
+                              order.status === 'Dispatched' ? 'bg-blue-100 text-blue-900 border-blue-300' :
+                              'bg-emerald-100 text-emerald-900 border-emerald-300'
+                            }`}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Dispatched">Dispatched</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <button
+                            onClick={() => setOrderToDelete(order)}
+                            className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
+                            title={`Delete Order ${order.id}`}
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -633,7 +730,86 @@ export default function AdminPage() {
             )}
           </div>
 
-          <div className="bg-white border border-[#e5e4df] overflow-x-auto">
+          {/* Mobile View: Inventory Cards (< md) */}
+          <div className="md:hidden space-y-3">
+            {productsList.map(prod => {
+              const stockVal = editingStock[prod.id] !== undefined ? editingStock[prod.id] : prod.availableStock;
+              const isLowStock = prod.availableStock > 0 && prod.availableStock < 5;
+
+              return (
+                <div key={prod.id} className="bg-white border border-[#e5e4df] p-4 space-y-3 shadow-xs">
+                  <div className="flex items-start justify-between gap-2 border-b border-[#e5e4df] pb-2">
+                    <div>
+                      <div className="font-heading font-extrabold text-sm text-[#171717] flex items-center gap-1.5 flex-wrap">
+                        <span>{prod.name}</span>
+                        {isLowStock && (
+                          <span className="bg-amber-100 text-amber-900 text-[9px] font-extrabold px-1.5 py-0.5 border border-amber-300 flex items-center gap-0.5">
+                            <AlertTriangle size={10} /> LOW STOCK
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-[#737373] mt-0.5">
+                        {prod.category} • <span className="font-bold text-[#171717]">₹{prod.price.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setProductToDelete(prod)}
+                      className="min-h-[36px] min-w-[36px] flex items-center justify-center border border-red-200 text-red-700 hover:bg-red-700 hover:text-white transition-colors"
+                      title={`Delete ${prod.name}`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#737373] block mb-1">
+                        Stock Count
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        value={stockVal}
+                        onChange={e => setEditingStock({ ...editingStock, [prod.id]: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-[#f5f4f0] border border-[#e5e4df] h-10 px-2 font-bold text-center text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#737373] block mb-1">
+                        Badge
+                      </label>
+                      <select
+                        value={prod.badge || (prod.availableStock === 0 ? 'SOLD OUT' : 'NEW')}
+                        onChange={e => updateProductStock(prod.id, stockVal, e.target.value as any)}
+                        className="w-full text-xs font-bold h-10 px-2 border border-[#e5e4df] bg-[#f5f4f0]"
+                      >
+                        <option value="NEW">NEW</option>
+                        <option value="LIMITED">LIMITED</option>
+                        <option value="SOLD OUT">SOLD OUT</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      await updateProductStock(prod.id, stockVal);
+                      setActionToast({ message: `Stock updated for ${prod.name}`, type: 'success' });
+                      setTimeout(() => setActionToast(null), 3000);
+                    }}
+                    className="w-full bg-[#171717] hover:bg-black active:bg-neutral-800 text-[#f5f4f0] text-xs font-bold uppercase tracking-wider min-h-[40px] flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Check size={14} /> SAVE STOCK ({stockVal} pcs)
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop View: Inventory Table (>= md) */}
+          <div className="hidden md:block bg-white border border-[#e5e4df] overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
                 <tr>
@@ -872,55 +1048,121 @@ export default function AdminPage() {
               No B2B wholesale enquiries submitted yet.
             </div>
           ) : (
-            <div className="bg-white border border-[#e5e4df] overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
-                  <tr>
-                    <th className="p-3.5">ID & Date</th>
-                    <th className="p-3.5">Name & Company</th>
-                    <th className="p-3.5">Contact Details</th>
-                    <th className="p-3.5">Location</th>
-                    <th className="p-3.5">Product Interest & Qty</th>
-                    <th className="p-3.5">Message</th>
-                    <th className="p-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-                  {wholesaleEnquiries.map(enq => (
-                    <tr key={enq.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
-                      <td className="p-3.5">
-                        <div className="font-bold font-mono">{enq.id}</div>
-                        <div className="text-[10px] text-[#737373]">{enq.createdAt}</div>
-                      </td>
-                      <td className="p-3.5">
-                        <div className="font-bold">{enq.name}</div>
-                        <div className="text-[11px] text-[#737373]">{enq.company}</div>
-                      </td>
-                      <td className="p-3.5">
-                        <div>{enq.email}</div>
-                        <div className="text-[11px] text-[#737373]">{enq.phone}</div>
-                      </td>
-                      <td className="p-3.5 text-[#737373]">{enq.cityCountry}</td>
-                      <td className="p-3.5">
-                        <div className="font-bold">{enq.productInterest}</div>
-                        <div className="text-[11px] text-[#737373]">Qty: {enq.quantity}</div>
-                      </td>
-                      <td className="p-3.5 text-[#737373] max-w-xs">{enq.message}</td>
-                      <td className="p-3.5 text-right">
-                        <button
-                          onClick={() => setEnquiryToDelete(enq)}
-                          className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
-                          title={`Delete Enquiry ${enq.id}`}
+            <>
+              {/* Mobile View: Wholesale Cards (< md) */}
+              <div className="md:hidden space-y-3">
+                {wholesaleEnquiries.map(enq => (
+                  <div key={enq.id} className="bg-white border border-[#e5e4df] p-4 space-y-3 shadow-xs">
+                    <div className="flex items-start justify-between gap-2 border-b border-[#e5e4df] pb-2">
+                      <div>
+                        <div className="font-heading font-extrabold text-sm text-[#171717]">
+                          {enq.company || enq.name}
+                        </div>
+                        <div className="text-[10px] text-[#737373] mt-0.5">
+                          {enq.createdAt} • ID: {enq.id}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setEnquiryToDelete(enq)}
+                        className="min-h-[36px] min-w-[36px] flex items-center justify-center border border-red-200 text-red-700 hover:bg-red-700 hover:text-white transition-colors"
+                        title={`Delete Enquiry ${enq.id}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    <div className="text-xs space-y-1">
+                      <div className="text-[#171717]">
+                        <span className="text-[#737373]">Contact: </span>
+                        <span className="font-bold">{enq.name}</span>
+                        {enq.cityCountry && <span className="text-[#737373]"> ({enq.cityCountry})</span>}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-0.5">
+                        <a 
+                          href={`tel:${enq.phone}`}
+                          className="text-[#cc785c] font-bold hover:underline py-0.5"
                         >
-                          <Trash2 size={12} />
-                          <span>Delete</span>
-                        </button>
-                      </td>
+                          📞 {enq.phone}
+                        </a>
+                        <a 
+                          href={`mailto:${enq.email}`}
+                          className="text-[#171717] font-semibold hover:underline py-0.5"
+                        >
+                          ✉️ {enq.email}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#faf9f5] p-2.5 border border-[#e5e4df] text-xs space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-[#171717]">{enq.productInterest}</span>
+                        <span className="bg-[#171717] text-white text-[10px] font-bold px-2 py-0.5">
+                          Qty: {enq.quantity}
+                        </span>
+                      </div>
+                      {enq.message && (
+                        <p className="text-[11px] text-[#737373] italic pt-1 border-t border-[#e5e4df]">
+                          "{enq.message}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop View: Wholesale Table (>= md) */}
+              <div className="hidden md:block bg-white border border-[#e5e4df] overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
+                    <tr>
+                      <th className="p-3.5">ID & Date</th>
+                      <th className="p-3.5">Name & Company</th>
+                      <th className="p-3.5">Contact Details</th>
+                      <th className="p-3.5">Location</th>
+                      <th className="p-3.5">Product Interest & Qty</th>
+                      <th className="p-3.5">Message</th>
+                      <th className="p-3.5 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
+                    {wholesaleEnquiries.map(enq => (
+                      <tr key={enq.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
+                        <td className="p-3.5">
+                          <div className="font-bold font-mono">{enq.id}</div>
+                          <div className="text-[10px] text-[#737373]">{enq.createdAt}</div>
+                        </td>
+                        <td className="p-3.5">
+                          <div className="font-bold">{enq.name}</div>
+                          <div className="text-[11px] text-[#737373]">{enq.company}</div>
+                        </td>
+                        <td className="p-3.5">
+                          <div>{enq.email}</div>
+                          <div className="text-[11px] text-[#737373]">{enq.phone}</div>
+                        </td>
+                        <td className="p-3.5 text-[#737373]">{enq.cityCountry}</td>
+                        <td className="p-3.5">
+                          <div className="font-bold">{enq.productInterest}</div>
+                          <div className="text-[11px] text-[#737373]">Qty: {enq.quantity}</div>
+                        </td>
+                        <td className="p-3.5 text-[#737373] max-w-xs">{enq.message}</td>
+                        <td className="p-3.5 text-right">
+                          <button
+                            onClick={() => setEnquiryToDelete(enq)}
+                            className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
+                            title={`Delete Enquiry ${enq.id}`}
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

@@ -128,7 +128,7 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 md:pb-8 space-y-12 sm:space-y-16">
       
       {/* Inject Structured Data */}
       <script
@@ -304,11 +304,11 @@ export default function ProductDetailPage() {
           <div className="space-y-3 pt-4 border-t border-[#e6e2d8]">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#141413]">
-                SELECT SIZE: <span className="text-[#cc785c]">{selectedSize}</span>
+                SELECT SIZE: <span className="text-[#cc785c] font-black">{selectedSize}</span>
               </span>
               <button
                 onClick={() => setIsSizeGuideOpen(true)}
-                className="text-[11px] font-bold text-[#6c6a64] hover:text-[#141413] flex items-center gap-1 underline underline-offset-2"
+                className="text-[11px] font-bold text-[#6c6a64] hover:text-[#141413] flex items-center gap-1 underline underline-offset-2 min-h-[36px] py-1"
               >
                 <Ruler size={13} /> Size Guide & CM
               </button>
@@ -321,10 +321,10 @@ export default function ProductDetailPage() {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`min-w-[48px] h-11 px-3 text-xs font-bold uppercase transition-all ${
+                    className={`min-w-[52px] h-12 px-3 text-xs font-bold uppercase transition-all flex items-center justify-center ${
                       isSelected
-                        ? 'bg-[#141413] text-[#faf9f5] shadow-xs'
-                        : 'bg-white border border-[#e6e2d8] text-[#141413] hover:border-[#141413]'
+                        ? 'bg-[#141413] text-[#faf9f5] shadow-sm'
+                        : 'bg-white border border-[#e6e2d8] text-[#141413] hover:border-[#141413] active:bg-[#faf9f5]'
                     }`}
                   >
                     {size}
@@ -340,18 +340,18 @@ export default function ProductDetailPage() {
               <div className="flex items-center border border-[#e6e2d8] bg-white h-12">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3.5 h-full hover:bg-neutral-100 text-[#141413]"
+                  className="min-w-[44px] h-full flex items-center justify-center hover:bg-neutral-100 active:bg-neutral-200 text-[#141413]"
                   aria-label="Decrease quantity"
                 >
-                  <Minus size={14} />
+                  <Minus size={16} />
                 </button>
-                <span className="px-4 text-xs font-bold text-[#141413]">{quantity}</span>
+                <span className="px-3 text-sm font-bold text-[#141413]">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="px-3.5 h-full hover:bg-neutral-100 text-[#141413]"
+                  className="min-w-[44px] h-full flex items-center justify-center hover:bg-neutral-100 active:bg-neutral-200 text-[#141413]"
                   aria-label="Increase quantity"
                 >
-                  <Plus size={14} />
+                  <Plus size={16} />
                 </button>
               </div>
 
@@ -359,7 +359,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => openExpressBuy(product, selectedSize)}
                 disabled={isSoldOut}
-                className="flex-1 h-12 bg-[#141413] hover:bg-black text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50"
+                className="flex-1 h-12 bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50"
               >
                 <Zap size={14} className="text-[#cc785c] fill-[#cc785c]" />
                 1-CLICK EXPRESS BUY
@@ -370,7 +370,7 @@ export default function ProductDetailPage() {
             <button
               onClick={handleAddToCart}
               disabled={isSoldOut}
-              className="w-full h-12 bg-white border-2 border-[#141413] hover:bg-[#141413] hover:text-white text-[#141413] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              className="w-full h-12 bg-white border-2 border-[#141413] hover:bg-[#141413] hover:text-white active:bg-neutral-100 text-[#141413] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               <ShoppingBag size={15} />
               {addedSuccess ? 'ADDED TO BAG!' : 'ADD TO BAG'}
@@ -386,15 +386,17 @@ export default function ProductDetailPage() {
             <form onSubmit={handlePincodeCheck} className="flex gap-2">
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={6}
                 value={pincode}
-                onChange={e => setPincode(e.target.value)}
+                onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
                 placeholder="Enter 6-digit Pincode"
-                className="flex-1 px-3 py-2 bg-white border border-[#e6e2d8] text-xs font-semibold focus:outline-none focus:border-[#141413]"
+                className="flex-1 px-3 py-2.5 bg-white border border-[#e6e2d8] text-base sm:text-xs font-semibold focus:outline-none focus:border-[#141413]"
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-[#141413] text-white text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors"
+                className="px-4 min-h-[44px] bg-[#141413] text-white text-xs font-bold uppercase tracking-wider hover:bg-black active:bg-neutral-800 transition-colors"
               >
                 CHECK
               </button>
@@ -663,6 +665,42 @@ export default function ProductDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Mobile Sticky Bottom Buy Bar */}
+      <aside aria-label="Mobile purchase bar" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#e6e2d8] px-3 py-2.5 pb-[calc(0.6rem+env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] flex items-center justify-between gap-2.5 animate-slide-up">
+        <div className="flex flex-col min-w-0 pr-1">
+          <span className="font-heading font-extrabold text-sm text-[#141413] leading-none truncate">
+            {product.currency}{product.price.toLocaleString('en-IN')}
+          </span>
+          <span className="text-[10px] font-bold text-[#6c6a64] uppercase tracking-wider mt-0.5">
+            Size: <span className="text-[#cc785c]">{selectedSize}</span>
+          </span>
+        </div>
+
+        {!isSoldOut ? (
+          <div className="flex items-center gap-2 flex-1 max-w-[260px] justify-end">
+            <button
+              onClick={handleAddToCart}
+              className="h-11 px-3 bg-white border border-[#141413] text-[#141413] text-[11px] font-extrabold uppercase tracking-wider flex items-center justify-center gap-1.5 flex-1 transition-all active:bg-[#faf9f5]"
+            >
+              <ShoppingBag size={14} />
+              <span>{addedSuccess ? 'ADDED!' : 'BAG'}</span>
+            </button>
+
+            <button
+              onClick={() => openExpressBuy(product, selectedSize)}
+              className="h-11 px-3 bg-[#141413] active:bg-neutral-800 text-white text-[11px] font-extrabold uppercase tracking-wider flex items-center justify-center gap-1.5 flex-1 transition-all shadow-sm"
+            >
+              <Zap size={14} className="text-[#cc785c] fill-[#cc785c]" />
+              <span>1-CLICK</span>
+            </button>
+          </div>
+        ) : (
+          <div className="h-11 px-4 bg-neutral-100 text-neutral-500 text-xs font-bold uppercase tracking-wider flex items-center justify-center">
+            SOLD OUT
+          </div>
+        )}
+      </aside>
 
     </div>
   );

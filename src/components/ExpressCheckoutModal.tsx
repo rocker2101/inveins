@@ -152,21 +152,22 @@ export const ExpressCheckoutModal: React.FC = () => {
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-[#737373] hover:text-[#171717] p-1"
+          className="absolute top-2 right-2 text-[#737373] hover:text-[#171717] min-h-[44px] min-w-[44px] flex items-center justify-center"
+          aria-label="Close Express Checkout"
         >
           <X size={22} />
         </button>
 
         {step === 'checkout' ? (
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             
             {/* Header Banner */}
-            <div className="flex items-center gap-2 border-b border-[#e5e4df] pb-3">
+            <div className="flex items-center gap-2 border-b border-[#e5e4df] pb-3 pr-10">
               <span className="bg-[#171717] text-[#f5f4f0] p-1.5 rounded-none">
                 <Zap size={16} />
               </span>
               <div>
-                <h2 className="font-heading font-extrabold text-lg uppercase tracking-wider text-[#171717]">
+                <h2 className="font-heading font-extrabold text-base sm:text-lg uppercase tracking-wider text-[#171717]">
                   1-CLICK EXPRESS BUY
                 </h2>
                 <p className="text-[11px] text-[#737373]">
@@ -176,7 +177,7 @@ export const ExpressCheckoutModal: React.FC = () => {
             </div>
 
             {/* Selected Product Summary Card */}
-            <div className="flex gap-4 p-3 bg-white border border-[#e5e4df] items-center">
+            <div className="flex gap-3 sm:gap-4 p-3 bg-white border border-[#e5e4df] items-center">
               <div className="relative w-16 h-20 bg-[#f0efe9] flex-shrink-0 border border-[#e5e4df]">
                 <Image
                   src={expressProduct.images[0]}
@@ -185,8 +186,8 @@ export const ExpressCheckoutModal: React.FC = () => {
                   className="object-cover"
                 />
               </div>
-              <div className="flex-1">
-                <h3 className="font-heading font-bold text-sm text-[#171717]">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading font-bold text-xs sm:text-sm text-[#171717] truncate">
                   {expressProduct.name}
                 </h3>
                 <p className="text-xs font-bold text-[#171717] mt-0.5">
@@ -196,13 +197,13 @@ export const ExpressCheckoutModal: React.FC = () => {
                 {/* Size Selector in Modal */}
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#737373]">SIZE:</span>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     {expressProduct.sizes.map(sz => (
                       <button
                         key={sz}
                         type="button"
                         onClick={() => setSelectedSize(sz)}
-                        className={`px-2 py-0.5 text-[11px] font-bold border ${
+                        className={`min-w-[40px] h-8 px-2 text-xs font-bold border transition-colors flex items-center justify-center ${
                           selectedSize === sz ? 'bg-[#171717] text-white border-[#171717]' : 'bg-[#f5f4f0] text-[#171717] border-[#e5e4df]'
                         }`}
                       >
@@ -215,7 +216,7 @@ export const ExpressCheckoutModal: React.FC = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-3.5 sm:space-y-4">
               
               {errorMsg && (
                 <div className="p-3 bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
@@ -231,9 +232,10 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <input
                     type="text"
                     required
+                    autoComplete="name"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                     placeholder="Enter your name"
                   />
                 </div>
@@ -245,10 +247,13 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <input
                     type="tel"
                     required
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="tel"
                     maxLength={10}
                     value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                    className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                     placeholder="9876543210"
                   />
                 </div>
@@ -262,9 +267,10 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <input
                     type="email"
                     required
+                    autoComplete="email"
                     value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                     placeholder="name@domain.com"
                   />
                 </div>
@@ -276,10 +282,13 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="postal-code"
                     maxLength={6}
                     value={formData.pincode}
-                    onChange={e => setFormData({ ...formData, pincode: e.target.value })}
-                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    onChange={e => setFormData({ ...formData, pincode: e.target.value.replace(/\D/g, '') })}
+                    className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                     placeholder="e.g. 400001"
                   />
                 </div>
@@ -292,9 +301,10 @@ export const ExpressCheckoutModal: React.FC = () => {
                 <input
                   type="text"
                   required
+                  autoComplete="street-address"
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                  className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="House / Flat No., Street, Landmark"
                 />
               </div>
@@ -308,7 +318,7 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
-                    className={`p-2.5 text-center border text-xs font-bold flex flex-col items-center gap-1 transition-colors ${
+                    className={`p-2.5 min-h-[48px] text-center border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors ${
                       paymentMethod === 'upi' ? 'bg-[#171717] text-[#f5f4f0] border-[#171717]' : 'bg-white text-[#171717] border-[#e5e4df]'
                     }`}
                   >
@@ -318,7 +328,7 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
-                    className={`p-2.5 text-center border text-xs font-bold flex flex-col items-center gap-1 transition-colors ${
+                    className={`p-2.5 min-h-[48px] text-center border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors ${
                       paymentMethod === 'card' ? 'bg-[#171717] text-[#f5f4f0] border-[#171717]' : 'bg-white text-[#171717] border-[#e5e4df]'
                     }`}
                   >
@@ -328,7 +338,7 @@ export const ExpressCheckoutModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('cod')}
-                    className={`p-2.5 text-center border text-xs font-bold flex flex-col items-center gap-1 transition-colors ${
+                    className={`p-2.5 min-h-[48px] text-center border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-colors ${
                       paymentMethod === 'cod' ? 'bg-[#171717] text-[#f5f4f0] border-[#171717]' : 'bg-white text-[#171717] border-[#e5e4df]'
                     }`}
                   >
@@ -346,7 +356,7 @@ export const ExpressCheckoutModal: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-all shadow-md"
+                className="w-full min-h-[48px] bg-[#171717] hover:bg-black active:bg-neutral-800 text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-3.5 flex items-center justify-center gap-2 transition-all shadow-md"
               >
                 <ShieldCheck size={18} /> CONFIRM ORDER & PAY NOW
               </button>

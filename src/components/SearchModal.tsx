@@ -31,45 +31,46 @@ export const SearchModal: React.FC = () => {
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-start justify-center pt-16 px-4 animate-fade-in"
+      className="fixed inset-0 z-50 bg-[#faf9f5] md:bg-black/60 md:backdrop-blur-xs flex flex-col md:items-center md:justify-start md:pt-16 md:px-4 animate-fade-in overflow-hidden"
       onClick={() => setIsSearchOpen(false)}
     >
       <div 
-        className="bg-[#faf9f5] w-full max-w-2xl border border-[#e6e2d8] shadow-2xl overflow-hidden"
+        className="bg-[#faf9f5] w-full h-full md:h-auto md:max-h-[85vh] md:max-w-2xl md:border md:border-[#e6e2d8] md:shadow-2xl flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search Bar Input */}
-        <div className="p-4 bg-white border-b border-[#e6e2d8] flex items-center gap-3">
-          <Search size={20} className="text-[#6c6a64]" />
+        <div className="p-3 sm:p-4 bg-white border-b border-[#e6e2d8] flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <Search size={22} className="text-[#6c6a64] flex-shrink-0 ml-1" />
           <input
-            type="text"
+            type="search"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search by garment name, material, 280 GSM, fit..."
+            placeholder="Search garment, material, GSM, fit..."
             autoFocus
-            className="w-full bg-transparent text-sm font-semibold text-[#141413] focus:outline-none placeholder-[#6c6a64]"
+            className="w-full bg-transparent text-base sm:text-sm font-semibold text-[#141413] focus:outline-none placeholder-[#6c6a64] py-2"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="text-xs font-bold text-[#6c6a64] hover:text-[#141413] px-2"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-bold text-[#6c6a64] hover:text-[#141413]"
+              aria-label="Clear Search text"
             >
               Clear
             </button>
           )}
           <button
             onClick={() => setIsSearchOpen(false)}
-            className="p-1 text-[#6c6a64] hover:text-[#141413] rounded-full hover:bg-neutral-100 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[#6c6a64] hover:text-[#141413] active:bg-neutral-100 transition-colors"
             aria-label="Close Search"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
 
         {/* Search Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 flex-1 overflow-y-auto pb-safe">
           {query.trim() === '' ? (
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-2 sm:py-4">
               <div>
                 <div className="flex items-center gap-1.5 text-xs uppercase font-extrabold tracking-widest text-[#6c6a64] mb-3">
                   <TrendingUp size={14} className="text-[#cc785c]" />
@@ -80,7 +81,7 @@ export const SearchModal: React.FC = () => {
                     <button
                       key={term}
                       onClick={() => setQuery(term)}
-                      className="bg-white border border-[#e6e2d8] hover:border-[#141413] text-xs font-bold text-[#141413] px-3.5 py-2 transition-colors flex items-center gap-1.5"
+                      className="bg-white border border-[#e6e2d8] hover:border-[#141413] active:bg-[#f4f1ea] text-xs font-bold text-[#141413] px-3.5 py-2.5 min-h-[40px] transition-colors flex items-center gap-1.5"
                     >
                       <span>{term}</span>
                     </button>
@@ -103,7 +104,7 @@ export const SearchModal: React.FC = () => {
                       key={c.label}
                       href={`/shop?category=${encodeURIComponent(c.cat)}`}
                       onClick={() => setIsSearchOpen(false)}
-                      className="p-2.5 bg-white border border-[#e6e2d8] text-center text-xs font-bold text-[#141413] hover:border-[#141413] transition-colors"
+                      className="p-3 bg-white border border-[#e6e2d8] text-center text-xs font-bold text-[#141413] hover:border-[#141413] active:bg-[#f4f1ea] transition-colors min-h-[44px] flex items-center justify-center"
                     >
                       {c.label}
                     </Link>

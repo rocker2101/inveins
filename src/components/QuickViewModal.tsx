@@ -52,7 +52,7 @@ export const QuickViewModal: React.FC = () => {
         {/* Close Button */}
         <button
           onClick={closeQuickView}
-          className="absolute top-4 right-4 z-10 p-2 bg-white/80 hover:bg-white text-[#141413] transition-colors rounded-full shadow-sm"
+          className="absolute top-2.5 right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-center bg-white/90 hover:bg-white text-[#141413] transition-colors rounded-full shadow-sm"
           aria-label="Close Quick View"
         >
           <X size={20} />
@@ -60,7 +60,7 @@ export const QuickViewModal: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 max-h-[85vh] overflow-y-auto">
           {/* Product Image Column */}
-          <div className="relative aspect-[3/4] md:aspect-auto bg-[#f0ede6] min-h-[320px] md:min-h-[460px]">
+          <div className="relative aspect-[3/4] md:aspect-auto bg-[#f0ede6] min-h-[300px] md:min-h-[460px]">
             <Image
               src={quickViewProduct.images[selectedImageIndex] || quickViewProduct.images[0]}
               alt={quickViewProduct.name}
@@ -81,8 +81,8 @@ export const QuickViewModal: React.FC = () => {
             )}
             <button
               onClick={() => toggleWishlist(quickViewProduct.id)}
-              className={`absolute top-4 right-14 md:right-4 z-10 p-2 rounded-full transition-colors ${
-                isWish ? 'bg-red-50 text-red-600' : 'bg-white/80 hover:bg-white text-[#141413]'
+              className={`absolute top-2.5 right-14 md:right-4 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ${
+                isWish ? 'bg-red-50 text-red-600' : 'bg-white/90 hover:bg-white text-[#141413]'
               }`}
               title={isWish ? 'Remove from Wishlist' : 'Add to Wishlist'}
             >
@@ -91,17 +91,17 @@ export const QuickViewModal: React.FC = () => {
           </div>
 
           {/* Product Details Column */}
-          <div className="p-6 md:p-8 flex flex-col justify-between space-y-6">
+          <div className="p-4 sm:p-6 md:p-8 flex flex-col justify-between space-y-4 sm:space-y-6">
             <div className="space-y-4">
               <div>
                 <span className="text-[10px] font-bold tracking-widest text-[#6c6a64] uppercase">
                   {quickViewProduct.category} {quickViewProduct.fit && `• ${quickViewProduct.fit}`}
                 </span>
-                <h3 className="font-heading font-extrabold text-2xl text-[#141413] tracking-tight mt-1">
+                <h3 className="font-heading font-extrabold text-xl sm:text-2xl text-[#141413] tracking-tight mt-1">
                   {quickViewProduct.name}
                 </h3>
-                <div className="flex items-baseline gap-3 mt-2">
-                  <span className="text-xl font-bold text-[#141413]">
+                <div className="flex items-baseline gap-3 mt-1.5">
+                  <span className="text-lg sm:text-xl font-bold text-[#141413]">
                     {quickViewProduct.currency}{quickViewProduct.price.toLocaleString('en-IN')}
                   </span>
                   <span className="text-xs text-[#15803D] font-semibold flex items-center gap-1">
@@ -118,11 +118,11 @@ export const QuickViewModal: React.FC = () => {
               <div className="space-y-2 pt-2 border-t border-[#e6e2d8]">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-[#141413]">
-                    Select Size: <span className="text-[#cc785c]">{currentSize}</span>
+                    Select Size: <span className="text-[#cc785c] font-black">{currentSize}</span>
                   </span>
                   <button
                     onClick={() => setIsSizeGuideOpen(true)}
-                    className="text-[11px] text-[#6c6a64] hover:text-[#141413] flex items-center gap-1 underline underline-offset-2"
+                    className="text-[11px] text-[#6c6a64] hover:text-[#141413] flex items-center gap-1 underline underline-offset-2 min-h-[36px]"
                   >
                     <Ruler size={13} /> Size Chart
                   </button>
@@ -134,7 +134,7 @@ export const QuickViewModal: React.FC = () => {
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size)}
-                        className={`min-w-[44px] h-10 px-3 text-xs font-bold transition-all ${
+                        className={`min-w-[48px] h-11 px-3 text-xs font-bold transition-all flex items-center justify-center ${
                           isSelected
                             ? 'bg-[#141413] text-[#faf9f5] shadow-sm'
                             : 'bg-white border border-[#e6e2d8] text-[#141413] hover:border-[#141413]'
@@ -161,21 +161,21 @@ export const QuickViewModal: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-2.5 pt-4 border-t border-[#e6e2d8]">
+            <div className="space-y-2.5 pt-3 border-t border-[#e6e2d8]">
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleAddToCart}
                   disabled={isSoldOut}
-                  className="w-full py-3 px-4 bg-white border border-[#141413] text-[#141413] hover:bg-[#141413] hover:text-white text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full min-h-[46px] py-2.5 px-3 bg-white border border-[#141413] text-[#141413] hover:bg-[#141413] hover:text-white active:bg-neutral-100 text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <ShoppingBag size={14} />
-                  {addedNotice ? 'ADDED TO BAG!' : 'ADD TO BAG'}
+                  {addedNotice ? 'ADDED!' : 'ADD TO BAG'}
                 </button>
 
                 <button
                   onClick={handleBuyNow}
                   disabled={isSoldOut}
-                  className="w-full py-3 px-4 bg-[#141413] hover:bg-black text-[#faf9f5] text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full min-h-[46px] py-2.5 px-3 bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
                 >
                   <Zap size={14} className="text-[#cc785c] fill-[#cc785c]" />
                   BUY NOW
