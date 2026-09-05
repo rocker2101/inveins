@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// Force dynamic so fresh data is always returned across mobile & desktop
+// Force dynamic execution and eliminate any Next.js edge/fetch caching
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const { data, error } = await supabase
       .from('inveins_orders')

@@ -3,7 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kpadoptqtdmncvaoexmj.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwYWRvcHRxdGRtbmN2YW9leG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODAwMDYsImV4cCI6MjEwMjY1NjAwNn0.vuvjhytVUjfyZ7hIeYtOlmYDU3SEGWxPo_dARs4A3QI';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false },
+  global: {
+    fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }),
+  },
+});
 
 export interface DbOrder {
   id: string;
