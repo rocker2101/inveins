@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PRODUCTS } from '@/data/products';
 import { sanitizeString, isValidEmail, isValidPhone, isValidPincode } from '@/lib/sanitize';
+import { supabase } from '@/lib/supabase';
 
 const ORDER_SIGNING_SECRET = process.env.ORDER_SIGNING_SECRET || 'inveins-order-integrity-hmac-secret-2026';
 const VALID_COUPONS: Record<string, number> = {
@@ -106,10 +107,10 @@ export async function POST(req: NextRequest) {
 
     const orderId = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
     const trackingNumber = `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const nowIso = new Date().toISOString();
     const createdAt = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
     // 5. Generate Cryptographic Order Verification Token (HMAC-SHA256)
-    // Guarantees that neither prices, items, nor order IDs can be spoofed or altered
     const verificationPayload = `${orderId}|${grandTotal}|${sanitizedCustomer.phone}|${createdAt}`;
     const verificationToken = crypto
       .createHmac('sha256', ORDER_SIGNING_SECRET)
@@ -132,9 +133,33 @@ export async function POST(req: NextRequest) {
       verificationToken,
     };
 
+    // 6. Persist order directly into Supabase PostgreSQL database
+    try {
+      const { error: dbError } = await supabase.from('inveins_orders').insert({
+        id: orderId,
+        customer: sanitizedCustomer,
+        items: verifiedItems,
+        subtotal: calculatedSubtotal,
+        discount: discountAmount,
+        shipping_fee: shippingFee,
+        grand_total: grandTotal,
+        payment_method: paymentMethod || 'upi',
+        status: 'Confirmed',
+        tracking_number: trackingNumber,
+        verification_token: verificationToken,
+        created_at: nowIso,
+      });
+
+      if (dbError) {
+        console.error('Supabase DB error saving order:', dbError);
+      }
+    } catch (dbErr) {
+      console.error('Failed to communicate with Supabase:', dbErr);
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Order validated and created securely.',
+      message: 'Order validated, created, and saved to Supabase.',
       order: verifiedOrder,
     });
   } catch (error) {
@@ -144,3 +169,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

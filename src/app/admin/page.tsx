@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, Image as ImageIcon, RefreshCw, Database } from 'lucide-react';
 
 export default function AdminPage() {
   const {
     orders,
     updateOrderStatus,
+    refreshDatabaseData,
     wholesaleEnquiries,
     productsList,
     deletedProductIds,
@@ -168,6 +169,7 @@ export default function AdminPage() {
 
   const [localOrders, setLocalOrders] = useState<Order[]>([]);
   const [localEnquiries, setLocalEnquiries] = useState<WholesaleEnquiry[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadFromStorage = () => {
     try {
@@ -184,8 +186,21 @@ export default function AdminPage() {
     } catch (e) {}
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshDatabaseData();
+      loadFromStorage();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     loadFromStorage();
+    if (isAuthenticated) {
+      refreshDatabaseData();
+    }
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'inveins_orders' || e.key === 'inveins_wholesale_enquiries') {
         loadFromStorage();
@@ -193,7 +208,7 @@ export default function AdminPage() {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [isAuthenticated]);
 
   const activeOrders = orders.length > 0 ? orders : localOrders;
   const activeEnquiries = wholesaleEnquiries.length > 0 ? wholesaleEnquiries : localEnquiries;
@@ -284,7 +299,23 @@ export default function AdminPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold tracking-wider px-3 py-2 uppercase">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Database size={13} className="text-emerald-700" />
+            <span>SUPABASE POSTGRESQL</span>
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="bg-white border border-[#e5e4df] hover:border-[#171717] text-[#171717] text-xs font-bold uppercase tracking-wider py-2 px-3 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            title="Fetch latest live orders from Supabase"
+          >
+            <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-emerald-600' : ''} />
+            <span>{isRefreshing ? 'SYNCING...' : 'SYNC DATABASE'}</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('add-product')}
             className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-wider py-2.5 px-4 flex items-center gap-1.5 transition-colors"

@@ -28,8 +28,9 @@ export interface Order {
   shippingFee: number;
   grandTotal: number;
   paymentMethod: 'upi' | 'cod' | 'card' | 'whatsapp';
-  status: 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered';
+  status: 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered' | 'Cancelled';
   trackingNumber?: string;
+  verificationToken?: string;
   createdAt: string;
 }
 
@@ -81,14 +82,15 @@ interface CartContextType {
   savedAddress: SavedAddress | null;
   saveAddress: (address: SavedAddress) => void;
 
-  // Order Management
+  // Order Management & Supabase Sync
   orders: Order[];
-  addOrder: (order: Omit<Order, 'id' | 'createdAt'>) => Order;
-  updateOrderStatus: (orderId: string, status: Order['status']) => void;
+  addOrder: (order: Partial<Order> & Omit<Order, 'id' | 'createdAt'>) => Order;
+  updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
+  refreshDatabaseData: () => Promise<void>;
 
   // Wholesale Enquiries
   wholesaleEnquiries: WholesaleEnquiry[];
-  addWholesaleEnquiry: (enquiry: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => void;
+  addWholesaleEnquiry: (enquiry: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => Promise<void>;
 
   // Inventory Stock & Product Management
   productsList: Product[];
@@ -226,6 +228,63 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       isLoaded.current = true;
     }
+
+    // Immediately fetch live orders & wholesale enquiries from Supabase PostgreSQL
+    refreshDatabaseData();
+  }, []);
+
+  // Synchronize orders and enquiries from Supabase PostgreSQL database
+  const refreshDatabaseData = async () => {
+    try {
+      const [ordersRes, wsRes] = await Promise.allSettled([
+        fetch('/api/orders/list', { cache: 'no-store' }),
+        fetch('/api/wholesale/list', { cache: 'no-store' }),
+      ]);
+
+      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+        const data = await ordersRes.value.json();
+        if (data.success && Array.isArray(data.orders)) {
+          setOrders(data.orders);
+          try {
+            localStorage.setItem('inveins_orders', JSON.stringify(data.orders));
+          } catch (e) {}
+        }
+      }
+
+      if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
+        const wsData = await wsRes.value.json();
+        if (wsData.success && Array.isArray(wsData.enquiries)) {
+          setWholesaleEnquiries(wsData.enquiries);
+          try {
+            localStorage.setItem('inveins_wholesale_enquiries', JSON.stringify(wsData.enquiries));
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error('Supabase synchronization error:', err);
+    }
+  };
+
+  // Sync with Supabase on tab focus and periodically (every 25 seconds)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshDatabaseData();
+      }
+    };
+
+    window.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', refreshDatabaseData);
+
+    const intervalId = setInterval(() => {
+      refreshDatabaseData();
+    }, 25000);
+
+    return () => {
+      window.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', refreshDatabaseData);
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Listen for storage events across tabs (e.g. order placed in store tab appears immediately in admin tab)
@@ -353,12 +412,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSavedAddress(address);
   };
 
-  const addOrder = (orderData: Omit<Order, 'id' | 'createdAt'>): Order => {
+  const addOrder = (orderData: Partial<Order> & Omit<Order, 'id' | 'createdAt'>): Order => {
     const newOrder: Order = {
       ...orderData,
-      id: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
-      trackingNumber: `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`,
-      createdAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+      id: orderData.id || `INV-${Math.floor(100000 + Math.random() * 900000)}`,
+      trackingNumber: orderData.trackingNumber || `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`,
+      createdAt: orderData.createdAt || new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+      verificationToken: orderData.verificationToken,
     };
 
     // Auto-reduce stock count
@@ -394,7 +454,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: Order['status']) => {
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    // Optimistic update
     setOrders(prev => {
       const updated = prev.map(o => o.id === orderId ? { ...o, status } : o);
       try {
@@ -402,9 +463,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {}
       return updated;
     });
+
+    // Synchronize to Supabase PostgreSQL database
+    try {
+      await fetch('/api/orders/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, status }),
+      });
+    } catch (err) {
+      console.error('Failed to sync order status to Supabase:', err);
+    }
   };
 
-  const addWholesaleEnquiry = (enquiryData: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => {
+  const addWholesaleEnquiry = async (enquiryData: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => {
     const newEnquiry: WholesaleEnquiry = {
       ...enquiryData,
       id: `WS-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -425,6 +497,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
 
     setWholesaleEnquiries(updated);
+
+    // Persist to Supabase PostgreSQL database
+    try {
+      await fetch('/api/wholesale/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(enquiryData),
+      });
+    } catch (err) {
+      console.error('Failed to sync wholesale enquiry to Supabase:', err);
+    }
   };
 
   const updateProductStock = (productId: string, newStock: number, newBadge?: Product['badge']) => {
@@ -528,6 +611,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         orders,
         addOrder,
         updateOrderStatus,
+        refreshDatabaseData,
         wholesaleEnquiries,
         addWholesaleEnquiry,
         productsList,

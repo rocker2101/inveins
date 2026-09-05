@@ -121,6 +121,10 @@ export default function CheckoutPage() {
       // 2. Add cryptographically verified order to local storage & state
       const verified = data.order;
       addOrder({
+        id: verified.id,
+        trackingNumber: verified.trackingNumber,
+        verificationToken: verified.verificationToken,
+        createdAt: verified.createdAt,
         customer: verified.customer,
         items: verified.items,
         subtotal: verified.subtotal,
