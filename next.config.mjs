@@ -69,8 +69,11 @@ const nextConfig = {
     ];
   },
   webpack: (config) => {
+    config.resolve.extensions = Array.from(new Set(['.tsx', '.ts', '.jsx', '.js', ...(config.resolve.extensions || [])]));
     config.resolve.alias = {
       ...config.resolve.alias,
+      '@/context/CartContext': path.resolve(__dirname, 'src/context/CartContext.tsx'),
+      '@/context': path.resolve(__dirname, 'src/context'),
       '@': path.resolve(__dirname, 'src'),
     };
     return config;

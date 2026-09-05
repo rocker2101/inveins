@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kpadoptqtdmncvaoexmj.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwYWRvcHRxdGRtbmN2YW9leG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwODAwMDYsImV4cCI6MjEwMjY1NjAwNn0.vuvjhytVUjfyZ7hIeYtOlmYDU3SEGWxPo_dARs4A3QI';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jpbotzytaekgvewyxljl.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwYm90enl0YWVrZ3Zld3l4bGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5OTMwNDAsImV4cCI6MjEwMjU2OTA0MH0._NTo0-jHiKIksfnvcbFuaWjJ87dmXUBLjrY-14I6kPY';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false },
