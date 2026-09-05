@@ -73,6 +73,18 @@ export const Header: React.FC = () => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  // Lock body scroll when mobile drawer is active
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   // Hover Handlers with intentional delays
   const handleMouseEnter = (menu: MegaMenuKey) => {
     if (closeTimerRef.current) {
@@ -115,12 +127,13 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header
-      className={`sticky top-0 z-40 bg-[#faf9f5]/95 backdrop-blur-md border-b border-[#e6e2d8] transition-all duration-200 ${
-        isScrolled ? 'shadow-xs' : ''
-      }`}
-      onMouseLeave={handleMouseLeave}
-    >
+    <>
+      <header
+        className={`sticky top-0 z-40 bg-[#faf9f5]/95 backdrop-blur-md border-b border-[#e6e2d8] transition-all duration-200 ${
+          isScrolled ? 'shadow-xs' : ''
+        }`}
+        onMouseLeave={handleMouseLeave}
+      >
       {/* Primary Top Bar */}
       <div
         className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-all duration-200 ${
@@ -140,7 +153,7 @@ export const Header: React.FC = () => {
           </button>
 
           <Link href="/" className="flex items-center gap-2.5 group py-1">
-            <div className="relative h-8 sm:h-10 w-26 sm:w-32 flex items-center">
+            <div className="relative h-8 sm:h-10 w-28 sm:w-32 flex items-center">
               <Image
                 src="/images/logo/inveins-logo-dark.png"
                 alt="Inveins™"
@@ -1012,9 +1025,11 @@ export const Header: React.FC = () => {
 
         </div>
       </div>
+    </header>
 
-      {/* ==================== DEDICATED MOBILE DRAWER NAVIGATION ==================== */}
-      {mobileMenuOpen && (
+    {/* ==================== DEDICATED MOBILE DRAWER NAVIGATION ==================== */}
+    {/* Rendered outside <header> to prevent backdrop-blur containing-block trap */}
+    {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           {/* Backdrop */}
           <div
@@ -1296,6 +1311,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 };
