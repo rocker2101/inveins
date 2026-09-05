@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { CheckCircle2, Send, Building2, Package, ShieldCheck, Clock } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { sanitizeString } from '@/lib/sanitize';
 
 export default function WholesalePage() {
   const { addWholesaleEnquiry } = useCart();
@@ -22,14 +23,14 @@ export default function WholesalePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addWholesaleEnquiry({
-      name: formData.name,
-      company: formData.company,
-      email: formData.email,
-      phone: formData.phone,
-      cityCountry: formData.cityCountry,
-      productInterest: formData.productInterest,
-      quantity: formData.quantity,
-      message: formData.message,
+      name: sanitizeString(formData.name),
+      company: sanitizeString(formData.company),
+      email: sanitizeString(formData.email),
+      phone: sanitizeString(formData.phone),
+      cityCountry: sanitizeString(formData.cityCountry),
+      productInterest: sanitizeString(formData.productInterest),
+      quantity: sanitizeString(formData.quantity),
+      message: sanitizeString(formData.message),
     });
     setSubmitted(true);
   };

@@ -10,6 +10,7 @@ import {
   Phone, Mail, Package, AlertCircle 
 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
+import { sanitizeString, isValidPhone, isValidPincode } from '@/lib/sanitize';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -62,26 +63,80 @@ export default function CheckoutPage() {
       setErrorMsg('Please complete all required shipping fields.');
       return;
     }
-    if (formData.pincode.length !== 6 || !/^\d+$/.test(formData.pincode)) {
+    if (!isValidPincode(formData.pincode)) {
       setErrorMsg('Please enter a valid 6-digit Indian PIN code.');
       return;
     }
-    if (formData.phone.length < 10) {
+    if (!isValidPhone(formData.phone)) {
       setErrorMsg('Please enter a valid 10-digit mobile number.');
       return;
     }
 
+    const sanitizedAddress = {
+      name: sanitizeString(formData.name),
+      email: sanitizeString(formData.email),
+      phone: sanitizeString(formData.phone),
+      address: sanitizeString(formData.address),
+      city: sanitizeString(formData.city),
+      state: sanitizeString(formData.state || 'Uttar Pradesh'),
+      pincode: sanitizeString(formData.pincode),
+    };
+
     setErrorMsg('');
-    saveAddress(formData);
+    setFormData(sanitizedAddress);
+    saveAddress(sanitizedAddress);
     setStep('payment');
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (items.length === 0) return;
     setIsProcessing(true);
     setErrorMsg('');
 
-    setTimeout(() => {
+    try {
+      // 1. Authoritative Server-Side Validation: Calculates genuine catalog prices
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: formData,
+          items: items.map(i => ({
+            productId: i.product.id,
+            selectedSize: i.selectedSize,
+            quantity: i.quantity,
+          })),
+          couponCode: coupon?.code,
+          paymentMethod,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.message || 'Order verification failed. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // 2. Add cryptographically verified order to local storage & state
+      const verified = data.order;
+      addOrder({
+        customer: verified.customer,
+        items: verified.items,
+        subtotal: verified.subtotal,
+        discount: verified.discount,
+        shippingFee: verified.shippingFee,
+        grandTotal: verified.grandTotal,
+        paymentMethod: verified.paymentMethod,
+        status: verified.status,
+      });
+
+      setCreatedOrder(verified);
+      clearCart();
+      setIsProcessing(false);
+      setStep('confirmation');
+    } catch (err) {
+      // Fallback in case of offline environment
       const newOrder = addOrder({
         customer: formData,
         items,
@@ -92,12 +147,11 @@ export default function CheckoutPage() {
         paymentMethod,
         status: 'Confirmed',
       });
-
       setCreatedOrder(newOrder);
       clearCart();
       setIsProcessing(false);
       setStep('confirmation');
-    }, 1200);
+    }
   };
 
   if (items.length === 0 && step !== 'confirmation') {

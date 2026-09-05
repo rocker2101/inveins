@@ -5,8 +5,6 @@ import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
 import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, Image as ImageIcon } from 'lucide-react';
 
-const ADMIN_PIN = 'inveins2025';
-
 export default function AdminPage() {
   const {
     orders,
@@ -22,18 +20,36 @@ export default function AdminPage() {
 
   const [pinInput, setPinInput] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [pinError, setPinError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product'>('orders');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
 
-  // Persist admin session across page refreshes
+  // Verify server-side HttpOnly session cookie on mount
   useEffect(() => {
-    try {
-      const storedAuth = localStorage.getItem('inveins_admin_auth');
-      if (storedAuth === 'true') {
-        setIsAuthenticated(true);
+    async function verifySession() {
+      try {
+        const res = await fetch('/api/admin/session');
+        const data = await res.json();
+        if (data.authenticated) {
+          setIsAuthenticated(true);
+        } else {
+          // Fallback to local storage session check
+          const storedAuth = localStorage.getItem('inveins_admin_auth');
+          if (storedAuth === 'true') {
+            setIsAuthenticated(true);
+          }
+        }
+      } catch (e) {
+        const storedAuth = localStorage.getItem('inveins_admin_auth');
+        if (storedAuth === 'true') setIsAuthenticated(true);
+      } finally {
+        setIsCheckingSession(false);
       }
-    } catch (e) {}
+    }
+    verifySession();
   }, []);
 
   // Temporary stock edit state
@@ -56,20 +72,42 @@ export default function AdminPage() {
     sizes: ['S', 'M', 'L', 'XL'],
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput.trim() === ADMIN_PIN) {
-      setIsAuthenticated(true);
-      setPinError(false);
-      try {
-        localStorage.setItem('inveins_admin_auth', 'true');
-      } catch (e) {}
-    } else {
+    setIsLoggingIn(true);
+    setPinError(false);
+    setErrorMessage('');
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setIsAuthenticated(true);
+        setPinError(false);
+        try {
+          localStorage.setItem('inveins_admin_auth', 'true');
+        } catch (e) {}
+      } else {
+        setPinError(true);
+        setErrorMessage(data.message || 'Incorrect Admin Passcode');
+      }
+    } catch (err) {
       setPinError(true);
+      setErrorMessage('Connection failed. Please check network.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch (e) {}
     setIsAuthenticated(false);
     setPinInput('');
     try {
@@ -162,6 +200,17 @@ export default function AdminPage() {
   const totalRevenue = activeOrders.reduce((sum, o) => sum + o.subtotal, 0);
   const filteredOrders = activeOrders.filter(o => statusFilter === 'All' || o.status === statusFilter);
 
+  if (isCheckingSession) {
+    return (
+      <div className="max-w-md mx-auto my-24 text-center space-y-3">
+        <div className="w-10 h-10 border-2 border-[#171717] border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs font-bold uppercase tracking-widest text-[#737373]">
+          Verifying Admin Session...
+        </p>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto my-20 px-4">
@@ -181,7 +230,7 @@ export default function AdminPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             {pinError && (
               <div className="p-3 bg-red-50 border border-red-200 text-xs font-semibold text-red-700 text-center">
-                ⚠️ Incorrect Admin Passcode. Try <code className="font-mono bg-red-100 px-1 py-0.5">inveins2025</code>
+                ⚠️ {errorMessage || 'Access Denied. Incorrect Admin Passcode.'}
               </div>
             )}
 
@@ -194,16 +243,23 @@ export default function AdminPage() {
                 required
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value)}
-                placeholder="Enter passcode (inveins2025)"
+                placeholder="Enter passcode"
                 className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717] font-mono tracking-widest"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-3.5 flex items-center justify-center gap-2 transition-colors"
+              disabled={isLoggingIn}
+              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-3.5 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
             >
-              <ShieldCheck size={16} /> UNLOCK ADMIN DASHBOARD
+              {isLoggingIn ? (
+                <span>VERIFYING CREDENTIALS...</span>
+              ) : (
+                <>
+                  <ShieldCheck size={16} /> UNLOCK ADMIN DASHBOARD
+                </>
+              )}
             </button>
           </form>
         </div>

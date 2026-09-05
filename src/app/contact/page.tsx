@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { Mail, Phone, Clock, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { sanitizeString, isValidEmail } from '@/lib/sanitize';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,6 +16,18 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(formData.email)) {
+      setEmailError('Please provide a valid email address.');
+      return;
+    }
+    setEmailError('');
+    // Sanitized submission payload
+    const safeData = {
+      name: sanitizeString(formData.name),
+      email: sanitizeString(formData.email),
+      subject: sanitizeString(formData.subject),
+      message: sanitizeString(formData.message),
+    };
     setSubmitted(true);
   };
 
