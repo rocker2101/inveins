@@ -1,24 +1,51 @@
-import { v2 as cloudinary } from "cloudinary";
-
 // Safely configure Cloudinary without crashing during Next.js build-time page collection
-let isConfigured = false;
 
-export function configureCloudinarySafely() {
-  if (isConfigured) return;
-
-  try {
-    const rawUrl = process.env.CLOUDINARY_URL?.trim();
-
-    // Only configure with CLOUDINARY_URL if it's a valid formatted string without placeholders (<...>)
-    if (rawUrl && rawUrl.startsWith("cloudinary://") && !rawUrl.includes("<") && !rawUrl.includes(">")) {
-      cloudinary.config({
-        cloudinary_url: rawUrl,
-        secure: true,
-      });
-      isConfigured = true;
-      return;
+function sanitizeCloudinaryEnv() {
+  if (typeof process !== "undefined" && process.env.CLOUDINARY_URL) {
+    const val = process.env.CLOUDINARY_URL.trim();
+    // If the URL contains placeholder tags like <your_api_key> or spaces, delete it so Cloudinary SDK doesn't throw ERR_INVALID_URL
+    if (val.includes("<") || val.includes(">") || val.includes(" ") || !val.startsWith("cloudinary://")) {
+      console.warn("Invalid CLOUDINARY_URL detected with placeholders. Disabling raw CLOUDINARY_URL to prevent crashes.");
+      delete process.env.CLOUDINARY_URL;
     }
+  }
+}
 
+// Pre-sanitize on file load
+sanitizeCloudinaryEnv();
+
+export function isCloudinaryConfigured(): boolean {
+  if (typeof process === "undefined") return false;
+
+  const rawUrl = process.env.CLOUDINARY_URL?.trim();
+  if (rawUrl && rawUrl.startsWith("cloudinary://") && !rawUrl.includes("<") && !rawUrl.includes(">") && !rawUrl.includes(" ")) {
+    return true;
+  }
+
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+  if (apiKey && apiSecret && !apiKey.includes("<") && !apiSecret.includes("<")) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Dynamically import and initialize Cloudinary on demand.
+ * This prevents Next.js from evaluating the Cloudinary Node SDK at build time.
+ */
+async function getCloudinaryClient() {
+  sanitizeCloudinaryEnv();
+  const { v2: cloudinary } = await import("cloudinary");
+
+  const rawUrl = process.env.CLOUDINARY_URL?.trim();
+  if (rawUrl && rawUrl.startsWith("cloudinary://") && !rawUrl.includes("<") && !rawUrl.includes(">") && !rawUrl.includes(" ")) {
+    cloudinary.config({
+      cloudinary_url: rawUrl,
+      secure: true,
+    });
+  } else {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim() || "elxbroei";
     const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
     const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
@@ -30,21 +57,10 @@ export function configureCloudinarySafely() {
         api_secret: apiSecret,
         secure: true,
       });
-      isConfigured = true;
     }
-  } catch (err) {
-    console.warn("Cloudinary configuration skipped or invalid format:", err);
   }
-}
 
-// Initial safe attempt
-configureCloudinarySafely();
-
-export { cloudinary };
-
-export function isCloudinaryConfigured(): boolean {
-  configureCloudinarySafely();
-  return isConfigured;
+  return cloudinary;
 }
 
 /**
@@ -54,13 +70,13 @@ export async function uploadToCloudinary(
   fileBuffer: Buffer,
   folder: string = "inveins_products"
 ): Promise<{ url: string; public_id: string }> {
-  configureCloudinarySafely();
-
-  if (!isConfigured) {
+  if (!isCloudinaryConfigured()) {
     throw new Error(
       "Cloudinary is not yet properly configured. Please check your CLOUDINARY_URL or CLOUDINARY_API_KEY in environment variables."
     );
   }
+
+  const cloudinary = await getCloudinaryClient();
 
   const base64Data = fileBuffer.toString("base64");
   const dataUri = `data:image/jpeg;base64,${base64Data}`;
