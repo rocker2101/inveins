@@ -2,12 +2,20 @@
 
 function sanitizeCloudinaryEnv() {
   if (typeof process !== "undefined" && process.env.CLOUDINARY_URL) {
-    const val = process.env.CLOUDINARY_URL.trim();
-    // If the URL contains placeholder tags like <your_api_key> or spaces, delete it so Cloudinary SDK doesn't throw ERR_INVALID_URL
-    if (val.includes("<") || val.includes(">") || val.includes(" ") || !val.startsWith("cloudinary://")) {
-      console.warn("Invalid CLOUDINARY_URL detected with placeholders. Disabling raw CLOUDINARY_URL to prevent crashes.");
-      delete process.env.CLOUDINARY_URL;
+    try {
+      const rawUrl = process.env.CLOUDINARY_URL.replace(/^["']|["']$/g, "").trim();
+      const match = rawUrl.match(/^cloudinary:\/\/([^:]+):([^@]+)@([^\/\s]+)/);
+      if (match && !rawUrl.includes("<") && !rawUrl.includes(">")) {
+        if (!process.env.CLOUDINARY_API_KEY) process.env.CLOUDINARY_API_KEY = match[1];
+        if (!process.env.CLOUDINARY_API_SECRET) process.env.CLOUDINARY_API_SECRET = match[2];
+        if (!process.env.CLOUDINARY_CLOUD_NAME) process.env.CLOUDINARY_CLOUD_NAME = match[3];
+      }
+    } catch {
+      // Ignore errors parsing raw URL
     }
+    // Deleting process.env.CLOUDINARY_URL prevents the Cloudinary Node SDK
+    // from calling new URL() and throwing ERR_INVALID_URL at build time
+    delete process.env.CLOUDINARY_URL;
   }
 }
 
@@ -16,14 +24,11 @@ sanitizeCloudinaryEnv();
 
 export function isCloudinaryConfigured(): boolean {
   if (typeof process === "undefined") return false;
-
-  const rawUrl = process.env.CLOUDINARY_URL?.trim();
-  if (rawUrl && rawUrl.startsWith("cloudinary://") && !rawUrl.includes("<") && !rawUrl.includes(">") && !rawUrl.includes(" ")) {
-    return true;
-  }
+  sanitizeCloudinaryEnv();
 
   const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
   const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+
   if (apiKey && apiSecret && !apiKey.includes("<") && !apiSecret.includes("<")) {
     return true;
   }
@@ -39,25 +44,17 @@ async function getCloudinaryClient() {
   sanitizeCloudinaryEnv();
   const { v2: cloudinary } = await import("cloudinary");
 
-  const rawUrl = process.env.CLOUDINARY_URL?.trim();
-  if (rawUrl && rawUrl.startsWith("cloudinary://") && !rawUrl.includes("<") && !rawUrl.includes(">") && !rawUrl.includes(" ")) {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim() || "elxbroei";
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+
+  if (apiKey && apiSecret && !apiKey.includes("<") && !apiSecret.includes("<")) {
     cloudinary.config({
-      cloudinary_url: rawUrl,
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
       secure: true,
     });
-  } else {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim() || "elxbroei";
-    const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
-    const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-
-    if (apiKey && apiSecret && !apiKey.includes("<") && !apiSecret.includes("<")) {
-      cloudinary.config({
-        cloud_name: cloudName,
-        api_key: apiKey,
-        api_secret: apiSecret,
-        secure: true,
-      });
-    }
   }
 
   return cloudinary;

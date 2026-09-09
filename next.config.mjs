@@ -4,6 +4,21 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Sanitize CLOUDINARY_URL at build-time startup so Cloudinary SDK never crashes with ERR_INVALID_URL
+if (typeof process !== 'undefined' && process.env.CLOUDINARY_URL) {
+  try {
+    const rawUrl = process.env.CLOUDINARY_URL.replace(/^["']|["']$/g, '').trim();
+    const match = rawUrl.match(/^cloudinary:\/\/([^:]+):([^@]+)@([^\/\s]+)/);
+    if (match && !rawUrl.includes('<') && !rawUrl.includes('>')) {
+      if (!process.env.CLOUDINARY_API_KEY) process.env.CLOUDINARY_API_KEY = match[1];
+      if (!process.env.CLOUDINARY_API_SECRET) process.env.CLOUDINARY_API_SECRET = match[2];
+      if (!process.env.CLOUDINARY_CLOUD_NAME) process.env.CLOUDINARY_CLOUD_NAME = match[3];
+    }
+  } catch {}
+  delete process.env.CLOUDINARY_URL;
+}
+
+
 const securityHeaders = [
   {
     key: 'X-DNS-Prefetch-Control',
