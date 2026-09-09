@@ -23,30 +23,25 @@ export function isCloudinaryConfigured(): boolean {
   );
 }
 
+/**
+ * Upload an image buffer directly to Cloudinary using async/await
+ * Clean, modern Promise implementation with zero callback type errors
+ */
 export async function uploadToCloudinary(
   fileBuffer: Buffer,
   folder: string = "inveins_products"
 ): Promise<{ url: string; public_id: string }> {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "image",
-        transformation: [{ quality: "auto", fetch_format: "auto" }],
-      },
-      (error: any, result: any) => {
-        if (error || !result) {
-          const errMsg = error?.message || String(error || "Upload failed");
-          reject(error || new Error("Cloudinary upload failed: " + errMsg));
-        } else {
-          resolve({
-            url: result.secure_url,
-            public_id: result.public_id,
-          });
-        }
-      }
-    );
-
-    uploadStream.end(fileBuffer);
+  const base64Data = fileBuffer.toString("base64");
+  const dataUri = `data:image/jpeg;base64,${base64Data}`;
+  
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder,
+    resource_type: "image",
+    transformation: [{ quality: "auto", fetch_format: "auto" }],
   });
+
+  return {
+    url: result.secure_url,
+    public_id: result.public_id,
+  };
 }
