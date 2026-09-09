@@ -108,12 +108,18 @@ export default function AdminPage() {
 
       const data = await res.json();
       if (!res.ok || (!data.success && !data.url)) {
-        throw new Error(data.message || 'Failed to upload photo to Cloudinary');
+        const errorDetail = data.error ? `${data.message} (${data.error})` : data.message || 'Failed to upload photo';
+        throw new Error(errorDetail);
       }
 
       const uploadedUrl = data.url;
       setNewProductForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
-      setActionToast({ message: 'Photo uploaded to Cloudinary successfully!', type: 'success' });
+      setActionToast({
+        message: data.provider === 'cloudinary'
+          ? 'Photo uploaded to Cloudinary CDN successfully!'
+          : 'Photo processed and attached successfully!',
+        type: 'success',
+      });
       setTimeout(() => setActionToast(null), 4000);
     } catch (err: any) {
       console.error('Photo upload failed:', err);
