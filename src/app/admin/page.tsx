@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -45,6 +45,86 @@ export default function AdminPage() {
   const [editingStock, setEditingStock] = useState<Record<string, number>>({});
   const [productAddedSuccess, setProductAddedSuccess] = useState(false);
   const [actionToast, setActionToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Phone gallery upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handlePhonePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+    setUploadError(null);
+
+    try {
+      let fileToUpload: File = file;
+      if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+        try {
+          const optimizedBlob = await new Promise<Blob | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const img = new Image();
+              img.onload = () => {
+                const maxDim = 1600;
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                  const ratio = Math.min(maxDim / width, maxDim / height);
+                  width = Math.round(width * ratio);
+                  height = Math.round(height * ratio);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { resolve(null); return; }
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85);
+              };
+              img.onerror = () => resolve(null);
+              img.src = ev.target?.result as string;
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+          if (optimizedBlob) {
+            fileToUpload = new File([optimizedBlob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', {
+              type: 'image/jpeg',
+            });
+          }
+        } catch (compErr) {
+          console.warn('Compression skipped, using original file', compErr);
+        }
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || (!data.success && !data.url)) {
+        throw new Error(data.message || 'Failed to upload photo to Cloudinary');
+      }
+
+      const uploadedUrl = data.url;
+      setNewProductForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      setActionToast({ message: 'Photo uploaded to Cloudinary successfully!', type: 'success' });
+      setTimeout(() => setActionToast(null), 4000);
+    } catch (err: any) {
+      console.error('Photo upload failed:', err);
+      setUploadError(err?.message || 'Upload failed. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Modals for confirmation
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -1016,18 +1096,98 @@ export default function AdminPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
-                PRODUCT PHOTO IMAGE URL *
-              </label>
+            {/* PRODUCT PHOTO WITH PHONE GALLERY UPLOAD & CLOUDINARY */}
+            <div className="space-y-2.5 p-4 bg-[#faf9f5] border border-[#e5e4df]">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
+                  PRODUCT PHOTO (PHONE GALLERY / CAMERA ROLL) *
+                </label>
+                {newProductForm.imageUrl && (
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 tracking-wider">
+                    {newProductForm.imageUrl.includes('cloudinary') ? '☁️ Cloudinary Hosted' : 'Photo Attached'}
+                  </span>
+                )}
+              </div>
+
+              {/* Hidden Native File Input for Mobile Gallery */}
               <input
-                type="url"
-                required
-                value={newProductForm.imageUrl}
-                onChange={e => setNewProductForm({ ...newProductForm, imageUrl: e.target.value })}
-                placeholder="https://images.unsplash.com/photo-..."
-                className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhonePhotoUpload}
+                className="hidden"
               />
+
+              {/* Mobile Touch Button to open Phone Gallery */}
+              <div
+                onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
+                className={`border-2 border-dashed p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
+                  isUploadingPhoto
+                    ? 'border-[#171717] bg-white cursor-wait'
+                    : 'border-[#d5d4ce] hover:border-[#171717] bg-white active:bg-neutral-100'
+                }`}
+              >
+                {isUploadingPhoto ? (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 size={18} className="animate-spin text-[#171717]" />
+                    <span className="text-xs font-bold text-[#171717] uppercase tracking-wider">
+                      Uploading Photo to Cloudinary...
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <UploadCloud size={24} className="text-[#171717]" />
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-[#171717]">
+                      📱 CHOOSE FROM PHONE GALLERY / CAMERA
+                    </div>
+                    <p className="text-[10px] text-[#737373]">
+                      Tap here to open your phone gallery or take a photo. Uploads directly to Cloudinary.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {uploadError && (
+                <p className="text-xs text-red-600 font-bold bg-red-50 p-2 border border-red-200">
+                  ⚠️ {uploadError}
+                </p>
+              )}
+
+              {/* Image Preview */}
+              {newProductForm.imageUrl && (
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="w-16 h-20 bg-neutral-200 border border-[#e5e4df] overflow-hidden flex-shrink-0">
+                    <img
+                      src={newProductForm.imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block">
+                      Cloudinary Image URL:
+                    </span>
+                    <p className="text-[11px] font-mono text-[#171717] truncate bg-white p-1.5 border border-[#e5e4df] mt-0.5">
+                      {newProductForm.imageUrl}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Fallback Direct URL input */}
+              <div className="pt-2 border-t border-[#e5e4df]">
+                <label className="block text-[9px] font-bold uppercase tracking-widest text-[#737373] mb-1">
+                  Or paste direct image URL manually:
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={newProductForm.imageUrl}
+                  onChange={e => setNewProductForm({ ...newProductForm, imageUrl: e.target.value })}
+                  placeholder="https://res.cloudinary.com/... or https://images.unsplash.com/..."
+                  className="w-full bg-white border border-[#e5e4df] p-2 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                />
+              </div>
             </div>
 
             <button
