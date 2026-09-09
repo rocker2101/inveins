@@ -1,66 +1,155 @@
 import { NextRequest, NextResponse } from "next/server";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { getSessionFromRequest } from "@/lib/auth";
+import { isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
+import fs from "fs/promises";
+import path from "path";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getSessionFromRequest(req);
+    if (!session || (session.role !== "ADMIN" && session.role !== "STAFF")) {
+      return NextResponse.json(
+        { message: "Forbidden. Admin or Staff access required." },
+        { status: 403 }
+      );
+    }
+
+    const useCloudinary = isCloudinaryConfigured();
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+
+    if (!useCloudinary) {
+      await fs.mkdir(uploadDir, { recursive: true });
+    }
+
     const contentType = req.headers.get("content-type") || "";
 
-    // 1. Handle multipart/form-data (Direct Phone Gallery upload)
+    // 1. Handle multipart/form-data (Phone gallery photos)
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
-      const file = formData.get("file") as File | null;
+      const files: File[] = [];
 
-      if (!file || file.size === 0) {
+      const multiple = formData.getAll("files");
+      const single = formData.get("file");
+
+      if (multiple && multiple.length > 0) {
+        for (const item of multiple) {
+          if (item instanceof File && item.size > 0) {
+            files.push(item);
+          }
+        }
+      } else if (single instanceof File && single.size > 0) {
+        files.push(single);
+      }
+
+      if (files.length === 0) {
         return NextResponse.json(
-          { success: false, message: "No image file provided." },
+          { message: "No image file provided in form data." },
           { status: 400 }
         );
       }
 
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+      const uploadedUrls: string[] = [];
 
-      const result = await uploadToCloudinary(buffer, "inveins_products");
+      for (const file of files) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        if (useCloudinary) {
+          // Upload directly to Cloudinary CDN
+          const cldResult = await uploadToCloudinary(buffer, "cothesis_products");
+          uploadedUrls.push(cldResult.url);
+        } else {
+          // Fallback to local storage
+          let ext = "jpg";
+          if (file.type.includes("webp")) ext = "webp";
+          else if (file.type.includes("png")) ext = "png";
+          else if (file.type.includes("gif")) ext = "gif";
+          else {
+            const originalExt = path.extname(file.name).replace(".", "").toLowerCase();
+            if (["jpg", "jpeg", "png", "webp", "gif"].includes(originalExt)) {
+              ext = originalExt;
+            }
+          }
+
+          const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+          const filename = `cothesis_prod_${uniqueSuffix}.${ext}`;
+          const filePath = path.join(uploadDir, filename);
+
+          await fs.writeFile(filePath, buffer);
+          uploadedUrls.push(`/uploads/${filename}`);
+        }
+      }
+
       return NextResponse.json({
-        success: true,
-        message: "Photo uploaded to Cloudinary successfully!",
-        url: result.url,
+        message: useCloudinary
+          ? "Photo(s) uploaded successfully to Cloudinary CDN."
+          : "Photo(s) uploaded locally. (Configure Cloudinary in .env for permanent Vercel hosting)",
+        urls: uploadedUrls,
+        url: uploadedUrls[0],
+        provider: useCloudinary ? "cloudinary" : "local",
       });
     }
 
-    // 2. Handle base64 JSON payload (Client Canvas compressed)
+    // 2. Handle JSON base64 upload
     if (contentType.includes("application/json")) {
       const body = await req.json();
       const { imageBase64 } = body;
 
       if (!imageBase64) {
         return NextResponse.json(
-          { success: false, message: "imageBase64 string is required." },
+          { message: "imageBase64 string is required." },
           { status: 400 }
         );
       }
 
       const matches = imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      const buffer = matches && matches[2]
-        ? Buffer.from(matches[2], "base64")
-        : Buffer.from(imageBase64, "base64");
+      let buffer: Buffer;
+      let ext = "jpg";
 
-      const result = await uploadToCloudinary(buffer, "inveins_products");
+      if (matches && matches.length === 3) {
+        const mime = matches[1];
+        if (mime.includes("webp")) ext = "webp";
+        else if (mime.includes("png")) ext = "png";
+        else if (mime.includes("gif")) ext = "gif";
+        buffer = Buffer.from(matches[2], "base64");
+      } else {
+        buffer = Buffer.from(imageBase64, "base64");
+      }
+
+      let publicUrl: string;
+
+      if (useCloudinary) {
+        const cldResult = await uploadToCloudinary(buffer, "cothesis_products");
+        publicUrl = cldResult.url;
+      } else {
+        const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        const filename = `cothesis_prod_${uniqueSuffix}.${ext}`;
+        const filePath = path.join(uploadDir, filename);
+        await fs.writeFile(filePath, buffer);
+        publicUrl = `/uploads/${filename}`;
+      }
+
       return NextResponse.json({
-        success: true,
-        message: "Photo uploaded to Cloudinary successfully!",
-        url: result.url,
+        message: useCloudinary
+          ? "Photo uploaded and processed to Cloudinary CDN."
+          : "Photo uploaded locally. (Configure Cloudinary in .env for permanent Vercel hosting)",
+        url: publicUrl,
+        urls: [publicUrl],
+        provider: useCloudinary ? "cloudinary" : "local",
       });
     }
 
     return NextResponse.json(
-      { success: false, message: "Unsupported content type." },
+      { message: "Unsupported Content-Type. Please use multipart/form-data or application/json." },
       { status: 415 }
     );
   } catch (err: any) {
-    console.error("Cloudinary upload error:", err);
+    console.error("Image Upload Error:", err);
     return NextResponse.json(
-      { success: false, message: err?.message || "Failed to upload photo to Cloudinary." },
+      { message: "Failed to upload image.", error: err?.message || String(err) },
       { status: 500 }
     );
   }
