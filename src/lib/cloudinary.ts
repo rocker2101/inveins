@@ -34,9 +34,10 @@ export async function uploadToCloudinary(
         resource_type: "image",
         transformation: [{ quality: "auto", fetch_format: "auto" }],
       },
-      (error, result) => {
+      (error: any, result: any) => {
         if (error || !result) {
-          reject(error || new Error("Cloudinary upload failed: " + (error?.message || String(error))));
+          const errMsg = error?.message || String(error || "Upload failed");
+          reject(error || new Error("Cloudinary upload failed: " + errMsg));
         } else {
           resolve({
             url: result.secure_url,
