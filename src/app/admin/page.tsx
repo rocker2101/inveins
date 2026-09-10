@@ -1179,7 +1179,7 @@ export default function AdminPage() {
                     <img
                       src={newProductForm.imageUrl}
                       alt="Preview"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain p-1"
                     />
                   </div>
                   <div className="flex-1 min-w-0">

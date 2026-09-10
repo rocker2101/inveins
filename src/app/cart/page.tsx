@@ -120,7 +120,7 @@ export default function CartPage() {
                           src={item.product.images[0]}
                           alt={item.product.name}
                           fill
-                          className="object-cover"
+                          className="object-contain object-center p-1"
                         />
                       </Link>
                       <div className="space-y-1 flex-1 min-w-0">

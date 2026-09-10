@@ -151,7 +151,7 @@ export const SearchModal: React.FC = () => {
                         src={product.images[0]}
                         alt={product.name}
                         fill
-                        className="object-cover group-hover:scale-105 transition-transform"
+                        className="object-contain object-center group-hover:scale-105 transition-transform p-1"
                       />
                     </Link>
                     <div className="flex-1 flex flex-col justify-between">

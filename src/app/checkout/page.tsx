@@ -609,7 +609,7 @@ export default function CheckoutPage() {
                       src={item.product.images[0]}
                       alt={item.product.name}
                       fill
-                      className="object-cover"
+                      className="object-contain object-center p-1"
                     />
                   </div>
                   <div className="flex-1 text-xs">

@@ -186,12 +186,12 @@ export const ExpressCheckoutModal: React.FC = () => {
 
             {/* Selected Product Summary Card */}
             <div className="flex gap-3 sm:gap-4 p-3 bg-white border border-[#e5e4df] items-center">
-              <div className="relative w-16 h-20 bg-[#f0efe9] flex-shrink-0 border border-[#e5e4df]">
+              <div className="relative w-16 h-20 bg-[#f0efe9] flex-shrink-0 border border-[#e5e4df] overflow-hidden">
                 <Image
                   src={expressProduct.images[0]}
                   alt={expressProduct.name}
                   fill
-                  className="object-cover"
+                  className="object-contain object-center p-1"
                 />
               </div>
               <div className="flex-1 min-w-0">

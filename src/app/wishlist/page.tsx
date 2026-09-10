@@ -58,11 +58,16 @@ export default function WishlistPage() {
             >
               <div className="relative aspect-[3/4] w-full bg-[#f4f1ea] overflow-hidden">
                 <Link href={`/product/${product.id}`} className="block w-full h-full">
+                  {/* Ambient backdrop */}
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center blur-md opacity-25 scale-110 pointer-events-none"
+                    style={{ backgroundImage: `url(${product.images[0]})` }}
+                  />
                   <Image
                     src={product.images[0]}
                     alt={product.name}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="relative z-1 object-contain object-center group-hover:scale-105 transition-transform duration-500 p-1.5"
                   />
                 </Link>
                 <button

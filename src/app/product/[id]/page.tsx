@@ -155,13 +155,18 @@ export default function ProductDetailPage() {
         {/* Left Column: Interactive Image Gallery */}
         <div className="lg:col-span-7 space-y-4">
           <div className="relative aspect-[3/4] w-full bg-[#f4f1ea] overflow-hidden border border-[#e6e2d8] group">
+            {/* Ambient blurred backdrop so any aspect ratio looks complete and aesthetic */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center blur-md opacity-25 scale-110 pointer-events-none"
+              style={{ backgroundImage: `url(${product.images[selectedImageIdx] || product.images[0]})` }}
+            />
             <Image
               src={product.images[selectedImageIdx] || product.images[0]}
               alt={product.name}
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 55vw"
-              className="object-cover"
+              className="relative z-1 object-contain object-center p-2"
             />
 
             {/* Badges */}
@@ -205,7 +210,7 @@ export default function ProductDetailPage() {
                     src={img}
                     alt={`${product.name} thumbnail ${idx + 1}`}
                     fill
-                    className="object-cover"
+                    className="object-contain object-center p-1"
                   />
                 </button>
               ))}
@@ -426,7 +431,7 @@ export default function ProductDetailPage() {
                     src={pairedProduct.images[0]}
                     alt={pairedProduct.name}
                     fill
-                    className="object-cover"
+                    className="object-contain object-center p-1"
                   />
                 </div>
                 <div className="flex-1">
