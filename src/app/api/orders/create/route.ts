@@ -4,6 +4,7 @@ import { PRODUCTS } from '@/data/products';
 import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePhone } from '@/lib/sanitize';
 import { supabase } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { createRazorpayOrder } from '@/lib/payment-security';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,6 +149,32 @@ export async function POST(req: NextRequest) {
     const selectedMethod = (paymentMethod === 'cod' || paymentMethod === 'whatsapp') ? paymentMethod : 'upi';
     const initialStatus = selectedMethod === 'cod' ? 'Confirmed' : 'Pending';
 
+    // 5b. For Online Payments (UPI / Card): Create Authoritative Razorpay Order
+    let razorpayData = null;
+    if (selectedMethod === 'upi' || selectedMethod === 'card') {
+      try {
+        const rzpOrder = await createRazorpayOrder(grandTotal * 100, orderId, {
+          order_id: orderId,
+          customer_phone: sanitizedCustomer.phone,
+        });
+
+        if (rzpOrder) {
+          razorpayData = {
+            orderId: rzpOrder.id,
+            amount: rzpOrder.amount,
+            currency: rzpOrder.currency,
+            keyId: rzpOrder.keyId,
+          };
+        }
+      } catch (rzpErr: any) {
+        console.error('Razorpay order creation failed:', rzpErr?.message || rzpErr);
+        return NextResponse.json(
+          { success: false, message: 'Payment gateway error: ' + (rzpErr?.message || 'Failed to initialize payment') },
+          { status: 502 }
+        );
+      }
+    }
+
     const verifiedOrder = {
       id: orderId,
       customer: sanitizedCustomer,
@@ -162,6 +189,7 @@ export async function POST(req: NextRequest) {
       trackingNumber,
       createdAt,
       verificationToken,
+      razorpayOrderId: razorpayData?.orderId,
     };
 
     // 6. Persist order directly into Supabase PostgreSQL database
@@ -192,6 +220,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Order validated, created, and saved to database.',
       order: verifiedOrder,
+      razorpay: razorpayData,
     });
   } catch (error) {
     return NextResponse.json(
