@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -10,6 +11,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ success: false, message: 'Enquiry ID is required' }, { status: 400 });
@@ -49,6 +53,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ success: false, message: 'Enquiry ID is required' }, { status: 400 });

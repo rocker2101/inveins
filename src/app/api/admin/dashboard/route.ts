@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -7,6 +8,9 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(req: NextRequest) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     // 1. Query Orders count & sum subtotal
     const { data: ordersData, error: ordersError } = await supabase
       .from('inveins_orders')

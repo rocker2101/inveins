@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
+import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -56,6 +57,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ success: false, message: 'Product ID is required' }, { status: 400 });
@@ -110,6 +114,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ success: false, message: 'Product ID is required' }, { status: 400 });

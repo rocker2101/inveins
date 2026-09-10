@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
+import { getSessionFromRequest, requireAdminSession } from '@/lib/auth';
+import { verifyOrderToken } from '@/lib/payment-security';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,6 +26,22 @@ export async function GET(
 
     if (error || !data) {
       return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
+    }
+
+    // Access control: allow if admin session is present
+    const session = getSessionFromRequest(req);
+    const isAdmin = session && (session.role === 'ADMIN' || session.role === 'STAFF');
+
+    // Or allow customer if verification token matches
+    const { searchParams } = new URL(req.url);
+    const providedToken = searchParams.get('token') || req.headers.get('x-order-token');
+    const isOwnerWithToken = providedToken && data.verification_token === providedToken;
+
+    if (!isAdmin && !isOwnerWithToken) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized. Valid order token or admin session required.' },
+        { status: 403 }
+      );
     }
 
     const order = {
@@ -52,6 +70,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ success: false, message: 'Order ID is required' }, { status: 400 });
@@ -91,6 +112,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { id } = params;
     if (!id) {
       return NextResponse.json({ success: false, message: 'Order ID is required' }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // Server-side admin secret from environment or default secure fallback
 const SERVER_ADMIN_PIN = process.env.ADMIN_PIN || 'inveins2025';
@@ -7,6 +8,15 @@ const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'inveins-super-secret
 
 export async function POST(req: NextRequest) {
   try {
+    // Prevent brute-force password guessing: max 5 attempts per 15 minutes per IP
+    const rateCheck = checkRateLimit(req, 'admin_login', { windowMs: 15 * 60 * 1000, max: 5 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: `Too many login attempts. Please try again in ${Math.ceil(rateCheck.resetSeconds / 60)} minutes.` },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { pin } = body;
 

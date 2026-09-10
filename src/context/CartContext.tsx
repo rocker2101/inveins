@@ -178,6 +178,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedWishlist = localStorage.getItem('inveins_wishlist');
       if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
 
+      const savedOrders = localStorage.getItem('inveins_my_orders');
+      if (savedOrders) setOrders(JSON.parse(savedOrders));
+
       const savedAddr = localStorage.getItem('inveins_saved_address');
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
     } catch (e) {
@@ -186,45 +189,57 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoaded.current = true;
     }
 
-    // Immediately fetch live authoritative data from Supabase PostgreSQL
+    // Immediately fetch live authoritative catalog from Supabase
     refreshDatabaseData();
   }, []);
 
   const isSyncingRef = useRef(false);
 
-  // Synchronize orders, enquiries, and products from Supabase PostgreSQL database
+  // Synchronize catalogue publicly; sync orders & enquiries ONLY if authenticated as admin
   const refreshDatabaseData = useCallback(async () => {
     if (isSyncingRef.current) return;
     isSyncingRef.current = true;
     try {
-      const [ordersRes, wsRes, prodRes] = await Promise.allSettled([
-        fetch('/api/orders/list', { cache: 'no-store' }),
-        fetch('/api/wholesale/list', { cache: 'no-store' }),
-        fetch('/api/products', { cache: 'no-store' }),
-      ]);
-
-      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
-        const data = await ordersRes.value.json();
-        if (data.success && Array.isArray(data.orders)) {
-          setOrders(data.orders);
-        }
-      }
-
-      if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
-        const wsData = await wsRes.value.json();
-        if (wsData.success && Array.isArray(wsData.enquiries)) {
-          setWholesaleEnquiries(wsData.enquiries);
-        }
-      }
-
-      if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
-        const prodData = await prodRes.value.json();
+      // 1. Fetch public product catalogue
+      const prodRes = await fetch('/api/products', { cache: 'no-store' });
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
         if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
           setProductsList(prodData.products);
         }
       }
+
+      // 2. Fetch administrative collections ONLY if user is authenticated admin
+      try {
+        const sessionRes = await fetch('/api/admin/session', { cache: 'no-store' });
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          if (sessionData.authenticated) {
+            const [ordersRes, wsRes] = await Promise.allSettled([
+              fetch('/api/orders/list', { cache: 'no-store' }),
+              fetch('/api/wholesale/list', { cache: 'no-store' }),
+            ]);
+
+            if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+              const data = await ordersRes.value.json();
+              if (data.success && Array.isArray(data.orders)) {
+                setOrders(data.orders);
+              }
+            }
+
+            if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
+              const wsData = await wsRes.value.json();
+              if (wsData.success && Array.isArray(wsData.enquiries)) {
+                setWholesaleEnquiries(wsData.enquiries);
+              }
+            }
+          }
+        }
+      } catch (authSyncErr) {
+        // Non-admin visitors do not have access to admin session or order dumps
+      }
     } catch (err) {
-      console.error('Supabase synchronization error:', err);
+      console.error('Catalogue synchronization error:', err);
     } finally {
       isSyncingRef.current = false;
     }
@@ -273,6 +288,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedAddress) localStorage.setItem('inveins_saved_address', JSON.stringify(savedAddress));
     } catch (e) {}
   }, [savedAddress]);
+
+  useEffect(() => {
+    if (!isLoaded.current) return;
+    try {
+      localStorage.setItem('inveins_my_orders', JSON.stringify(orders));
+    } catch (e) {}
+  }, [orders]);
 
   const addToCart = (product: Product, selectedSize: string, quantity = 1) => {
     setItems(prev => {

@@ -139,22 +139,10 @@ export default function CheckoutPage() {
       clearCart();
       setIsProcessing(false);
       setStep('confirmation');
-    } catch (err) {
-      // Fallback in case of offline environment
-      const newOrder = addOrder({
-        customer: formData,
-        items,
-        subtotal,
-        discount: discountAmount,
-        shippingFee,
-        grandTotal,
-        paymentMethod,
-        status: 'Confirmed',
-      });
-      setCreatedOrder(newOrder);
-      clearCart();
+    } catch (err: any) {
+      console.error('Order creation error:', err);
+      setErrorMsg(err?.message || 'Network error placing order. Please try again.');
       setIsProcessing(false);
-      setStep('confirmation');
     }
   };
 

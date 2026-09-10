@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sanitizeString, isValidEmail, isValidPhone, normalizePhone } from '@/lib/sanitize';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    const rateCheck = checkRateLimit(req, 'wholesale_submit', { windowMs: 60 * 1000, max: 5 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: `Too many submissions. Please try again in ${rateCheck.resetSeconds} seconds.` },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { name, company, email, phone, cityCountry, productInterest, quantity, message } = body;
 

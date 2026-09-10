@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
+import { requireAdminSession } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const body = await req.json();
     const { orderId, status } = body;
 
@@ -13,6 +19,11 @@ export async function POST(req: NextRequest) {
 
     const cleanOrderId = sanitizeString(orderId);
     const cleanStatus = sanitizeString(status);
+
+    const validStatuses = ['Pending', 'Confirmed', 'Processing', 'Dispatched', 'Delivered', 'Cancelled'];
+    if (!validStatuses.includes(cleanStatus)) {
+      return NextResponse.json({ success: false, message: 'Invalid order status value' }, { status: 400 });
+    }
 
     const { error } = await supabase
       .from('inveins_orders')

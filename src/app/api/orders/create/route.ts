@@ -3,6 +3,9 @@ import crypto from 'crypto';
 import { PRODUCTS } from '@/data/products';
 import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePhone } from '@/lib/sanitize';
 import { supabase } from '@/lib/supabase';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+export const dynamic = 'force-dynamic';
 
 const ORDER_SIGNING_SECRET = process.env.ORDER_SIGNING_SECRET || 'inveins-order-integrity-hmac-secret-2026';
 const VALID_COUPONS: Record<string, number> = {
@@ -15,6 +18,15 @@ const STANDARD_SHIPPING_FEE = 90;
 
 export async function POST(req: NextRequest) {
   try {
+    // 0. Anti-Flooding Rate Limiting: Max 10 order creation requests per minute per IP
+    const rateCheck = checkRateLimit(req, 'order_create', { windowMs: 60 * 1000, max: 10 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: `Too many order attempts. Please try again in ${rateCheck.resetSeconds} seconds.` },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { customer, items, paymentMethod, couponCode } = body;
 
@@ -53,12 +65,16 @@ export async function POST(req: NextRequest) {
     let calculatedSubtotal = 0;
     const verifiedItems = [];
 
+    // Query DB products for accurate current pricing if available, else static catalogue
+    const { data: dbProducts } = await supabase.from('inveins_products').select('*');
+    const availableCatalogue = (dbProducts && dbProducts.length > 0) ? dbProducts : PRODUCTS;
+
     for (const rawItem of items) {
       const { productId, selectedSize, quantity } = rawItem;
-      const qty = Math.max(1, parseInt(quantity) || 1);
+      const qty = Math.max(1, Math.min(20, parseInt(quantity, 10) || 1));
 
       // Find genuine product in server catalogue
-      const canonicalProduct = PRODUCTS.find(p => p.id === productId);
+      const canonicalProduct = availableCatalogue.find((p: any) => p.id === productId);
       if (!canonicalProduct) {
         return NextResponse.json(
           { success: false, message: `Product "${productId}" not found in catalogue.` },
@@ -66,7 +82,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (canonicalProduct.availableStock <= 0 || canonicalProduct.badge === 'SOLD OUT') {
+      const availableStock = Number(canonicalProduct.available_stock ?? canonicalProduct.availableStock ?? 0);
+      if (availableStock <= 0 || canonicalProduct.badge === 'SOLD OUT') {
         return NextResponse.json(
           { success: false, message: `"${canonicalProduct.name}" is currently sold out.` },
           { status: 400 }
@@ -74,11 +91,18 @@ export async function POST(req: NextRequest) {
       }
 
       // Enforce the server's authoritative price
-      const genuinePrice = canonicalProduct.price;
+      const genuinePrice = Number(canonicalProduct.price) || 0;
       calculatedSubtotal += genuinePrice * qty;
 
       verifiedItems.push({
-        product: canonicalProduct,
+        product: {
+          id: canonicalProduct.id,
+          name: canonicalProduct.name,
+          price: genuinePrice,
+          currency: canonicalProduct.currency || '₹',
+          category: canonicalProduct.category,
+          images: canonicalProduct.images,
+        },
         selectedSize: sanitizeString(selectedSize) || 'M',
         quantity: qty,
       });
@@ -105,17 +129,24 @@ export async function POST(req: NextRequest) {
     const shippingFee = calculatedSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
     const grandTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee);
 
-    const orderId = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
-    const trackingNumber = `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`;
+    // Cryptographically Secure Pseudo-Random Number Generation (CSPRNG) for Order & Tracking IDs
+    const randomOrderSuffix = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const randomTrkSuffix = crypto.randomBytes(5).toString('hex').toUpperCase();
+    const orderId = `INV-${randomOrderSuffix}`;
+    const trackingNumber = `TRK-${randomTrkSuffix}`;
     const nowIso = new Date().toISOString();
     const createdAt = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
     // 5. Generate Cryptographic Order Verification Token (HMAC-SHA256)
-    const verificationPayload = `${orderId}|${grandTotal}|${sanitizedCustomer.phone}|${createdAt}`;
+    const verificationPayload = `${orderId}|${grandTotal}|${sanitizedCustomer.phone}|${nowIso}`;
     const verificationToken = crypto
       .createHmac('sha256', ORDER_SIGNING_SECRET)
       .update(verificationPayload)
       .digest('hex');
+
+    // Payment method & initial status: COD is Confirmed, online methods start as Pending
+    const selectedMethod = (paymentMethod === 'cod' || paymentMethod === 'whatsapp') ? paymentMethod : 'upi';
+    const initialStatus = selectedMethod === 'cod' ? 'Confirmed' : 'Pending';
 
     const verifiedOrder = {
       id: orderId,
@@ -126,8 +157,8 @@ export async function POST(req: NextRequest) {
       shippingFee,
       grandTotal,
       coupon: appliedCoupon,
-      paymentMethod: paymentMethod || 'upi',
-      status: 'Confirmed' as const,
+      paymentMethod: selectedMethod,
+      status: initialStatus,
       trackingNumber,
       createdAt,
       verificationToken,
@@ -143,8 +174,8 @@ export async function POST(req: NextRequest) {
         discount: discountAmount,
         shipping_fee: shippingFee,
         grand_total: grandTotal,
-        payment_method: paymentMethod || 'upi',
-        status: 'Confirmed',
+        payment_method: selectedMethod,
+        status: initialStatus,
         tracking_number: trackingNumber,
         verification_token: verificationToken,
         created_at: nowIso,
@@ -159,7 +190,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Order validated, created, and saved to Supabase.',
+      message: 'Order validated, created, and saved to database.',
       order: verifiedOrder,
     });
   } catch (error) {
@@ -169,4 +200,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

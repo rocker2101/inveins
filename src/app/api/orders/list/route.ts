@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAdminSession } from '@/lib/auth';
 
 // Force dynamic execution and eliminate any Next.js edge/fetch caching
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,10 @@ export const fetchCache = 'force-no-store';
 
 export async function GET(req: NextRequest) {
   try {
+    // Enforce administrative authorization to prevent customer PII exposure
+    const authError = requireAdminSession(req);
+    if (authError) return authError;
+
     const { data, error } = await supabase
       .from('inveins_orders')
       .select('*')

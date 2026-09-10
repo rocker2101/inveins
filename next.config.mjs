@@ -48,6 +48,10 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=()',
   },
+  {
+    key: 'Content-Security-Policy',
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://5.imimg.com https://inveins.studio; connect-src 'self' https://*.supabase.co https://api.razorpay.com https://res.cloudinary.com; frame-src https://api.razorpay.com;",
+  },
 ];
 
 /** @type {import('next').NextConfig} */
@@ -71,7 +75,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'res.cloudinary.com',
       },
     ],
   },
