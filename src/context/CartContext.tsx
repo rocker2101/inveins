@@ -31,6 +31,7 @@ export interface Order {
   status: 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered' | 'Cancelled';
   trackingNumber?: string;
   verificationToken?: string;
+  paymentId?: string;
   createdAt: string;
 }
 
