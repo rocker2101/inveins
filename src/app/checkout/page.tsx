@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
 import { sanitizeString, isValidPhone, isValidPincode } from '@/lib/sanitize';
+import { openRazorpayCheckout } from '@/lib/razorpay-client';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -118,7 +119,42 @@ export default function CheckoutPage() {
         return;
       }
 
-      // 2. Add cryptographically verified order to local storage & state
+      // 2. Check if Razorpay online payment flow is required
+      if (data.razorpay && (paymentMethod === 'upi' || paymentMethod === 'card')) {
+        await openRazorpayCheckout({
+          orderId: data.order.id,
+          razorpayOrderId: data.razorpay.orderId,
+          amount: data.razorpay.amount,
+          currency: data.razorpay.currency || 'INR',
+          keyId: data.razorpay.keyId,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          onSuccess: (verifyResult: any) => {
+            const confirmedOrder: Order = {
+              ...data.order,
+              status: 'Confirmed',
+              paymentId: verifyResult?.paymentId || undefined,
+            };
+            addOrder(confirmedOrder);
+            setCreatedOrder(confirmedOrder);
+            clearCart();
+            setIsProcessing(false);
+            setStep('confirmation');
+          },
+          onFailure: (errorMsg: string) => {
+            setIsProcessing(false);
+            setErrorMsg(errorMsg || 'Payment failed or declined. Please retry or select Cash on Delivery.');
+          },
+          onDismiss: () => {
+            setIsProcessing(false);
+            setErrorMsg('Payment window was closed. You can retry payment when ready.');
+          },
+        });
+        return;
+      }
+
+      // 3. Cash on Delivery (COD) or standard direct confirmation
       const verified = data.order;
       addOrder({
         id: verified.id,
