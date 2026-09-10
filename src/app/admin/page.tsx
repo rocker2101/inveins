@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -29,6 +29,7 @@ export default function AdminPage() {
   } = useCart();
 
   const [pinInput, setPinInput] = useState('');
+  const [showPasscode, setShowPasscode] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -397,15 +398,27 @@ export default function AdminPage() {
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
                 ADMIN PASSCODE
               </label>
-              <input
-                type="password"
-                required
-                inputMode="numeric"
-                value={pinInput}
-                onChange={e => setPinInput(e.target.value)}
-                placeholder="Enter passcode"
-                className="w-full bg-[#f5f4f0] border border-[#e5e4df] h-12 sm:h-10 px-3.5 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717] font-mono tracking-widest"
-              />
+              <div className="relative">
+                <input
+                  type={showPasscode ? 'text' : 'password'}
+                  required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  value={pinInput}
+                  onChange={e => setPinInput(e.target.value)}
+                  placeholder="Enter passcode"
+                  className="w-full bg-[#f5f4f0] border border-[#e5e4df] h-12 sm:h-10 pl-3.5 pr-11 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717] font-mono tracking-widest"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasscode(!showPasscode)}
+                  className="absolute right-0 top-0 h-full px-3 text-[#737373] hover:text-[#171717] flex items-center justify-center min-w-[44px]"
+                  aria-label={showPasscode ? 'Hide passcode' : 'Show passcode'}
+                >
+                  {showPasscode ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button
