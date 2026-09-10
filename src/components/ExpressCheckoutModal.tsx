@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, CheckCircle2, ShieldCheck, Zap, Smartphone, CreditCard, Banknote, MessageSquare, ArrowRight } from 'lucide-react';
+import { X, CheckCircle2, ShieldCheck, Zap, Smartphone, CreditCard, Banknote, MessageSquare, ArrowRight, Loader2 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
+import { openRazorpayCheckout } from '@/lib/razorpay-client';
 
 export const ExpressCheckoutModal: React.FC = () => {
   const {
@@ -21,6 +22,7 @@ export const ExpressCheckoutModal: React.FC = () => {
   const [quantity, setQuantity] = useState<number>(1);
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'cod' | 'card'>('upi');
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [formData, setFormData] = useState<SavedAddress>({
     name: '',
@@ -66,6 +68,8 @@ export const ExpressCheckoutModal: React.FC = () => {
 
     const totalAmount = expressProduct.price * quantity;
 
+    setIsProcessing(true);
+
     try {
       const res = await fetch('/api/orders/create', {
         method: 'POST',
@@ -82,52 +86,56 @@ export const ExpressCheckoutModal: React.FC = () => {
       });
 
       const data = await res.json();
-      if (res.ok && data.success && data.order) {
-        const verified = data.order;
-        addOrder({
-          id: verified.id,
-          trackingNumber: verified.trackingNumber,
-          verificationToken: verified.verificationToken,
-          createdAt: verified.createdAt,
-          customer: verified.customer,
-          items: verified.items,
-          subtotal: verified.subtotal,
-          discount: verified.discount,
-          shippingFee: verified.shippingFee,
-          grandTotal: verified.grandTotal,
-          paymentMethod: verified.paymentMethod,
-          status: verified.status,
-        });
-        setPlacedOrder(verified);
-      } else {
-        // Local fallback
-        const newOrder = addOrder({
-          customer: formData,
-          items: [{ product: expressProduct, selectedSize, quantity }],
-          subtotal: totalAmount,
-          discount: 0,
-          shippingFee: 0,
-          grandTotal: totalAmount,
-          paymentMethod,
-          status: 'Confirmed',
-        });
-        setPlacedOrder(newOrder);
+      if (!res.ok || !data.success || !data.order) {
+        setErrorMsg(data?.message || 'Failed to initialize order. Please try again.');
+        setIsProcessing(false);
+        return;
       }
-    } catch (err) {
-      const newOrder = addOrder({
-        customer: formData,
-        items: [{ product: expressProduct, selectedSize, quantity }],
-        subtotal: totalAmount,
-        discount: 0,
-        shippingFee: 0,
-        grandTotal: totalAmount,
-        paymentMethod,
-        status: 'Confirmed',
-      });
-      setPlacedOrder(newOrder);
-    }
 
-    setStep('success');
+      // Online payment via Razorpay
+      if (data.razorpay && (paymentMethod === 'upi' || paymentMethod === 'card')) {
+        await openRazorpayCheckout({
+          orderId: data.order.id,
+          razorpayOrderId: data.razorpay.orderId,
+          amount: data.razorpay.amount,
+          currency: data.razorpay.currency || 'INR',
+          keyId: data.razorpay.keyId,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          onSuccess: (verifyResult: any) => {
+            const verified: Order = {
+              ...data.order,
+              status: 'Confirmed',
+              paymentId: verifyResult?.paymentId || undefined,
+            };
+            addOrder(verified);
+            setPlacedOrder(verified);
+            setIsProcessing(false);
+            setStep('success');
+          },
+          onFailure: (errorMsg: string) => {
+            setIsProcessing(false);
+            setErrorMsg(errorMsg || 'Payment failed or declined. Please retry or select Cash on Delivery.');
+          },
+          onDismiss: () => {
+            setIsProcessing(false);
+            setErrorMsg('Payment window was closed. You can retry payment when ready.');
+          },
+        });
+        return;
+      }
+
+      // Cash on Delivery
+      const verified: Order = data.order;
+      addOrder(verified);
+      setPlacedOrder(verified);
+      setIsProcessing(false);
+      setStep('success');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Error processing your order. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   const generateWhatsAppLink = () => {
@@ -356,9 +364,18 @@ export const ExpressCheckoutModal: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full min-h-[48px] bg-[#171717] hover:bg-black active:bg-neutral-800 text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-3.5 flex items-center justify-center gap-2 transition-all shadow-md"
+                disabled={isProcessing}
+                className="w-full min-h-[48px] bg-[#171717] hover:bg-black active:bg-neutral-800 disabled:opacity-60 text-[#f5f4f0] text-xs font-extrabold uppercase tracking-widest py-3.5 flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:cursor-not-allowed"
               >
-                <ShieldCheck size={18} /> CONFIRM ORDER & PAY NOW
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> PROCESSING ORDER...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={18} /> CONFIRM ORDER & PAY NOW
+                  </>
+                )}
               </button>
 
             </form>
