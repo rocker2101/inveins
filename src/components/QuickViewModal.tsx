@@ -60,13 +60,18 @@ export const QuickViewModal: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 max-h-[85vh] overflow-y-auto">
           {/* Product Image Column */}
-          <div className="relative aspect-[3/4] md:aspect-auto bg-[#f0ede6] min-h-[300px] md:min-h-[460px]">
+          <div className="relative aspect-[3/4] md:aspect-auto bg-[#f0ede6] min-h-[300px] md:min-h-[460px] overflow-hidden">
+            {/* Ambient blurred backdrop so any aspect ratio fits naturally */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center blur-md opacity-25 scale-110 pointer-events-none"
+              style={{ backgroundImage: `url(${quickViewProduct.images[selectedImageIndex] || quickViewProduct.images[0]})` }}
+            />
             <Image
               src={quickViewProduct.images[selectedImageIndex] || quickViewProduct.images[0]}
               alt={quickViewProduct.name}
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
+              className="relative z-1 object-contain object-center p-2"
               priority
             />
             {quickViewProduct.badge && (

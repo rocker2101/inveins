@@ -50,12 +50,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Product Image Container */}
       <div className="relative aspect-[3/4] w-full bg-[#f4f1ea] overflow-hidden">
         <Link href={`/product/${product.id}`} className="relative block w-full h-full">
+          {/* Subtle ambient blurred background so any image aspect ratio fits naturally */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center blur-md opacity-25 scale-110 pointer-events-none"
+            style={{ backgroundImage: `url(${product.images[0]})` }}
+          />
           <Image
             src={product.images[0]}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+            className="relative z-1 object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out p-1.5"
           />
         </Link>
         
