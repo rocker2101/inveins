@@ -53,54 +53,57 @@ export default function AdminPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handlePhonePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
+    const filesArray = Array.from(fileList);
     setIsUploadingPhoto(true);
     setUploadError(null);
 
     try {
-      let fileToUpload: File = file;
-      if (file.type.startsWith('image/') && !file.type.includes('svg')) {
-        try {
-          const optimizedBlob = await new Promise<Blob | null>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              const img = new Image();
-              img.onload = () => {
-                const maxDim = 1600;
-                let { width, height } = img;
-                if (width > maxDim || height > maxDim) {
-                  const ratio = Math.min(maxDim / width, maxDim / height);
-                  width = Math.round(width * ratio);
-                  height = Math.round(height * ratio);
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) { resolve(null); return; }
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85);
-              };
-              img.onerror = () => resolve(null);
-              img.src = ev.target?.result as string;
-            };
-            reader.onerror = () => resolve(null);
-            reader.readAsDataURL(file);
-          });
-          if (optimizedBlob) {
-            fileToUpload = new File([optimizedBlob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', {
-              type: 'image/jpeg',
-            });
-          }
-        } catch (compErr) {
-          console.warn('Compression skipped, using original file', compErr);
-        }
-      }
-
       const formData = new FormData();
-      formData.append('file', fileToUpload);
+
+      for (const file of filesArray) {
+        let fileToUpload: File = file;
+        if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+          try {
+            const optimizedBlob = await new Promise<Blob | null>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                  const maxDim = 1600;
+                  let { width, height } = img;
+                  if (width > maxDim || height > maxDim) {
+                    const ratio = Math.min(maxDim / width, maxDim / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                  }
+                  const canvas = document.createElement('canvas');
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) { resolve(null); return; }
+                  ctx.drawImage(img, 0, 0, width, height);
+                  canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85);
+                };
+                img.onerror = () => resolve(null);
+                img.src = ev.target?.result as string;
+              };
+              reader.onerror = () => resolve(null);
+              reader.readAsDataURL(file);
+            });
+            if (optimizedBlob) {
+              fileToUpload = new File([optimizedBlob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', {
+                type: 'image/jpeg',
+              });
+            }
+          } catch (compErr) {
+            console.warn('Compression skipped, using original file', compErr);
+          }
+        }
+        formData.append('files', fileToUpload);
+      }
 
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
@@ -108,17 +111,24 @@ export default function AdminPage() {
       });
 
       const data = await res.json();
-      if (!res.ok || (!data.success && !data.url)) {
-        const errorDetail = data.error ? `${data.message} (${data.error})` : data.message || 'Failed to upload photo';
+      if (!res.ok || (!data.success && !data.url && !data.urls)) {
+        const errorDetail = data.error ? `${data.message} (${data.error})` : data.message || 'Failed to upload photo(s)';
         throw new Error(errorDetail);
       }
 
-      const uploadedUrl = data.url;
-      setNewProductForm(prev => ({ ...prev, imageUrl: uploadedUrl }));
+      const returnedUrls: string[] = data.urls || (data.url ? [data.url] : []);
+      setNewProductForm(prev => {
+        const existing = prev.images || (prev.imageUrl ? [prev.imageUrl] : []);
+        const combined = Array.from(new Set([...existing, ...returnedUrls]));
+        return {
+          ...prev,
+          images: combined,
+          imageUrl: combined[0] || '',
+        };
+      });
+
       setActionToast({
-        message: data.provider === 'cloudinary'
-          ? 'Photo uploaded to Cloudinary CDN successfully!'
-          : 'Photo processed and attached successfully!',
+        message: `${returnedUrls.length} catalog photo(s) uploaded successfully!`,
         type: 'success',
       });
       setTimeout(() => setActionToast(null), 4000);
@@ -133,12 +143,53 @@ export default function AdminPage() {
     }
   };
 
+  const handleRemoveProductImage = (idxToRemove: number) => {
+    setNewProductForm(prev => {
+      const updated = (prev.images || []).filter((_, idx) => idx !== idxToRemove);
+      return {
+        ...prev,
+        images: updated,
+        imageUrl: updated[0] || '',
+      };
+    });
+  };
+
+  const handleSetPrimaryImage = (idxToPrimary: number) => {
+    setNewProductForm(prev => {
+      const currentImages = [...(prev.images || [])];
+      const target = currentImages[idxToPrimary];
+      if (!target) return prev;
+      currentImages.splice(idxToPrimary, 1);
+      currentImages.unshift(target);
+      return {
+        ...prev,
+        images: currentImages,
+        imageUrl: currentImages[0],
+      };
+    });
+  };
+
+  const handleAddManualUrl = () => {
+    if (!manualUrlInput.trim()) return;
+    const url = manualUrlInput.trim();
+    setNewProductForm(prev => {
+      const updated = Array.from(new Set([...(prev.images || []), url]));
+      return {
+        ...prev,
+        images: updated,
+        imageUrl: updated[0] || url,
+      };
+    });
+    setManualUrlInput('');
+  };
+
   // Modals for confirmation
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [enquiryToDelete, setEnquiryToDelete] = useState<WholesaleEnquiry | null>(null);
 
   // New Product Form State
+  const [manualUrlInput, setManualUrlInput] = useState('');
   const [newProductForm, setNewProductForm] = useState({
     name: '',
     price: '',
@@ -149,6 +200,7 @@ export default function AdminPage() {
     description: '',
     availableStock: '25',
     imageUrl: '',
+    images: [] as string[],
     sizes: ['S', 'M', 'L', 'XL'],
   });
 
@@ -260,7 +312,12 @@ export default function AdminPage() {
     e.preventDefault();
     const priceNum = parseFloat(newProductForm.price) || 1490;
     const stockNum = parseInt(newProductForm.availableStock) || 20;
-    const img = newProductForm.imageUrl.trim() || 'https://images.unsplash.com/photo-1579809011670-aa21121f5ec6?auto=format&fit=crop&w=1200&q=85';
+
+    const catalogImages = (newProductForm.images && newProductForm.images.length > 0)
+      ? newProductForm.images
+      : newProductForm.imageUrl.trim()
+        ? [newProductForm.imageUrl.trim()]
+        : ['https://images.unsplash.com/photo-1579809011670-aa21121f5ec6?auto=format&fit=crop&w=1200&q=85'];
 
     await addNewProduct({
       name: newProductForm.name,
@@ -271,7 +328,7 @@ export default function AdminPage() {
       tagline: newProductForm.tagline || 'Considered essential garment cut for an architectural fit.',
       description: newProductForm.description || 'Crafted with premium heavyweight organic cotton.',
       availableStock: stockNum,
-      images: [img],
+      images: catalogImages,
       sizes: newProductForm.sizes,
       details: [
         '260-340 GSM organic combed cotton jersey',
@@ -294,6 +351,7 @@ export default function AdminPage() {
       setActiveTab('inventory');
     }, 1500);
 
+    setManualUrlInput('');
     setNewProductForm({
       name: '',
       price: '',
@@ -304,6 +362,7 @@ export default function AdminPage() {
       description: '',
       availableStock: '25',
       imageUrl: '',
+      images: [],
       sizes: ['S', 'M', 'L', 'XL'],
     });
   };
@@ -1115,29 +1174,28 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* PRODUCT PHOTO WITH PHONE GALLERY UPLOAD & CLOUDINARY */}
-            <div className="space-y-2.5 p-4 bg-[#faf9f5] border border-[#e5e4df]">
+            {/* MULTI-PHOTO CATALOG GALLERY UPLOADER */}
+            <div className="space-y-3 p-4 bg-[#faf9f5] border border-[#e5e4df]">
               <div className="flex items-center justify-between">
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
-                  PRODUCT PHOTO (PHONE GALLERY / CAMERA ROLL) *
+                  CATALOG PHOTOS ({newProductForm.images?.length || (newProductForm.imageUrl ? 1 : 0)}) *
                 </label>
-                {newProductForm.imageUrl && (
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 tracking-wider">
-                    {newProductForm.imageUrl.includes('cloudinary') ? '☁️ Cloudinary Hosted' : 'Photo Attached'}
-                  </span>
-                )}
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 tracking-wider">
+                  ☁️ Multi-Photo Upload Supported
+                </span>
               </div>
 
-              {/* Hidden Native File Input for Mobile Gallery */}
+              {/* Hidden Native File Input supporting MULTIPLE photo selection */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handlePhonePhotoUpload}
                 className="hidden"
               />
 
-              {/* Mobile Touch Button to open Phone Gallery */}
+              {/* Touch Button for Phone Gallery & Multi-Selection */}
               <div
                 onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
                 className={`border-2 border-dashed p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
@@ -1150,17 +1208,17 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2 py-2">
                     <Loader2 size={18} className="animate-spin text-[#171717]" />
                     <span className="text-xs font-bold text-[#171717] uppercase tracking-wider">
-                      Uploading Photo to Cloudinary...
+                      Uploading Photos to Cloudinary CDN...
                     </span>
                   </div>
                 ) : (
                   <>
                     <UploadCloud size={24} className="text-[#171717]" />
                     <div className="text-xs font-extrabold uppercase tracking-wider text-[#171717]">
-                      📱 CHOOSE FROM PHONE GALLERY / CAMERA
+                      📱 UPLOAD MULTIPLE PHOTOS (PHONE GALLERY / CAMERA)
                     </div>
                     <p className="text-[10px] text-[#737373]">
-                      Tap here to open your phone gallery or take a photo. Uploads directly to Cloudinary.
+                      Tap to select multiple photos at once from your gallery or camera roll.
                     </p>
                   </>
                 )}
@@ -1172,40 +1230,82 @@ export default function AdminPage() {
                 </p>
               )}
 
-              {/* Image Preview */}
-              {newProductForm.imageUrl && (
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="w-16 h-20 bg-neutral-200 border border-[#e5e4df] overflow-hidden flex-shrink-0">
-                    <img
-                      src={newProductForm.imageUrl}
-                      alt="Preview"
-                      className="w-full h-full object-contain p-1"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold text-[#737373] uppercase tracking-wider block">
-                      Cloudinary Image URL:
-                    </span>
-                    <p className="text-[11px] font-mono text-[#171717] truncate bg-white p-1.5 border border-[#e5e4df] mt-0.5">
-                      {newProductForm.imageUrl}
-                    </p>
+              {/* MULTI-PHOTO GALLERY THUMBNAIL GRID */}
+              {newProductForm.images && newProductForm.images.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-[#e5e4df]">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#171717] block">
+                    Attached Photos ({newProductForm.images.length}) - Tap to set primary photo
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {newProductForm.images.map((imgUrl, idx) => (
+                      <div
+                        key={imgUrl + idx}
+                        className={`relative group bg-white border p-1.5 flex flex-col items-center gap-1 transition-all ${
+                          idx === 0 ? 'border-[#171717] shadow-sm bg-neutral-50' : 'border-[#e5e4df]'
+                        }`}
+                      >
+                        <div className="w-full h-24 bg-neutral-200 overflow-hidden relative">
+                          <img
+                            src={imgUrl}
+                            alt={`Catalog photo ${idx + 1}`}
+                            className="w-full h-full object-contain"
+                          />
+                          {idx === 0 && (
+                            <span className="absolute top-1 left-1 bg-[#171717] text-white text-[8px] font-extrabold px-1.5 py-0.5 tracking-wider uppercase">
+                              PRIMARY
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between w-full pt-1 text-[10px]">
+                          {idx !== 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryImage(idx)}
+                              className="text-[9px] font-bold text-neutral-600 hover:text-black uppercase tracking-tight"
+                            >
+                              Make Primary
+                            </button>
+                          ) : (
+                            <span className="text-[9px] font-bold text-emerald-700 uppercase">Cover Photo</span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProductImage(idx)}
+                            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                            title="Remove Photo"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Fallback Direct URL input */}
+              {/* Add Manual URL section */}
               <div className="pt-2 border-t border-[#e5e4df]">
                 <label className="block text-[9px] font-bold uppercase tracking-widest text-[#737373] mb-1">
-                  Or paste direct image URL manually:
+                  Add image by URL manually:
                 </label>
-                <input
-                  type="url"
-                  required
-                  value={newProductForm.imageUrl}
-                  onChange={e => setNewProductForm({ ...newProductForm, imageUrl: e.target.value })}
-                  placeholder="https://res.cloudinary.com/... or https://images.unsplash.com/..."
-                  className="w-full bg-white border border-[#e5e4df] p-2 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={manualUrlInput}
+                    onChange={e => setManualUrlInput(e.target.value)}
+                    placeholder="https://res.cloudinary.com/... or https://images.unsplash.com/..."
+                    className="flex-1 bg-white border border-[#e5e4df] p-2 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddManualUrl}
+                    className="px-3 py-2 bg-[#171717] text-white text-[10px] font-bold uppercase tracking-wider hover:bg-black"
+                  >
+                    Add URL
+                  </button>
+                </div>
               </div>
             </div>
 

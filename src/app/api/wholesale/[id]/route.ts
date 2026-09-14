@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Enquiry ID is required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('inveins_wholesale_enquiries')
       .select('*')
       .eq('id', id)
@@ -61,7 +61,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: 'Enquiry ID is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('inveins_wholesale_enquiries')
       .delete()
       .eq('id', id);

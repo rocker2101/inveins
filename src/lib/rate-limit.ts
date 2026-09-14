@@ -10,10 +10,11 @@ interface WindowRecord {
   resetTime: number;
 }
 
-// In-memory sliding-window store
+// Memory safety cap
+const MAX_TRACKER_KEYS = 10000;
 const tracker = new Map<string, WindowRecord>();
 
-// Cleanup stale entries every 5 minutes to prevent memory leaks
+// Cleanup stale entries every 3 minutes
 if (typeof setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now();
@@ -22,22 +23,28 @@ if (typeof setInterval !== "undefined") {
         tracker.delete(key);
       }
     });
-  }, 5 * 60 * 1000);
+  }, 3 * 60 * 1000);
 }
 
 /**
- * Extracts client IP address from Next.js request headers
+ * Extracts and sanitizes client IP address from Next.js request headers
  */
 export function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
+  let rawIp = "127.0.0.1";
+
   if (forwarded) {
-    return forwarded.split(",")[0].trim();
+    rawIp = forwarded.split(",")[0].trim();
+  } else {
+    const realIp = req.headers.get("x-real-ip");
+    if (realIp) {
+      rawIp = realIp.trim();
+    }
   }
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
-  }
-  return "127.0.0.1";
+
+  // Strip port numbers if present (e.g. 192.168.1.1:54321 -> 192.168.1.1)
+  const cleanIp = rawIp.replace(/:\d+$/, "").replace(/^\[|\]$/g, "");
+  return cleanIp.slice(0, 45); // Max length for IPv6 string representation
 }
 
 /**
@@ -51,6 +58,11 @@ export function checkRateLimit(
   const ip = getClientIp(req);
   const key = `${endpointKey}:${ip}`;
   const now = Date.now();
+
+  // Prevent memory exhaustion under massive distributed IP spoofing
+  if (tracker.size > MAX_TRACKER_KEYS) {
+    tracker.clear();
+  }
 
   const record = tracker.get(key);
 

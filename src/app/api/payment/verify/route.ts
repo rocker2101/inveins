@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRazorpaySignature } from '@/lib/payment-security';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
+import { logSecurityEvent } from '@/lib/audit-logger';
+import { getClientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+
   try {
     const body = await req.json();
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, order_id } = body;
@@ -25,6 +29,14 @@ export async function POST(req: NextRequest) {
     );
 
     if (!isValid) {
+      logSecurityEvent({
+        event: 'FORGED_PAYMENT_SIGNATURE_ATTEMPT',
+        severity: 'CRITICAL',
+        ip,
+        endpoint: '/api/payment/verify',
+        metadata: { razorpay_order_id, razorpay_payment_id, order_id },
+      });
+
       return NextResponse.json(
         { success: false, message: 'Invalid or forged payment signature detected. Transaction rejected.' },
         { status: 400 }
@@ -33,12 +45,12 @@ export async function POST(req: NextRequest) {
 
     let confirmedOrder = null;
 
-    // 2. Update order in Supabase to Confirmed
+    // 2. Update order in Supabase to Confirmed using privileged service-role
     if (order_id) {
       const cleanOrderId = sanitizeString(order_id);
       const cleanPaymentId = sanitizeString(razorpay_payment_id);
 
-      const { data: updatedOrder, error: updateError } = await supabase
+      const { data: updatedOrder, error: updateError } = await supabaseAdmin
         .from('inveins_orders')
         .update({
           status: 'Confirmed',
@@ -52,6 +64,14 @@ export async function POST(req: NextRequest) {
       if (!updateError && updatedOrder) {
         confirmedOrder = updatedOrder;
 
+        logSecurityEvent({
+          event: 'PAYMENT_VERIFIED_SUCCESS',
+          severity: 'INFO',
+          ip,
+          endpoint: '/api/payment/verify',
+          metadata: { orderId: cleanOrderId, paymentId: cleanPaymentId },
+        });
+
         // 3. Atomically decrement stock for purchased items
         try {
           const rawItems = typeof updatedOrder.items === 'string'
@@ -64,14 +84,14 @@ export async function POST(req: NextRequest) {
               const qty = Number(item?.quantity) || 1;
               if (prodId) {
                 // Try calling atomic RPC function if present, otherwise direct update
-                const { error: rpcError } = await supabase.rpc('decrement_product_stock', {
+                const { error: rpcError } = await supabaseAdmin.rpc('decrement_product_stock', {
                   product_id: prodId,
                   qty,
                 });
 
                 if (rpcError) {
                   // Fallback to direct decrement query
-                  const { data: currentProd } = await supabase
+                  const { data: currentProd } = await supabaseAdmin
                     .from('inveins_products')
                     .select('available_stock')
                     .eq('id', prodId)
@@ -79,7 +99,7 @@ export async function POST(req: NextRequest) {
 
                   if (currentProd) {
                     const newStock = Math.max(0, (Number(currentProd.available_stock) || 0) - qty);
-                    await supabase
+                    await supabaseAdmin
                       .from('inveins_products')
                       .update({
                         available_stock: newStock,

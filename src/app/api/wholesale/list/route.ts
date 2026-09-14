@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const authError = requireAdminSession(req);
     if (authError) return authError;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('inveins_wholesale_enquiries')
       .select('*')
       .order('created_at', { ascending: false });

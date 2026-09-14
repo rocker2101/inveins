@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     if (authError) return authError;
 
     // 1. Query Orders count & sum subtotal
-    const { data: ordersData, error: ordersError } = await supabase
+    const { data: ordersData, error: ordersError } = await supabaseAdmin
       .from('inveins_orders')
       .select('id, subtotal, grand_total, status');
 
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const totalRevenue = orders.reduce((sum: number, o: any) => sum + (Number(o.subtotal) || 0), 0);
 
     // 2. Query Wholesale Enquiries count
-    const { count: wholesaleCount, error: wsError } = await supabase
+    const { count: wholesaleCount, error: wsError } = await supabaseAdmin
       .from('inveins_wholesale_enquiries')
       .select('*', { count: 'exact', head: true });
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Query Catalog Items count (from inveins_products)
-    const { count: catalogCount, error: prodError } = await supabase
+    const { count: catalogCount, error: prodError } = await supabaseAdmin
       .from('inveins_products')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);

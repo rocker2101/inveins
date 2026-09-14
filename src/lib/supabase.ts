@@ -1,9 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jpbotzytaekgvewyxljl.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwYm90enl0YWVrZ3Zld3l4bGpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5OTMwNDAsImV4cCI6MjEwMjU2OTA0MH0._NTo0-jHiKIksfnvcbFuaWjJ87dmXUBLjrY-14I6kPY';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+if (typeof window === 'undefined' && !supabaseUrl) {
+  console.warn('[SECURITY NOTICE] NEXT_PUBLIC_SUPABASE_URL is not set in environment.');
+}
+
+/**
+ * Public Supabase client for client-side and unprivileged operations
+ */
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-anon-key', {
+  auth: { persistSession: false },
+  global: {
+    fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }),
+  },
+});
+
+/**
+ * Privileged Supabase client for server-side API routes bypassing RLS with service_role
+ */
+export const supabaseAdmin = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseServiceKey || 'placeholder-key', {
   auth: { persistSession: false },
   global: {
     fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }),

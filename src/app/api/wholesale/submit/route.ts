@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString, isValidEmail, isValidPhone, normalizePhone } from '@/lib/sanitize';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logSecurityEvent } from '@/lib/audit-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, company, email, phone, cityCountry, productInterest, quantity, message } = body;
+    const { name, company, email, phone, cityCountry, productInterest, quantity, message, company_website_hp } = body;
+
+    // Honeypot anti-bot check: Reject if hidden field is filled by automated spambots
+    if (company_website_hp) {
+      logSecurityEvent({
+        event: 'SPAMBOT_HONEYPOT_TRIGGERED',
+        severity: 'WARNING',
+        endpoint: '/api/wholesale/submit',
+      });
+      return NextResponse.json({ success: false, message: 'Submission rejected' }, { status: 400 });
+    }
 
     if (!name || !phone || !email) {
       return NextResponse.json(
@@ -55,7 +66,7 @@ export async function POST(req: NextRequest) {
       created_at: nowIso,
     };
 
-    const { error } = await supabase.from('inveins_wholesale_enquiries').insert(cleanRecord);
+    const { error } = await supabaseAdmin.from('inveins_wholesale_enquiries').insert(cleanRecord);
 
     if (error) {
       console.error('Supabase error inserting wholesale enquiry:', error);

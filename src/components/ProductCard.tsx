@@ -60,8 +60,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             alt={product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="relative z-1 object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out p-1.5"
+            className={`relative z-1 object-contain object-center transition-all duration-500 ease-out p-1.5 ${
+              product.images[1] && isHovered ? 'opacity-0 scale-105' : 'opacity-100 group-hover:scale-105'
+            }`}
           />
+          {product.images[1] && (
+            <Image
+              src={product.images[1]}
+              alt={`${product.name} alternate view`}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className={`relative z-2 object-contain object-center transition-all duration-500 ease-out p-1.5 ${
+                isHovered ? 'opacity-100 scale-105' : 'opacity-0'
+              }`}
+            />
+          )}
         </Link>
         
         {/* Status Badge */}

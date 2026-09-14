@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
 import { getSessionFromRequest, requireAdminSession } from '@/lib/auth';
 import { verifyOrderToken } from '@/lib/payment-security';
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Order ID is required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('inveins_orders')
       .select('*')
       .eq('id', id)
@@ -88,7 +88,7 @@ export async function PATCH(
       updateData.tracking_number = sanitizeString(body.trackingNumber);
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('inveins_orders')
       .update(updateData)
       .eq('id', id)
@@ -120,7 +120,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: 'Order ID is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('inveins_orders')
       .delete()
       .eq('id', id);

@@ -101,8 +101,9 @@ export function verifyOrderToken(
   customerPhone: string,
   createdAt: string,
   token: string,
-  secret: string = process.env.ORDER_SIGNING_SECRET || 'inveins-order-integrity-hmac-secret-2026'
+  secret: string = process.env.ORDER_SIGNING_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'inveins_dev_order_secret_ephemeral')
 ): boolean {
+  if (!secret) return false;
   try {
     const payload = `${orderId}|${grandTotal}|${customerPhone}|${createdAt}`;
     const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');

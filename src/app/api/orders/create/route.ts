@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PRODUCTS } from '@/data/products';
 import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePhone } from '@/lib/sanitize';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { createRazorpayOrder } from '@/lib/payment-security';
 
 export const dynamic = 'force-dynamic';
 
-const ORDER_SIGNING_SECRET = process.env.ORDER_SIGNING_SECRET || 'inveins-order-integrity-hmac-secret-2026';
+function getOrderSigningSecret(): string {
+  const secret = process.env.ORDER_SIGNING_SECRET?.trim();
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('CRITICAL: ORDER_SIGNING_SECRET is not set in production');
+  }
+  return 'inveins_dev_order_secret_ephemeral';
+}
 const VALID_COUPONS: Record<string, number> = {
   FIRST10: 10,
   INVEINS15: 15,
@@ -67,7 +74,7 @@ export async function POST(req: NextRequest) {
     const verifiedItems = [];
 
     // Query DB products for accurate current pricing if available, else static catalogue
-    const { data: dbProducts } = await supabase.from('inveins_products').select('*');
+    const { data: dbProducts } = await supabaseAdmin.from('inveins_products').select('*');
     const availableCatalogue = (dbProducts && dbProducts.length > 0) ? dbProducts : PRODUCTS;
 
     for (const rawItem of items) {
@@ -141,7 +148,7 @@ export async function POST(req: NextRequest) {
     // 5. Generate Cryptographic Order Verification Token (HMAC-SHA256)
     const verificationPayload = `${orderId}|${grandTotal}|${sanitizedCustomer.phone}|${nowIso}`;
     const verificationToken = crypto
-      .createHmac('sha256', ORDER_SIGNING_SECRET)
+      .createHmac('sha256', getOrderSigningSecret())
       .update(verificationPayload)
       .digest('hex');
 
@@ -194,7 +201,7 @@ export async function POST(req: NextRequest) {
 
     // 6. Persist order directly into Supabase PostgreSQL database
     try {
-      const { error: dbError } = await supabase.from('inveins_orders').insert({
+      const { error: dbError } = await supabaseAdmin.from('inveins_orders').insert({
         id: orderId,
         customer: sanitizedCustomer,
         items: verifiedItems,

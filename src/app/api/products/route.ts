@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
 
 import { requireAdminSession } from '@/lib/auth';
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const includeInactive = searchParams.get('all') === 'true';
 
-    let query = supabase.from('inveins_products').select('*');
+    let query = supabaseAdmin.from('inveins_products').select('*');
     if (!includeInactive) {
       query = query.eq('is_active', true);
     }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('inveins_products')
       .insert([newRow])
       .select()
