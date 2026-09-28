@@ -68,6 +68,68 @@ export default function AboutPage() {
         </div>
       </div>
 
+      {/* MEET THE FOUNDER SECTION */}
+      <div className="bg-white border border-[#e5e4df] overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-5 relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-neutral-100 overflow-hidden border-b lg:border-b-0 lg:border-r border-[#e5e4df]">
+            <Image
+              src="/images/founder.jpg"
+              alt="Founder of INVEINS"
+              fill
+              className="object-cover"
+              onError={(e: any) => {
+                // Graceful fallback to Kanpur Studio editorial if custom photo is not yet copied
+                e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1000&q=85";
+              }}
+            />
+            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-xs px-3.5 py-2 border border-[#e5e4df]">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#171717] block">
+                FOUNDER & CREATIVE DIRECTOR
+              </span>
+              <span className="text-[10px] text-[#737373] font-medium">
+                INVEINS Kanpur Studio
+              </span>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7 p-8 sm:p-12 space-y-6">
+            <div className="space-y-2">
+              <span className="text-[10px] font-extrabold tracking-widest text-[#cc785c] uppercase">
+                THE FOUNDER'S VISION
+              </span>
+              <h2 className="font-heading font-extrabold text-3xl sm:text-4xl text-[#171717] tracking-tight leading-tight">
+                "CLOTHES SHOULD HAVE WEIGHT, INTEGRITY & PURPOSE."
+              </h2>
+            </div>
+
+            <p className="text-xs sm:text-sm text-[#737373] leading-relaxed">
+              INVEINS was born out of a fundamental conviction: modern Indian streetwear and activewear deserve the structural integrity of custom architectural fabrics without synthetic shortcuts.
+            </p>
+
+            <p className="text-xs sm:text-sm text-[#737373] leading-relaxed">
+              From our studio in Kanpur, we oversee every textile blend personally — from custom 280-420 GSM French Terry knits that drape without clinging, to 4-way stretch compression gear designed for high-performance recovery. Every garment is crafted to become your everyday uniform.
+            </p>
+
+            <div className="pt-4 border-t border-[#e5e4df] flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <span className="font-heading font-extrabold text-sm uppercase tracking-wider text-[#171717] block">
+                  FOUNDER & CRAFTSMAN
+                </span>
+                <span className="text-[11px] text-[#737373]">
+                  INVEINS Apparel Studio • Kanpur, India
+                </span>
+              </div>
+              <Link
+                href="/contact"
+                className="text-xs font-bold uppercase tracking-wider text-[#171717] hover:text-[#cc785c] flex items-center gap-1.5"
+              >
+                Get In Touch <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

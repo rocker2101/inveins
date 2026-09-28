@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
     }
 
     const orders = ordersData || [];
-    const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((sum: number, o: any) => sum + (Number(o.subtotal) || 0), 0);
+    const validOrders = orders.filter((o: any) => o.status !== 'Cancelled');
+    const totalOrders = validOrders.length;
+    const totalRevenue = validOrders.reduce((sum: number, o: any) => sum + (Number(o.grand_total ?? o.subtotal) || 0), 0);
 
     // 2. Query Wholesale Enquiries count
     const { count: wholesaleCount, error: wsError } = await supabaseAdmin

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X } from 'lucide-react';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -24,6 +24,7 @@ export default function AdminPage() {
     deletedProductIds,
     updateProductStock,
     addNewProduct,
+    updateProduct,
     deleteProduct,
     restoreDefaultProducts,
   } = useCart();
@@ -190,11 +191,12 @@ export default function AdminPage() {
 
   // New Product Form State
   const [manualUrlInput, setManualUrlInput] = useState('');
+  const [customSizeInput, setCustomSizeInput] = useState('');
   const [newProductForm, setNewProductForm] = useState({
     name: '',
     price: '',
     currency: '₹',
-    category: 'Tees' as Product['category'],
+    category: 'Gym Compression' as Product['category'],
     badge: 'NEW' as Product['badge'],
     tagline: '',
     description: '',
@@ -203,6 +205,130 @@ export default function AdminPage() {
     images: [] as string[],
     sizes: ['S', 'M', 'L', 'XL'],
   });
+
+  // Editing Product Modal State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editCustomSizeInput, setEditCustomSizeInput] = useState('');
+  const [editManualUrlInput, setEditManualUrlInput] = useState('');
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false);
+  const [editUploadError, setEditUploadError] = useState<string | null>(null);
+
+  const [editProductForm, setEditProductForm] = useState<{
+    name: string;
+    price: string;
+    category: Product['category'];
+    badge: Product['badge'];
+    tagline: string;
+    description: string;
+    availableStock: string;
+    images: string[];
+    sizes: string[];
+  }>({
+    name: '',
+    price: '',
+    category: 'Tees',
+    badge: 'NEW',
+    tagline: '',
+    description: '',
+    availableStock: '20',
+    images: [],
+    sizes: ['S', 'M', 'L', 'XL'],
+  });
+
+  const SIZE_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Free Size', '28', '30', '32', '34', '36', '38'];
+  const CATEGORY_LIST: { label: string; value: Product['category'] }[] = [
+    { label: 'Gym Compression', value: 'Gym Compression' },
+    { label: 'Tees & Tops', value: 'Tees' },
+    { label: 'Lowers & Joggers', value: 'Joggers' },
+    { label: 'Shirts & Polos', value: 'Shirts' },
+    { label: 'Hoodies & Outerwear', value: 'Outerwear' },
+    { label: 'Custom B2B Merchandise', value: 'Custom B2B' },
+  ];
+
+  const handleStartEdit = (prod: Product) => {
+    setEditingProduct(prod);
+    setEditProductForm({
+      name: prod.name,
+      price: String(prod.price),
+      category: prod.category || 'Tees',
+      badge: prod.badge || 'NEW',
+      tagline: prod.tagline || '',
+      description: prod.description || '',
+      availableStock: String(prod.availableStock),
+      images: Array.isArray(prod.images) ? [...prod.images] : [],
+      sizes: Array.isArray(prod.sizes) && prod.sizes.length > 0 ? [...prod.sizes] : ['S', 'M', 'L', 'XL'],
+    });
+    setEditManualUrlInput('');
+    setEditCustomSizeInput('');
+    setEditUploadError(null);
+  };
+
+  const handleEditPhonePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const filesArray = Array.from(fileList);
+    setIsUploadingEditPhoto(true);
+    setEditUploadError(null);
+    try {
+      const formData = new FormData();
+      for (const file of filesArray) {
+        formData.append('files', file);
+      }
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || (!data.success && !data.url && !data.urls)) {
+        throw new Error(data.message || 'Failed to upload photo(s)');
+      }
+      const returnedUrls: string[] = data.urls || (data.url ? [data.url] : []);
+      setEditProductForm(prev => {
+        const combined = Array.from(new Set([...(prev.images || []), ...returnedUrls]));
+        return { ...prev, images: combined };
+      });
+      setActionToast({ message: `${returnedUrls.length} photo(s) added to product!`, type: 'success' });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err: any) {
+      setEditUploadError(err?.message || 'Upload failed');
+    } finally {
+      setIsUploadingEditPhoto(false);
+      if (editFileInputRef.current) editFileInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setIsSavingEdit(true);
+    try {
+      const success = await updateProduct(editingProduct.id, {
+        name: editProductForm.name.trim(),
+        price: parseFloat(editProductForm.price) || editingProduct.price,
+        category: editProductForm.category,
+        badge: editProductForm.badge,
+        availableStock: parseInt(editProductForm.availableStock) || 0,
+        sizes: editProductForm.sizes.length > 0 ? editProductForm.sizes : ['S', 'M', 'L', 'XL'],
+        tagline: editProductForm.tagline.trim(),
+        description: editProductForm.description.trim(),
+        images: editProductForm.images.length > 0 ? editProductForm.images : editingProduct.images,
+      });
+      if (success) {
+        setActionToast({ message: `"${editProductForm.name}" updated successfully in database!`, type: 'success' });
+        setEditingProduct(null);
+        fetchDashboardStats();
+      } else {
+        setActionToast({ message: `Failed to update product. Please try again.`, type: 'error' });
+      }
+    } catch (err) {
+      setActionToast({ message: 'Error saving product updates.', type: 'error' });
+    } finally {
+      setIsSavingEdit(false);
+      setTimeout(() => setActionToast(null), 4000);
+    }
+  };
 
   const fetchDashboardStats = useCallback(async () => {
     try {
@@ -227,14 +353,10 @@ export default function AdminPage() {
         if (data.authenticated) {
           setIsAuthenticated(true);
         } else {
-          const storedAuth = localStorage.getItem('inveins_admin_auth');
-          if (storedAuth === 'true') {
-            setIsAuthenticated(true);
-          }
+          setIsAuthenticated(false);
         }
       } catch (e) {
-        const storedAuth = localStorage.getItem('inveins_admin_auth');
-        if (storedAuth === 'true') setIsAuthenticated(true);
+        setIsAuthenticated(false);
       } finally {
         setIsCheckingSession(false);
       }
@@ -282,9 +404,6 @@ export default function AdminPage() {
       if (res.ok && data.success) {
         setIsAuthenticated(true);
         setPinError(false);
-        try {
-          localStorage.setItem('inveins_admin_auth', 'true');
-        } catch (e) {}
       } else {
         setPinError(true);
         setErrorMessage(data.message || 'Incorrect Admin Passcode');
@@ -303,9 +422,6 @@ export default function AdminPage() {
     } catch (e) {}
     setIsAuthenticated(false);
     setPinInput('');
-    try {
-      localStorage.removeItem('inveins_admin_auth');
-    } catch (e) {}
   };
 
   const handleAddProductSubmit = async (e: React.FormEvent) => {
@@ -352,11 +468,12 @@ export default function AdminPage() {
     }, 1500);
 
     setManualUrlInput('');
+    setCustomSizeInput('');
     setNewProductForm({
       name: '',
       price: '',
       currency: '₹',
-      category: 'Tees',
+      category: 'Gym Compression',
       badge: 'NEW',
       tagline: '',
       description: '',
@@ -911,13 +1028,23 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setProductToDelete(prod)}
-                      className="min-h-[36px] min-w-[36px] flex items-center justify-center border border-red-200 text-red-700 hover:bg-red-700 hover:text-white transition-colors"
-                      title={`Delete ${prod.name}`}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleStartEdit(prod)}
+                        className="min-h-[36px] px-2.5 flex items-center justify-center gap-1 border border-[#171717] bg-white hover:bg-[#171717] hover:text-white text-[#171717] transition-colors text-[10px] font-bold uppercase tracking-wider"
+                        title={`Edit ${prod.name}`}
+                      >
+                        <Pencil size={12} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => setProductToDelete(prod)}
+                        className="min-h-[36px] min-w-[36px] flex items-center justify-center border border-red-200 text-red-700 hover:bg-red-700 hover:text-white transition-colors"
+                        title={`Delete ${prod.name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1022,6 +1149,14 @@ export default function AdminPage() {
                       <td className="p-3.5">
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => handleStartEdit(prod)}
+                            className="border border-[#171717] bg-white hover:bg-[#171717] hover:text-white text-[#171717] text-[10px] font-bold uppercase tracking-wider py-1.5 px-3 flex items-center gap-1 transition-colors"
+                            title={`Edit ${prod.name}`}
+                          >
+                            <Pencil size={12} />
+                            <span>Edit</span>
+                          </button>
+                          <button
                             onClick={async () => {
                               await updateProductStock(prod.id, stockVal);
                               setActionToast({ message: `Stock updated for ${prod.name}`, type: 'success' });
@@ -1110,10 +1245,11 @@ export default function AdminPage() {
                   onChange={e => setNewProductForm({ ...newProductForm, category: e.target.value as any })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
                 >
-                  <option value="Tees">Tees</option>
-                  <option value="Outerwear">Outerwear</option>
-                  <option value="Denim">Denim</option>
-                  <option value="Layers">Layers</option>
+                  {CATEGORY_LIST.map(cat => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -1172,6 +1308,106 @@ export default function AdminPage() {
                 placeholder="Detailed garment specifications..."
                 className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
               />
+            </div>
+
+            {/* AVAILABLE SIZES SELECTOR */}
+            <div className="space-y-3 p-4 bg-[#faf9f5] border border-[#e5e4df]">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
+                  AVAILABLE SIZES ({newProductForm.sizes.length} selected) *
+                </label>
+                <span className="text-[10px] font-medium text-[#737373]">
+                  Tap preset or type custom size below
+                </span>
+              </div>
+
+              {/* Preset Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {SIZE_PRESETS.map(sz => {
+                  const isSelected = newProductForm.sizes.includes(sz);
+                  return (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => {
+                        setNewProductForm(prev => {
+                          const current = prev.sizes || [];
+                          const next = current.includes(sz)
+                            ? current.filter(s => s !== sz)
+                            : [...current, sz];
+                          return { ...prev, sizes: next };
+                        });
+                      }}
+                      className={`text-xs font-bold px-3 py-1.5 border transition-all ${
+                        isSelected
+                          ? 'bg-[#171717] text-[#f5f4f0] border-[#171717] shadow-xs'
+                          : 'bg-white text-[#737373] border-[#d5d4ce] hover:border-[#171717] hover:text-[#171717]'
+                      }`}
+                    >
+                      {sz} {isSelected && '✓'}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Size Input */}
+              <div className="flex gap-2 pt-1">
+                <input
+                  type="text"
+                  value={customSizeInput}
+                  onChange={e => setCustomSizeInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = customSizeInput.trim().toUpperCase();
+                      if (val && !newProductForm.sizes.includes(val)) {
+                        setNewProductForm(prev => ({ ...prev, sizes: [...prev.sizes, val] }));
+                        setCustomSizeInput('');
+                      }
+                    }
+                  }}
+                  placeholder="Custom size (e.g. 40, UK 9, FREE SIZE)"
+                  className="flex-1 bg-white border border-[#e5e4df] px-3 py-2 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = customSizeInput.trim().toUpperCase();
+                    if (val && !newProductForm.sizes.includes(val)) {
+                      setNewProductForm(prev => ({ ...prev, sizes: [...prev.sizes, val] }));
+                      setCustomSizeInput('');
+                    }
+                  }}
+                  className="bg-[#171717] text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors"
+                >
+                  + Add Size
+                </button>
+              </div>
+
+              {/* Active Sizes Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                <span className="font-bold text-[#171717] uppercase tracking-wider text-[10px]">Selected:</span>
+                {newProductForm.sizes.length === 0 ? (
+                  <span className="text-red-600 font-bold">⚠️ Please select at least one size</span>
+                ) : (
+                  newProductForm.sizes.map(sz => (
+                    <span
+                      key={sz}
+                      className="inline-flex items-center gap-1 bg-[#171717] text-white px-2 py-0.5 text-xs font-bold"
+                    >
+                      {sz}
+                      <button
+                        type="button"
+                        onClick={() => setNewProductForm(prev => ({ ...prev, sizes: prev.sizes.filter(s => s !== sz) }))}
+                        className="hover:text-red-300 ml-1 text-xs font-bold"
+                        title="Remove size"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
             </div>
 
             {/* MULTI-PHOTO CATALOG GALLERY UPLOADER */}
@@ -1443,6 +1679,387 @@ export default function AdminPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* MODAL: EDIT PRODUCT DETAILS (FULL EDITING SUITE) */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white border border-[#e5e4df] max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl space-y-6 my-auto">
+            <div className="flex items-center justify-between border-b border-[#e5e4df] pb-4">
+              <div>
+                <h3 className="font-heading font-extrabold text-xl text-[#171717] uppercase tracking-wider">
+                  EDIT PRODUCT
+                </h3>
+                <p className="text-xs text-[#737373] mt-0.5">
+                  ID: <span className="font-mono text-neutral-800">{editingProduct.id}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="w-9 h-9 flex items-center justify-center border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    PRODUCT NAME *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editProductForm.name}
+                    onChange={e => setEditProductForm({ ...editProductForm, name: e.target.value })}
+                    className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    PRICE IN ₹ *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={editProductForm.price}
+                    onChange={e => setEditProductForm({ ...editProductForm, price: e.target.value })}
+                    className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    CATEGORY *
+                  </label>
+                  <select
+                    value={editProductForm.category}
+                    onChange={e => setEditProductForm({ ...editProductForm, category: e.target.value as any })}
+                    className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  >
+                    {CATEGORY_LIST.map(cat => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    STATUS BADGE *
+                  </label>
+                  <select
+                    value={editProductForm.badge}
+                    onChange={e => setEditProductForm({ ...editProductForm, badge: e.target.value as any })}
+                    className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  >
+                    <option value="NEW">NEW</option>
+                    <option value="HOT">HOT</option>
+                    <option value="BESTSELLER">BESTSELLER</option>
+                    <option value="LIMITED">LIMITED</option>
+                    <option value="SOLD OUT">SOLD OUT</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    STOCK COUNT *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    value={editProductForm.availableStock}
+                    onChange={e => setEditProductForm({ ...editProductForm, availableStock: e.target.value })}
+                    className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                  SHORT TAGLINE
+                </label>
+                <input
+                  type="text"
+                  value={editProductForm.tagline}
+                  onChange={e => setEditProductForm({ ...editProductForm, tagline: e.target.value })}
+                  placeholder="Tagline displayed on cards"
+                  className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                  FULL DESCRIPTION
+                </label>
+                <textarea
+                  rows={3}
+                  value={editProductForm.description}
+                  onChange={e => setEditProductForm({ ...editProductForm, description: e.target.value })}
+                  placeholder="Detailed specifications"
+                  className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                />
+              </div>
+
+              {/* SIZES MANAGEMENT IN EDIT */}
+              <div className="space-y-3 p-4 bg-[#faf9f5] border border-[#e5e4df]">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
+                    AVAILABLE SIZES ({editProductForm.sizes.length} selected) *
+                  </label>
+                  <span className="text-[10px] text-[#737373]">Tap to toggle or add custom</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {SIZE_PRESETS.map(sz => {
+                    const isSelected = editProductForm.sizes.includes(sz);
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => {
+                          setEditProductForm(prev => {
+                            const current = prev.sizes || [];
+                            const next = current.includes(sz)
+                              ? current.filter(s => s !== sz)
+                              : [...current, sz];
+                            return { ...prev, sizes: next };
+                          });
+                        }}
+                        className={`text-xs font-bold px-3 py-1.5 border transition-all ${
+                          isSelected
+                            ? 'bg-[#171717] text-[#f5f4f0] border-[#171717] shadow-xs'
+                            : 'bg-white text-[#737373] border-[#d5d4ce] hover:border-[#171717] hover:text-[#171717]'
+                        }`}
+                      >
+                        {sz} {isSelected && '✓'}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={editCustomSizeInput}
+                    onChange={e => setEditCustomSizeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = editCustomSizeInput.trim().toUpperCase();
+                        if (val && !editProductForm.sizes.includes(val)) {
+                          setEditProductForm(prev => ({ ...prev, sizes: [...prev.sizes, val] }));
+                          setEditCustomSizeInput('');
+                        }
+                      }
+                    }}
+                    placeholder="Custom size (e.g. 38, UK 10)"
+                    className="flex-1 bg-white border border-[#e5e4df] px-3 py-2 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = editCustomSizeInput.trim().toUpperCase();
+                      if (val && !editProductForm.sizes.includes(val)) {
+                        setEditProductForm(prev => ({ ...prev, sizes: [...prev.sizes, val] }));
+                        setEditCustomSizeInput('');
+                      }
+                    }}
+                    className="bg-[#171717] text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors"
+                  >
+                    + Add Size
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className="font-bold text-[#171717] uppercase tracking-wider text-[10px]">Active Sizes:</span>
+                  {editProductForm.sizes.length === 0 ? (
+                    <span className="text-red-600 font-bold">⚠️ Please select at least one size</span>
+                  ) : (
+                    editProductForm.sizes.map(sz => (
+                      <span
+                        key={sz}
+                        className="inline-flex items-center gap-1 bg-[#171717] text-white px-2 py-0.5 text-xs font-bold"
+                      >
+                        {sz}
+                        <button
+                          type="button"
+                          onClick={() => setEditProductForm(prev => ({ ...prev, sizes: prev.sizes.filter(s => s !== sz) }))}
+                          className="hover:text-red-300 ml-1 text-xs font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* PHOTOS IN EDIT */}
+              <div className="space-y-3 p-4 bg-[#faf9f5] border border-[#e5e4df]">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
+                    PRODUCT PHOTOS ({editProductForm.images?.length || 0})
+                  </label>
+                  <span className="text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 font-bold">
+                    ☁️ Add / Reorder / Delete
+                  </span>
+                </div>
+
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleEditPhonePhotoUpload}
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => !isUploadingEditPhoto && editFileInputRef.current?.click()}
+                  className={`border-2 border-dashed p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1 ${
+                    isUploadingEditPhoto
+                      ? 'border-[#171717] bg-white cursor-wait'
+                      : 'border-[#d5d4ce] hover:border-[#171717] bg-white active:bg-neutral-100'
+                  }`}
+                >
+                  {isUploadingEditPhoto ? (
+                    <div className="flex items-center gap-2 py-1">
+                      <Loader2 size={16} className="animate-spin text-[#171717]" />
+                      <span className="text-xs font-bold text-[#171717] uppercase">Uploading to Cloudinary...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud size={20} className="text-[#171717]" />
+                      <span className="text-xs font-extrabold uppercase text-[#171717]">
+                        Upload Additional Photos From Phone/Device
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {editUploadError && (
+                  <p className="text-xs text-red-600 font-bold bg-red-50 p-2 border border-red-200">
+                    ⚠️ {editUploadError}
+                  </p>
+                )}
+
+                {/* Manual URL input in Edit */}
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={editManualUrlInput}
+                    onChange={e => setEditManualUrlInput(e.target.value)}
+                    placeholder="Or paste image URL (https://...)"
+                    className="flex-1 bg-white border border-[#e5e4df] p-2 text-xs text-[#171717] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editManualUrlInput.trim()) {
+                        const url = editManualUrlInput.trim();
+                        setEditProductForm(prev => ({
+                          ...prev,
+                          images: Array.from(new Set([...(prev.images || []), url])),
+                        }));
+                        setEditManualUrlInput('');
+                      }
+                    }}
+                    className="bg-[#171717] text-white px-3 py-1.5 text-xs font-bold uppercase hover:bg-black"
+                  >
+                    + Add URL
+                  </button>
+                </div>
+
+                {/* Thumbnails Grid in Edit */}
+                {editProductForm.images && editProductForm.images.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#e5e4df]">
+                    {editProductForm.images.map((imgUrl, idx) => (
+                      <div
+                        key={imgUrl + idx}
+                        className={`relative bg-white border p-1 flex flex-col items-center gap-1 ${
+                          idx === 0 ? 'border-[#171717] bg-neutral-50 shadow-xs' : 'border-[#e5e4df]'
+                        }`}
+                      >
+                        <div className="w-full h-20 bg-neutral-100 overflow-hidden relative">
+                          <img src={imgUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-contain" />
+                          {idx === 0 && (
+                            <span className="absolute top-1 left-1 bg-[#171717] text-white text-[8px] font-extrabold px-1.5 py-0.2 uppercase">
+                              PRIMARY
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between w-full pt-0.5 text-[9px]">
+                          {idx !== 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const list = [...editProductForm.images];
+                                const target = list.splice(idx, 1)[0];
+                                list.unshift(target);
+                                setEditProductForm(prev => ({ ...prev, images: list }));
+                              }}
+                              className="text-blue-600 font-bold hover:underline"
+                            >
+                              Make 1st
+                            </button>
+                          ) : (
+                            <span className="text-[#737373] font-semibold">1st photo</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditProductForm(prev => ({
+                                ...prev,
+                                images: prev.images.filter((_, i) => i !== idx),
+                              }));
+                            }}
+                            className="text-red-600 font-bold hover:underline ml-auto"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e5e4df]">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="bg-[#171717] hover:bg-black text-white text-xs font-bold uppercase tracking-wider py-2.5 px-6 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} /> SAVE PRODUCT CHANGES
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

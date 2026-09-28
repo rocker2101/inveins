@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 100" fill="none" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&amp;family=Inter:wght@700&amp;display=swap');
+      .inveins-text-light {
+        font-family: 'Caveat', cursive, system-ui, -apple-system, sans-serif;
+        font-weight: 700;
+        font-size: 78px;
+        fill: #faf9f5;
+      }
+      .inveins-tm-light {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        letter-spacing: 1.5px;
+        fill: #faf9f5;
+      }
+    </style>
+  </defs>
+  <text x="8" y="72" class="inveins-text-light">
+    Inveins<tspan class="inveins-tm-light" dy="-34" dx="5">TM</tspan>
+  </text>
+</svg>

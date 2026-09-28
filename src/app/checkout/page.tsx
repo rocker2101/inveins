@@ -154,6 +154,13 @@ export default function CheckoutPage() {
         return;
       }
 
+      // Safeguard: Online payment requested but gateway response not received - prevent free confirmation
+      if (paymentMethod === 'upi' || paymentMethod === 'card') {
+        setIsProcessing(false);
+        setErrorMsg('Payment gateway is currently unavailable for online transactions. Please select Cash on Delivery (COD) to place your order.');
+        return;
+      }
+
       // 3. Cash on Delivery (COD) or standard direct confirmation
       const verified = data.order;
       addOrder({

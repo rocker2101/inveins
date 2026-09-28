@@ -21,7 +21,7 @@ export const Footer: React.FC = () => {
             </div>
             <div>
               <h5 className="font-bold text-white uppercase tracking-wider">PAN-INDIA EXPRESS</h5>
-              <p className="text-[11px] text-neutral-400">Free delivery on orders ₹4,000+</p>
+              <p className="text-[11px] text-neutral-400">Free delivery on orders ₹999+</p>
             </div>
           </div>
 
@@ -64,11 +64,12 @@ export const Footer: React.FC = () => {
             <Link href="/" className="inline-block">
               <div className="relative h-10 w-36 flex items-center">
                 <Image
-                  src="/images/logo/inveins-logo-light.png"
+                  src="/images/logo/inveins-logo-light.svg"
                   alt="Inveins™"
                   fill
                   sizes="150px"
                   className="object-contain object-left"
+                  unoptimized
                 />
               </div>
             </Link>
@@ -111,8 +112,8 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/shop?category=Denim" className="text-neutral-400 hover:text-white transition-colors">
-                  Selvedge Denim
+                <Link href="/shop?category=Outerwear" className="text-neutral-400 hover:text-white transition-colors">
+                  Winter Outerwear
                 </Link>
               </li>
               <li>

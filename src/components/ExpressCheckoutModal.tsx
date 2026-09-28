@@ -126,6 +126,13 @@ export const ExpressCheckoutModal: React.FC = () => {
         return;
       }
 
+      // Online payment selected but gateway order not returned
+      if (paymentMethod === 'upi' || paymentMethod === 'card') {
+        setIsProcessing(false);
+        setErrorMsg('Payment gateway is currently unavailable for online transactions. Please select Cash on Delivery (COD).');
+        return;
+      }
+
       // Cash on Delivery
       const verified: Order = data.order;
       addOrder(verified);
@@ -146,7 +153,7 @@ export const ExpressCheckoutModal: React.FC = () => {
       `*Phone:* ${placedOrder.customer.phone}\n` +
       `*Address:* ${placedOrder.customer.address}, ${placedOrder.customer.city} - ${placedOrder.customer.pincode}\n\n` +
       `*Item:* ${expressProduct.name} (Size: ${selectedSize}) x${quantity}\n` +
-      `*Total Amount:* ₹${placedOrder.subtotal.toLocaleString('en-IN')}\n` +
+      `*Total Amount:* ₹${placedOrder.grandTotal.toLocaleString('en-IN')}\n` +
       `*Payment Mode:* ${placedOrder.paymentMethod.toUpperCase()}\n\n` +
       `Please confirm my order dispatch!`
     );
@@ -412,7 +419,7 @@ export const ExpressCheckoutModal: React.FC = () => {
                 </div>
                 <div className="flex justify-between font-bold pt-1">
                   <span>Total Paid:</span>
-                  <span>₹{placedOrder.subtotal.toLocaleString('en-IN')}</span>
+                  <span>₹{placedOrder.grandTotal.toLocaleString('en-IN')}</span>
                 </div>
               </div>
             )}

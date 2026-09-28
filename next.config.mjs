@@ -58,7 +58,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://5.imimg.com https://inveins.studio; connect-src 'self' https://*.supabase.co https://api.razorpay.com https://res.cloudinary.com; frame-src https://api.razorpay.com; base-uri 'self'; form-action 'self' https://api.razorpay.com;",
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://5.imimg.com https://inveins.studio; connect-src 'self' https://*.supabase.co https://api.razorpay.com https://res.cloudinary.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com; base-uri 'self'; form-action 'self' https://api.razorpay.com;",
   },
 ];
 

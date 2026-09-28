@@ -99,6 +99,7 @@ interface CartContextType {
   deletedProductIds: string[];
   updateProductStock: (productId: string, newStock: number, newBadge?: Product['badge']) => Promise<void>;
   addNewProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
+  updateProduct: (productId: string, updatedFields: Partial<Product>) => Promise<boolean>;
   deleteProduct: (productId: string) => Promise<boolean>;
   restoreDefaultProducts: () => void;
 
@@ -184,6 +185,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const savedAddr = localStorage.getItem('inveins_saved_address');
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
+
+      // Instant cache restoration: instantly display authoritative catalogue without 20s delay
+      const cachedCatalog = localStorage.getItem('inveins_cached_products');
+      if (cachedCatalog) {
+        const parsedCatalog = JSON.parse(cachedCatalog);
+        if (Array.isArray(parsedCatalog) && parsedCatalog.length > 0) {
+          setProductsList(parsedCatalog);
+        }
+      }
     } catch (e) {
       console.error('Failed to load local storage state', e);
     } finally {
@@ -207,6 +217,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const prodData = await prodRes.json();
         if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
           setProductsList(prodData.products);
+          try {
+            localStorage.setItem('inveins_cached_products', JSON.stringify(prodData.products));
+          } catch (storageErr) {}
         }
       }
 
@@ -504,7 +517,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: tempId,
     };
 
-    setProductsList(prev => [optimisticProduct, ...prev]);
+    setProductsList(prev => {
+      const next = [optimisticProduct, ...prev];
+      try { localStorage.setItem('inveins_cached_products', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
 
     try {
       const res = await fetch('/api/products', {
@@ -514,7 +531,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (res.ok && data.success && data.product) {
-        setProductsList(prev => [data.product, ...prev.filter(p => p.id !== tempId)]);
+        setProductsList(prev => {
+          const next = [data.product, ...prev.filter(p => p.id !== tempId)];
+          try { localStorage.setItem('inveins_cached_products', JSON.stringify(next)); } catch (e) {}
+          return next;
+        });
         return data.product;
       }
     } catch (err) {
@@ -524,9 +545,56 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return optimisticProduct;
   };
 
+  const updateProduct = async (productId: string, updatedFields: Partial<Product>): Promise<boolean> => {
+    // 1. Optimistic update in state
+    setProductsList(prev => {
+      const updated = prev.map(p => (p.id === productId ? { ...p, ...updatedFields } : p));
+      try {
+        localStorage.setItem('inveins_cached_products', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Also update any items in current cart if the product was updated
+    setItems(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        return { ...item, product: { ...item.product, ...updatedFields } };
+      }
+      return item;
+    }));
+
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields),
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.product) {
+        setProductsList(prev => {
+          const final = prev.map(p => (p.id === productId ? { ...p, ...data.product } : p));
+          try {
+            localStorage.setItem('inveins_cached_products', JSON.stringify(final));
+          } catch (e) {}
+          return final;
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to update product:', err);
+      refreshDatabaseData();
+      return false;
+    }
+  };
+
   const deleteProduct = async (productId: string): Promise<boolean> => {
     // Optimistic removal from product list, cart, and wishlist
-    setProductsList(prev => prev.filter(p => p.id !== productId));
+    setProductsList(prev => {
+      const next = prev.filter(p => p.id !== productId);
+      try { localStorage.setItem('inveins_cached_products', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
     setItems(prev => prev.filter(i => i.product.id !== productId));
     setWishlist(prev => prev.filter(id => id !== productId));
 
@@ -606,6 +674,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deletedProductIds,
         updateProductStock,
         addNewProduct,
+        updateProduct,
         deleteProduct,
         restoreDefaultProducts,
         isCartOpen,

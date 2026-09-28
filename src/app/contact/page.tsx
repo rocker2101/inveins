@@ -6,7 +6,9 @@ import { sanitizeString, isValidEmail } from '@/lib/sanitize';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [serverError, setServerError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,21 +16,36 @@ export default function ContactPage() {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValidEmail(formData.email)) {
       setEmailError('Please provide a valid email address.');
       return;
     }
     setEmailError('');
-    // Sanitized submission payload
-    const safeData = {
-      name: sanitizeString(formData.name),
-      email: sanitizeString(formData.email),
-      subject: sanitizeString(formData.subject),
-      message: sanitizeString(formData.message),
-    };
-    setSubmitted(true);
+    setServerError('');
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setServerError(data?.message || 'Could not submit your message. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setServerError('Network error. Please try again or message us on WhatsApp.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -194,11 +211,18 @@ export default function ContactPage() {
                 />
               </div>
 
+              {serverError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700">
+                  {serverError}
+                </div>
+              )}
+
               <button
                 type="submit"
-                className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors"
+                disabled={isSubmitting}
+                className="w-full bg-[#171717] hover:bg-black disabled:opacity-60 text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors"
               >
-                <Send size={15} /> SEND MESSAGE
+                <Send size={15} /> {isSubmitting ? 'SENDING...' : 'SEND MESSAGE'}
               </button>
             </form>
           )}

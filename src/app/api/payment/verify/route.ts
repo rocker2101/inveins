@@ -45,10 +45,26 @@ export async function POST(req: NextRequest) {
 
     let confirmedOrder = null;
 
-    // 2. Update order in Supabase to Confirmed using privileged service-role
+    // 2. Fetch existing order to check idempotency and prevent duplicate processing
     if (order_id) {
       const cleanOrderId = sanitizeString(order_id);
       const cleanPaymentId = sanitizeString(razorpay_payment_id);
+
+      const { data: existingOrder } = await supabaseAdmin
+        .from('inveins_orders')
+        .select('*')
+        .eq('id', cleanOrderId)
+        .maybeSingle();
+
+      // Idempotent guard: If already confirmed with a payment ID, return early without re-decrementing stock
+      if (existingOrder && existingOrder.status === 'Confirmed' && existingOrder.payment_id) {
+        return NextResponse.json({
+          success: true,
+          message: 'Payment already verified previously.',
+          paymentId: existingOrder.payment_id,
+          order: existingOrder,
+        });
+      }
 
       const { data: updatedOrder, error: updateError } = await supabaseAdmin
         .from('inveins_orders')

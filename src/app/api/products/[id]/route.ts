@@ -85,6 +85,33 @@ export async function PATCH(
     if (body.name !== undefined) {
       updateData.name = sanitizeString(body.name);
     }
+    if (body.category !== undefined) {
+      updateData.category = sanitizeString(body.category);
+    }
+    if (body.tagline !== undefined) {
+      updateData.tagline = sanitizeString(body.tagline);
+    }
+    if (body.description !== undefined) {
+      updateData.description = sanitizeString(body.description);
+    }
+    if (body.images !== undefined) {
+      updateData.images = Array.isArray(body.images) ? body.images : [body.images];
+    }
+    if (body.sizes !== undefined) {
+      updateData.sizes = Array.isArray(body.sizes) ? body.sizes : ['S', 'M', 'L', 'XL'];
+    }
+    if (body.details !== undefined) {
+      updateData.details = Array.isArray(body.details) ? body.details : [];
+    }
+    if (body.materialCare !== undefined) {
+      updateData.material_care = Array.isArray(body.materialCare) ? body.materialCare : [];
+    }
+    if (body.shippingInfo !== undefined) {
+      updateData.shipping_info = sanitizeString(body.shippingInfo);
+    }
+    if (body.returnsInfo !== undefined) {
+      updateData.returns_info = sanitizeString(body.returnsInfo);
+    }
 
     const { data, error } = await supabaseAdmin
       .from('inveins_products')
@@ -98,10 +125,29 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 
+    const formattedProduct = {
+      id: data.id,
+      name: data.name,
+      price: Number(data.price) || 0,
+      currency: data.currency || '₹',
+      category: data.category,
+      badge: data.badge || undefined,
+      tagline: data.tagline || '',
+      description: data.description || '',
+      availableStock: Number(data.available_stock) ?? 0,
+      images: Array.isArray(data.images) ? data.images : typeof data.images === 'string' ? JSON.parse(data.images) : [],
+      sizes: Array.isArray(data.sizes) ? data.sizes : typeof data.sizes === 'string' ? JSON.parse(data.sizes) : ['S', 'M', 'L', 'XL'],
+      details: Array.isArray(data.details) ? data.details : [],
+      materialCare: Array.isArray(data.material_care) ? data.material_care : [],
+      shippingInfo: data.shipping_info || '',
+      returnsInfo: data.returns_info || '',
+      isActive: data.is_active ?? true,
+    };
+
     return NextResponse.json({
       success: true,
       message: 'Product updated successfully',
-      product: data,
+      product: formattedProduct,
     });
   } catch (err: any) {
     console.error('Server error in PATCH /api/products/[id]:', err);
