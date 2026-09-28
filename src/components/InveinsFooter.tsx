@@ -85,6 +85,33 @@ export const Footer: React.FC = () => {
               </p>
               <p className="text-neutral-400">Shaurya Vishnoi (MD & CEO)</p>
             </div>
+
+            {/* Founder Profile Badge with Photo */}
+            <div className="flex items-center gap-3.5 pt-1">
+              <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#cc785c]/60 flex-shrink-0 shadow-md bg-neutral-900">
+                <Image
+                  src="/images/founder.jpg"
+                  alt="INVEINS Founder"
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                />
+              </div>
+              <div className="space-y-0.5 text-[11px]">
+                <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#cc785c] block">
+                  FOUNDER & CRAFTSMAN
+                </span>
+                <span className="text-xs font-bold text-white block">
+                  INVEINS Studio Kanpur
+                </span>
+                <Link
+                  href="/about"
+                  className="text-[10px] text-neutral-400 hover:text-[#cc785c] transition-colors inline-block"
+                >
+                  Read The Founder's Vision →
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Column 1: Shop Categories */}
