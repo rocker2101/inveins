@@ -49,10 +49,13 @@ export interface DbOrder {
   shipping_fee: number;
   grand_total: number;
   payment_method: string;
-  status: 'Confirmed' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+  payment_id?: string;
+  razorpay_order_id?: string;
+  status: 'Pending' | 'Confirmed' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Failed';
   tracking_number: string;
   verification_token?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface DbWholesaleEnquiry {

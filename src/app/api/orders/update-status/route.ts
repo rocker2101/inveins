@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const cleanOrderId = sanitizeString(orderId);
     const cleanStatus = sanitizeString(status);
 
-    const validStatuses = ['Pending', 'Confirmed', 'Processing', 'Dispatched', 'Delivered', 'Cancelled'];
+    const validStatuses = ['Pending', 'Confirmed', 'Processing', 'Dispatched', 'Delivered', 'Cancelled', 'Failed'];
     if (!validStatuses.includes(cleanStatus)) {
       return NextResponse.json({ success: false, message: 'Invalid order status value' }, { status: 400 });
     }

@@ -24,20 +24,25 @@ export async function GET(req: NextRequest) {
     }
 
     // Map database fields to the frontend Order interface
-    const orders = (data || []).map((row: any) => ({
-      id: row.id,
-      customer: typeof row.customer === 'string' ? JSON.parse(row.customer) : row.customer,
-      items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
-      subtotal: Number(row.subtotal) || 0,
-      discount: Number(row.discount) || 0,
-      shippingFee: Number(row.shipping_fee) || 0,
-      grandTotal: Number(row.grand_total) || 0,
-      paymentMethod: row.payment_method || 'upi',
-      status: row.status || 'Confirmed',
-      trackingNumber: row.tracking_number,
-      verificationToken: row.verification_token,
-      createdAt: row.created_at ? new Date(row.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString(),
-    }));
+    const orders = (data || []).map((row: any) => {
+      const parsedCustomer = typeof row.customer === 'string' ? JSON.parse(row.customer) : row.customer;
+      return {
+        id: row.id,
+        customer: parsedCustomer,
+        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+        subtotal: Number(row.subtotal) || 0,
+        discount: Number(row.discount) || 0,
+        shippingFee: Number(row.shipping_fee) || 0,
+        grandTotal: Number(row.grand_total) || 0,
+        paymentMethod: row.payment_method || 'upi',
+        paymentId: row.payment_id || parsedCustomer?.payment_id || undefined,
+        razorpayOrderId: row.razorpay_order_id || parsedCustomer?.razorpay_order_id || undefined,
+        status: row.status || 'Confirmed',
+        trackingNumber: row.tracking_number,
+        verificationToken: row.verification_token,
+        createdAt: row.created_at ? new Date(row.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString(),
+      };
+    });
 
     return NextResponse.json({ success: true, orders });
   } catch (err: any) {

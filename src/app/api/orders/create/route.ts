@@ -200,9 +200,12 @@ export async function POST(req: NextRequest) {
 
     // 6. Persist order directly into Supabase PostgreSQL database
     try {
-      const { error: dbError } = await supabaseAdmin.from('inveins_orders').insert({
+      const orderPayload: Record<string, any> = {
         id: orderId,
-        customer: sanitizedCustomer,
+        customer: {
+          ...sanitizedCustomer,
+          ...(razorpayData?.orderId ? { razorpay_order_id: razorpayData.orderId } : {}),
+        },
         items: verifiedItems,
         subtotal: calculatedSubtotal,
         discount: discountAmount,
@@ -213,11 +216,22 @@ export async function POST(req: NextRequest) {
         tracking_number: trackingNumber,
         verification_token: verificationToken,
         created_at: nowIso,
-      });
+      };
 
-      let dbSaved = true;
+      if (razorpayData?.orderId) {
+        orderPayload.razorpay_order_id = razorpayData.orderId;
+      }
+
+      let { error: dbError } = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
+
+      // If column 'razorpay_order_id' does not exist in schema cache, retry without the dedicated column
+      if (dbError && dbError.code === '42703' && orderPayload.razorpay_order_id) {
+        delete orderPayload.razorpay_order_id;
+        const retryResult = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
+        dbError = retryResult.error;
+      }
+
       if (dbError) {
-        dbSaved = false;
         console.error('Supabase DB error saving order:', dbError);
       }
     } catch (dbErr) {

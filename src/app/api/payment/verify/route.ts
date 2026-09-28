@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRazorpaySignature } from '@/lib/payment-security';
+import { verifyRazorpaySignature, fetchRazorpayOrder, decrementOrderStock } from '@/lib/payment-security';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
 import { logSecurityEvent } from '@/lib/audit-logger';
@@ -43,102 +43,171 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let confirmedOrder = null;
+    if (!order_id) {
+      return NextResponse.json(
+        { success: false, message: 'Application order ID is required for verification.' },
+        { status: 400 }
+      );
+    }
 
-    // 2. Fetch existing order to check idempotency and prevent duplicate processing
-    if (order_id) {
-      const cleanOrderId = sanitizeString(order_id);
-      const cleanPaymentId = sanitizeString(razorpay_payment_id);
+    const cleanOrderId = sanitizeString(order_id);
+    const cleanPaymentId = sanitizeString(razorpay_payment_id);
+    const cleanRzpOrderId = sanitizeString(razorpay_order_id);
 
-      const { data: existingOrder } = await supabaseAdmin
+    // 2. Fetch existing order to correlate credentials
+    const { data: existingOrder, error: fetchErr } = await supabaseAdmin
+      .from('inveins_orders')
+      .select('*')
+      .eq('id', cleanOrderId)
+      .maybeSingle();
+
+    if (fetchErr || !existingOrder) {
+      return NextResponse.json(
+        { success: false, message: 'Application order not found in database.' },
+        { status: 404 }
+      );
+    }
+
+    const storedCustomer = typeof existingOrder.customer === 'string'
+      ? JSON.parse(existingOrder.customer)
+      : (existingOrder.customer || {});
+
+    // 3. Verify Razorpay Order ID correlation
+    const expectedRzpOrderId = existingOrder.razorpay_order_id || storedCustomer.razorpay_order_id;
+    if (expectedRzpOrderId && expectedRzpOrderId !== cleanRzpOrderId) {
+      logSecurityEvent({
+        event: 'MISMATCHED_RAZORPAY_ORDER_ID',
+        severity: 'CRITICAL',
+        ip,
+        endpoint: '/api/payment/verify',
+        metadata: { orderId: cleanOrderId, expected: expectedRzpOrderId, received: cleanRzpOrderId },
+      });
+
+      return NextResponse.json(
+        { success: false, message: 'Security mismatch: Razorpay order ID does not belong to this application order.' },
+        { status: 400 }
+      );
+    }
+
+    // 4. Verify Amount with Razorpay Gateway
+    const rzpOrderDetails = await fetchRazorpayOrder(cleanRzpOrderId);
+    if (rzpOrderDetails) {
+      const expectedPaise = Math.round(Number(existingOrder.grand_total) * 100);
+      if (rzpOrderDetails.amount !== expectedPaise) {
+        logSecurityEvent({
+          event: 'PAYMENT_AMOUNT_MISMATCH',
+          severity: 'CRITICAL',
+          ip,
+          endpoint: '/api/payment/verify',
+          metadata: { orderId: cleanOrderId, expectedPaise, receivedPaise: rzpOrderDetails.amount },
+        });
+
+        return NextResponse.json(
+          { success: false, message: 'Payment amount mismatch between gateway and application order.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 5. Idempotent guard: If already confirmed, return early without duplicate stock deduction
+    if (existingOrder.status === 'Confirmed') {
+      return NextResponse.json({
+        success: true,
+        message: 'Payment already verified previously.',
+        paymentId: existingOrder.payment_id || cleanPaymentId,
+        order: existingOrder,
+      });
+    }
+
+    // 6. Cross-Order Payment ID Deduplication Check
+    try {
+      const { data: duplicateOrder } = await supabaseAdmin
         .from('inveins_orders')
-        .select('*')
-        .eq('id', cleanOrderId)
+        .select('id')
+        .eq('payment_id', cleanPaymentId)
+        .neq('id', cleanOrderId)
         .maybeSingle();
 
-      // Idempotent guard: If already confirmed with a payment ID, return early without re-decrementing stock
-      if (existingOrder && existingOrder.status === 'Confirmed' && existingOrder.payment_id) {
-        return NextResponse.json({
-          success: true,
-          message: 'Payment already verified previously.',
-          paymentId: existingOrder.payment_id,
-          order: existingOrder,
+      if (duplicateOrder) {
+        logSecurityEvent({
+          event: 'DUPLICATE_PAYMENT_ID_ATTEMPT',
+          severity: 'CRITICAL',
+          ip,
+          endpoint: '/api/payment/verify',
+          metadata: { orderId: cleanOrderId, conflictingOrder: duplicateOrder.id, paymentId: cleanPaymentId },
         });
-      }
 
-      const { data: updatedOrder, error: updateError } = await supabaseAdmin
+        return NextResponse.json(
+          { success: false, message: 'This payment transaction ID has already been credited to another order.' },
+          { status: 409 }
+        );
+      }
+    } catch (dupCheckErr) {
+      // If payment_id column does not exist yet, proceed with customer JSON tracking
+    }
+
+    // 7. Update order in Supabase with defensive column fallback
+    const nowIso = new Date().toISOString();
+    let confirmedOrder = null;
+
+    // Attempt standard update with dedicated payment_id & updated_at columns
+    let { data: updatedOrder, error: updateError } = await supabaseAdmin
+      .from('inveins_orders')
+      .update({
+        status: 'Confirmed',
+        payment_id: cleanPaymentId,
+        razorpay_order_id: cleanRzpOrderId,
+        updated_at: nowIso,
+      })
+      .eq('id', cleanOrderId)
+      .select()
+      .maybeSingle();
+
+    // Fallback if dedicated columns are not yet migrated in Supabase
+    if (updateError && updateError.code === '42703') {
+      const fallbackCustomer = {
+        ...storedCustomer,
+        payment_id: cleanPaymentId,
+        razorpay_order_id: cleanRzpOrderId,
+        verified_at: nowIso,
+      };
+
+      const fallbackResult = await supabaseAdmin
         .from('inveins_orders')
         .update({
           status: 'Confirmed',
-          payment_id: cleanPaymentId,
-          updated_at: new Date().toISOString(),
+          customer: fallbackCustomer,
         })
         .eq('id', cleanOrderId)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (!updateError && updatedOrder) {
-        confirmedOrder = updatedOrder;
+      updatedOrder = fallbackResult.data;
+      updateError = fallbackResult.error;
+    }
 
-        logSecurityEvent({
-          event: 'PAYMENT_VERIFIED_SUCCESS',
-          severity: 'INFO',
-          ip,
-          endpoint: '/api/payment/verify',
-          metadata: { orderId: cleanOrderId, paymentId: cleanPaymentId },
-        });
+    if (!updateError && updatedOrder) {
+      confirmedOrder = updatedOrder;
 
-        // 3. Atomically decrement stock for purchased items
-        try {
-          const rawItems = typeof updatedOrder.items === 'string'
-            ? JSON.parse(updatedOrder.items)
-            : updatedOrder.items;
+      logSecurityEvent({
+        event: 'PAYMENT_VERIFIED_SUCCESS',
+        severity: 'INFO',
+        ip,
+        endpoint: '/api/payment/verify',
+        metadata: { orderId: cleanOrderId, paymentId: cleanPaymentId },
+      });
 
-          if (Array.isArray(rawItems)) {
-            for (const item of rawItems) {
-              const prodId = item?.product?.id;
-              const qty = Number(item?.quantity) || 1;
-              if (prodId) {
-                // Try calling atomic RPC function if present, otherwise direct update
-                const { error: rpcError } = await supabaseAdmin.rpc('decrement_product_stock', {
-                  product_id: prodId,
-                  qty,
-                });
-
-                if (rpcError) {
-                  // Fallback to direct decrement query
-                  const { data: currentProd } = await supabaseAdmin
-                    .from('inveins_products')
-                    .select('available_stock')
-                    .eq('id', prodId)
-                    .single();
-
-                  if (currentProd) {
-                    const newStock = Math.max(0, (Number(currentProd.available_stock) || 0) - qty);
-                    await supabaseAdmin
-                      .from('inveins_products')
-                      .update({
-                        available_stock: newStock,
-                        badge: newStock <= 0 ? 'SOLD OUT' : undefined,
-                        updated_at: new Date().toISOString(),
-                      })
-                      .eq('id', prodId);
-                  }
-                }
-              }
-            }
-          }
-        } catch (stockErr) {
-          console.warn('Stock decrement notice:', stockErr);
-        }
-      }
+      // 8. Atomically decrement stock for purchased items
+      await decrementOrderStock(updatedOrder.items || existingOrder.items);
+    } else {
+      console.error('Failed to confirm order in database:', updateError);
     }
 
     return NextResponse.json({
       success: true,
       message: 'Payment cryptographically verified and order confirmed.',
-      paymentId: razorpay_payment_id,
-      order: confirmedOrder,
+      paymentId: cleanPaymentId,
+      order: confirmedOrder || { ...existingOrder, status: 'Confirmed', paymentId: cleanPaymentId },
     });
   } catch (error) {
     console.error('Payment verification error:', error);
@@ -148,3 +217,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

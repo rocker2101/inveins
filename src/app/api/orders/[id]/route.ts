@@ -44,15 +44,18 @@ export async function GET(
       );
     }
 
+    const parsedCustomer = typeof data.customer === 'string' ? JSON.parse(data.customer) : data.customer;
     const order = {
       id: data.id,
-      customer: typeof data.customer === 'string' ? JSON.parse(data.customer) : data.customer,
+      customer: parsedCustomer,
       items: typeof data.items === 'string' ? JSON.parse(data.items) : data.items,
       subtotal: Number(data.subtotal) || 0,
       discount: Number(data.discount) || 0,
       shippingFee: Number(data.shipping_fee) || 0,
       grandTotal: Number(data.grand_total) || 0,
       paymentMethod: data.payment_method || 'upi',
+      paymentId: data.payment_id || parsedCustomer?.payment_id || undefined,
+      razorpayOrderId: data.razorpay_order_id || parsedCustomer?.razorpay_order_id || undefined,
       status: data.status || 'Confirmed',
       trackingNumber: data.tracking_number,
       verificationToken: data.verification_token,
