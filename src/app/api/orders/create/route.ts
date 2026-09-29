@@ -233,9 +233,17 @@ export async function POST(req: NextRequest) {
 
       if (dbError) {
         console.error('Supabase DB error saving order:', dbError);
+        return NextResponse.json(
+          { success: false, message: 'Database service unavailable. Order could not be saved.' },
+          { status: 500 }
+        );
       }
     } catch (dbErr) {
       console.error('Failed to communicate with Supabase:', dbErr);
+      return NextResponse.json(
+        { success: false, message: 'Failed to communicate with database. Order could not be created.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

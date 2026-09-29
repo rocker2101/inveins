@@ -5,9 +5,14 @@ import crypto from 'crypto';
  * Protects against payment spoofing, fake payment callbacks, and transaction tampering.
  */
 
+function cleanEnv(val?: string): string {
+  if (!val) return '';
+  return val.replace(/^["']|["']$/g, '').trim();
+}
+
 export function isRazorpayConfigured(): boolean {
-  const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = cleanEnv(process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
+  const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET);
   return Boolean(
     keyId &&
     keySecret &&
@@ -25,15 +30,15 @@ export async function createRazorpayOrder(
   receipt: string,
   notes: Record<string, string> = {}
 ): Promise<{ id: string; amount: number; currency: string; keyId: string } | null> {
-  const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = cleanEnv(process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
+  const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET);
 
   if (!keyId || !keySecret || !isRazorpayConfigured()) {
     console.warn("Razorpay credentials not fully configured in environment.");
     return null;
   }
 
-  const auth = Buffer.from(`${keyId.trim()}:${keySecret.trim()}`).toString("base64");
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 
   const response = await fetch("https://api.razorpay.com/v1/orders", {
     method: "POST",
@@ -71,13 +76,14 @@ export function verifyRazorpaySignature(
   signature: string,
   secret: string = process.env.RAZORPAY_KEY_SECRET || ''
 ): boolean {
-  if (!orderId || !paymentId || !signature || !secret) {
+  const cleanSec = cleanEnv(secret);
+  if (!orderId || !paymentId || !signature || !cleanSec) {
     return false;
   }
 
   try {
     const expectedSignature = crypto
-      .createHmac('sha256', secret.trim())
+      .createHmac('sha256', cleanSec)
       .update(`${orderId.trim()}|${paymentId.trim()}`)
       .digest('hex');
 
@@ -103,13 +109,14 @@ export function verifyRazorpayWebhookSignature(
   signature: string,
   secret: string = process.env.RAZORPAY_WEBHOOK_SECRET || ''
 ): boolean {
-  if (!rawBody || !signature || !secret) {
+  const cleanSec = cleanEnv(secret);
+  if (!rawBody || !signature || !cleanSec) {
     return false;
   }
 
   try {
     const expectedSignature = crypto
-      .createHmac('sha256', secret.trim())
+      .createHmac('sha256', cleanSec)
       .update(rawBody)
       .digest('hex');
 
@@ -132,12 +139,12 @@ export function verifyRazorpayWebhookSignature(
 export async function fetchRazorpayOrder(
   razorpayOrderId: string
 ): Promise<{ id: string; amount: number; status: string; notes?: Record<string, string> } | null> {
-  const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = cleanEnv(process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
+  const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET);
 
   if (!keyId || !keySecret) return null;
 
-  const auth = Buffer.from(`${keyId.trim()}:${keySecret.trim()}`).toString('base64');
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
   try {
     const res = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(razorpayOrderId)}`, {
       method: 'GET',
