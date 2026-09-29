@@ -50,7 +50,7 @@ export default function ContactPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
-      
+
       {/* Header Banner */}
       <div className="border-b border-[#e5e4df] pb-8 text-center max-w-3xl mx-auto">
         <span className="text-[10px] font-bold tracking-widest text-[#737373] uppercase">
@@ -66,7 +66,7 @@ export default function ContactPage() {
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-        
+
         {/* Direct Info */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white p-8 border border-[#e5e4df] space-y-6">
@@ -84,10 +84,6 @@ export default function ContactPage() {
                 <Mail size={18} className="text-[#171717] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold">EMAIL</p>
-                  <a href="mailto:hello@inveins.studio" className="text-[#737373] hover:underline">
-                    hello@inveins.studio
-                  </a>
-                  <br />
                   <a href="mailto:inveins24@gmail.com" className="text-[#737373] hover:underline">
                     inveins24@gmail.com
                   </a>
@@ -98,8 +94,9 @@ export default function ContactPage() {
                 <Phone size={18} className="text-[#171717] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold">PHONE & WHATSAPP</p>
-                  <p className="text-[#737373]">+91 79852 32434</p>
-                  <p className="text-[#737373]">+91 90000 00000</p>
+                  <a href="tel:+917985232434" className="text-[#737373] hover:underline">
+                    +91 79852 32434
+                  </a>
                 </div>
               </div>
 

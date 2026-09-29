@@ -111,7 +111,7 @@ const FAQ_DATA: FAQItem[] = [
   {
     category: 'Wholesale & Custom',
     question: 'Do you accept bulk, corporate, or gym apparel orders?',
-    answer: 'Yes! We run an industrial garment manufacturing setup in Kanpur with full facilities for custom fabric milling, precision pattern-making, high-density screen printing, and commercial DTF (Direct-to-Film) transfers. Visit our Wholesale & Custom DTF page or email hello@inveins.studio for custom B2B quotes.',
+    answer: 'Yes! We run an industrial garment manufacturing setup in Kanpur with full facilities for custom fabric milling, precision pattern-making, high-density screen printing, and commercial DTF (Direct-to-Film) transfers. Visit our Wholesale & Custom DTF page or email inveins24@gmail.com for custom B2B quotes.',
   },
 ];
 

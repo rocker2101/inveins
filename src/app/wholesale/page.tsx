@@ -283,7 +283,7 @@ export default function WholesalePage() {
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
-                  placeholder="+91 90000 00000"
+                  placeholder="+91 98765 43210"
                 />
               </div>
             </div>
