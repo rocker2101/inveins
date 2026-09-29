@@ -161,17 +161,24 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-neutral-400 hover:text-white transition-colors">
-                  Contact Studio
+                <Link href="/faq" className="text-neutral-400 hover:text-white transition-colors font-medium">
+                  Frequently Asked Questions (FAQ)
                 </Link>
               </li>
               <li>
-                <button
-                  onClick={() => setIsShippingPolicyOpen(true)}
-                  className="text-neutral-400 hover:text-white transition-colors text-left"
-                >
-                  Shipping & Returns
-                </button>
+                <Link href="/shipping-policy" className="text-neutral-400 hover:text-white transition-colors">
+                  Shipping & Delivery Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/refund-policy" className="text-neutral-400 hover:text-white transition-colors">
+                  Refund & Cancellation Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-neutral-400 hover:text-white transition-colors">
+                  Contact Studio
+                </Link>
               </li>
               <li>
                 <Link href="/account" className="text-neutral-400 hover:text-white transition-colors">
@@ -214,21 +221,30 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Legal & Copyright Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
-          <p>© {new Date().getFullYear()} INVEINS APPARELS. All rights reserved. GST Registered: 09CLWPV7429M2ZO.</p>
-          <div className="flex items-center space-x-6 text-[11px]">
-            <button onClick={() => setIsShippingPolicyOpen(true)} className="hover:text-white transition-colors">
-              Terms & Privacy
-            </button>
-            <button onClick={() => setIsShippingPolicyOpen(true)} className="hover:text-white transition-colors">
+          <p>© {new Date().getFullYear()} INVEINS APPARELS. All rights reserved. GST: 09CLWPV7429M2ZO.</p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px]">
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Terms & Conditions
+            </Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/refund-policy" className="hover:text-white transition-colors">
               Refund & Cancellation
-            </button>
+            </Link>
+            <Link href="/shipping-policy" className="hover:text-white transition-colors">
+              Shipping & Delivery
+            </Link>
+            <Link href="/faq" className="hover:text-white transition-colors">
+              FAQ
+            </Link>
             <a 
               href="https://www.indiamart.com/inveins/" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="hover:text-white transition-colors"
+              className="hover:text-white transition-colors text-neutral-500"
             >
-              IndiaMART Trust Profile
+              IndiaMART Profile
             </a>
           </div>
         </div>
