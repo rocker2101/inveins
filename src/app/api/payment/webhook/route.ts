@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
         .select()
         .maybeSingle();
 
-      if (updateError && updateError.code === '42703') {
+      if (updateError && (updateError.code === '42703' || updateError.code === 'PGRST204' || updateError.message?.includes('schema cache'))) {
         const fallbackCustomer = {
           ...storedCustomer,
           payment_id: paymentId,

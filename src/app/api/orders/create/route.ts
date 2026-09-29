@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
       let { error: dbError } = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
 
       // If column 'razorpay_order_id' does not exist in schema cache, retry without the dedicated column
-      if (dbError && dbError.code === '42703' && orderPayload.razorpay_order_id) {
+      if (dbError && (dbError.code === '42703' || dbError.code === 'PGRST204' || dbError.message?.includes('razorpay_order_id') || dbError.message?.includes('schema cache')) && orderPayload.razorpay_order_id) {
         delete orderPayload.razorpay_order_id;
         const retryResult = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
         dbError = retryResult.error;

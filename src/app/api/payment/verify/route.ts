@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     // Fallback if dedicated columns are not yet migrated in Supabase
-    if (updateError && updateError.code === '42703') {
+    if (updateError && (updateError.code === '42703' || updateError.code === 'PGRST204' || updateError.message?.includes('schema cache'))) {
       const fallbackCustomer = {
         ...storedCustomer,
         payment_id: cleanPaymentId,
