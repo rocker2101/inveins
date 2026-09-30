@@ -39,6 +39,11 @@ export async function POST(req: NextRequest) {
     const { customer, items, paymentMethod, couponCode } = body;
 
     // 1. Validate Customer Information
+    if (customer && !customer.city && customer.address) {
+      const addrParts = customer.address.split(',').map((s: string) => s.trim()).filter(Boolean);
+      customer.city = addrParts.length > 1 ? addrParts[addrParts.length - 1] : 'Kanpur';
+    }
+
     if (!customer || !customer.name || !customer.phone || !customer.address || !customer.city || !customer.pincode) {
       return NextResponse.json({ success: false, message: 'All required customer shipping fields must be provided.' }, { status: 400 });
     }

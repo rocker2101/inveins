@@ -53,6 +53,11 @@ export const ExpressCheckoutModal: React.FC = () => {
     setErrorMsg('');
 
     // Input Validations
+    if (!formData.name.trim() || !formData.address.trim() || !formData.city.trim()) {
+      setErrorMsg('Please enter your full name, shipping address, and city.');
+      return;
+    }
+
     if (!/^\d{10}$/.test(formData.phone.trim().replace(/\D/g, ''))) {
       setErrorMsg('Please enter a valid 10-digit mobile phone number.');
       return;
@@ -274,19 +279,49 @@ export const ExpressCheckoutModal: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                  EMAIL ADDRESS *
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                  placeholder="name@domain.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                  SHIPPING ADDRESS *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoComplete="street-address"
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                  placeholder="House / Flat No., Street, Landmark"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
-                    EMAIL ADDRESS *
+                    CITY *
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     required
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    autoComplete="address-level2"
+                    value={formData.city}
+                    onChange={e => setFormData({ ...formData, city: e.target.value })}
                     className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
-                    placeholder="name@domain.com"
+                    placeholder="e.g. Kanpur"
                   />
                 </div>
 
@@ -307,21 +342,6 @@ export const ExpressCheckoutModal: React.FC = () => {
                     placeholder="e.g. 400001"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
-                  SHIPPING ADDRESS *
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoComplete="street-address"
-                  value={formData.address}
-                  onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full bg-white border border-[#e5e4df] h-11 px-3 text-base sm:text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
-                  placeholder="House / Flat No., Street, Landmark"
-                />
               </div>
 
               {/* Payment Selection */}
