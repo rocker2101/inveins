@@ -59,6 +59,42 @@ export default function ProductDetailPage() {
     setOpenAccordions(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Dynamic craft & textile highlight: NEVER hardcode or automatically show 280-420 GSM
+  const isGymCompression = product.category?.toLowerCase().includes('compression');
+  const isBottoms = product.category?.toLowerCase().includes('lower') || 
+                    product.category?.toLowerCase().includes('pant') || 
+                    product.category?.toLowerCase().includes('short');
+
+  // Only display GSM if the product explicitly defines its genuine GSM in details/tagline/description
+  const explicitGsm = React.useMemo(() => {
+    const combined = [
+      ...(product.details || []),
+      product.tagline || '',
+      product.description || '',
+    ].join(' ');
+    const match = combined.match(/\b(\d{2,3}(?:[–-]\d{2,3})?\s*GSM)\b/i);
+    return match ? match[1].toUpperCase() : null;
+  }, [product]);
+
+  const craftTitle = explicitGsm
+    ? explicitGsm
+    : isGymCompression
+    ? '4-Way Stretch'
+    : isBottoms
+    ? 'Durable Weave'
+    : 'Studio Grade';
+
+  const craftSubtitle = explicitGsm
+    ? 'Verified Fabric Weight'
+    : isGymCompression
+    ? 'Form-Locking Recovery'
+    : isBottoms
+    ? 'Architectural Street Drape'
+    : 'Considered Craftsmanship';
+
+  const shapeTitle = isGymCompression ? 'Shape-Lock' : 'Pre-Shrunk';
+  const shapeSubtitle = isGymCompression ? 'Retains Fit After Wash' : 'Retains Shape After Wash';
+
   const handlePincodeCheck = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pincode.trim()) return;
@@ -217,15 +253,15 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* Verified Craft & Textile Guarantee */}
+          {/* Verified Craft & Textile Guarantee (Catalog-adaptive, no automatic GSM) */}
           <div className="grid grid-cols-3 gap-3 p-4 bg-white border border-[#e6e2d8] text-center text-xs">
             <div className="space-y-0.5">
-              <span className="font-bold text-[#141413]">280–420 GSM</span>
-              <p className="text-[10px] text-[#6c6a64]">Custom Heavy Organic Weave</p>
+              <span className="font-bold text-[#141413]">{craftTitle}</span>
+              <p className="text-[10px] text-[#6c6a64]">{craftSubtitle}</p>
             </div>
             <div className="space-y-0.5 border-x border-[#e6e2d8]">
-              <span className="font-bold text-[#141413]">Pre-Shrunk</span>
-              <p className="text-[10px] text-[#6c6a64]">Retains Shape After Wash</p>
+              <span className="font-bold text-[#141413]">{shapeTitle}</span>
+              <p className="text-[10px] text-[#6c6a64]">{shapeSubtitle}</p>
             </div>
             <div className="space-y-0.5">
               <span className="font-bold text-[#141413]">Kanpur Studio</span>

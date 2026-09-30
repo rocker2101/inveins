@@ -64,12 +64,11 @@ export const Footer: React.FC = () => {
             <Link href="/" className="inline-block">
               <div className="relative h-10 w-36 flex items-center">
                 <Image
-                  src="/images/logo/inveins-logo-light.svg"
+                  src="/images/logo/inveins-logo-light.png"
                   alt="Inveins™"
                   fill
                   sizes="150px"
                   className="object-contain object-left"
-                  unoptimized
                 />
               </div>
             </Link>

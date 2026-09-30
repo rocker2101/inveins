@@ -1,37 +1,35 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 interface InveinsLogoProps {
   theme?: 'dark' | 'light';
   className?: string;
+  priority?: boolean;
 }
 
 export const InveinsLogo: React.FC<InveinsLogoProps> = ({
   theme = 'dark',
-  className = 'h-8 sm:h-9 w-auto',
+  className = 'h-8 sm:h-9 w-28 sm:w-32',
+  priority = false,
 }) => {
   const isLight = theme === 'light';
-  const textColor = isLight ? '#faf9f5' : '#141413';
+  const logoSrc = isLight
+    ? '/images/logo/inveins-logo-light.png'
+    : '/images/logo/inveins-logo-dark.png';
 
   return (
-    <span
-      className={`inline-flex items-center select-none font-bold tracking-tight ${className}`}
-      style={{
-        fontFamily: "'Caveat', cursive, system-ui, -apple-system, sans-serif",
-        color: textColor,
-        lineHeight: 1,
-      }}
-    >
-      <span className="text-3xl sm:text-4xl font-bold tracking-tight">
-        Inveins
-      </span>
-      <span
-        className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest -mt-4 ml-0.5"
-        style={{ fontFamily: "'Inter', sans-serif" }}
-      >
-        TM
-      </span>
+    <span className={`relative inline-flex items-center select-none ${className}`}>
+      <Image
+        src={logoSrc}
+        alt="Inveins™"
+        fill
+        sizes="(max-width: 640px) 140px, 180px"
+        className="object-contain object-left"
+        priority={priority}
+      />
     </span>
   );
 };
+

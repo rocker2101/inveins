@@ -155,13 +155,12 @@ export const Header: React.FC = () => {
           <Link href="/" className="flex items-center gap-2.5 group py-1">
             <div className="relative h-8 sm:h-10 w-28 sm:w-32 flex items-center">
               <Image
-                src="/images/logo/inveins-logo-dark.svg"
+                src="/images/logo/inveins-logo-dark.png"
                 alt="Inveins™"
                 fill
                 sizes="140px"
                 className="object-contain object-left group-hover:opacity-85 transition-opacity"
                 priority
-                unoptimized
               />
             </div>
             <div className="hidden xl:flex flex-col border-l border-[#e6e2d8] pl-2.5 py-0.5">
@@ -1044,12 +1043,11 @@ export const Header: React.FC = () => {
             <div className="p-4 border-b border-[#e6e2d8] flex items-center justify-between bg-white sticky top-0 z-10">
               <Link href="/" onClick={() => setMobileMenuOpen(false)} className="relative h-8 w-28 flex items-center">
                 <Image
-                  src="/images/logo/inveins-logo-dark.svg"
+                  src="/images/logo/inveins-logo-dark.png"
                   alt="Inveins™"
                   fill
                   sizes="120px"
                   className="object-contain object-left"
-                  unoptimized
                 />
               </Link>
               <button

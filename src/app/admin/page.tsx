@@ -446,15 +446,32 @@ export default function AdminPage() {
       availableStock: stockNum,
       images: catalogImages,
       sizes: newProductForm.sizes,
-      details: [
-        '260-340 GSM organic combed cotton jersey',
-        'Pre-shrunk architectural cut',
-        'Reinforced coverstitching',
-      ],
-      materialCare: [
-        '100% Certified Organic Cotton',
-        'Machine wash cold, dry flat in shade',
-      ],
+      details: newProductForm.category.toLowerCase().includes('compression')
+        ? [
+            '4-way stretch high-recovery performance fabric',
+            'Form-locking compression fit for enhanced recovery',
+            'Reinforced flatlock anti-chafing seams',
+          ]
+        : newProductForm.category.toLowerCase().includes('lower') || newProductForm.category.toLowerCase().includes('pant')
+        ? [
+            'Heavyweight architectural street silhouette',
+            'Deep utility pockets with reinforced pocket bags',
+            'Pre-washed fabric with clean ankle drape',
+          ]
+        : [
+            'Considered architectural boxy silhouette',
+            'Reinforced collar and double-needle coverstitching',
+            'Pre-washed fabric engineered for shape retention',
+          ],
+      materialCare: newProductForm.category.toLowerCase().includes('compression')
+        ? [
+            'High-recovery Poly-Spandex performance blend',
+            'Machine wash cold inside-out, air dry in shade',
+          ]
+        : [
+            'Premium considered textile blend',
+            'Machine wash cold inside-out, dry flat in shade',
+          ],
       shippingInfo: 'Complimentary shipping across India on orders above ₹999.',
       returnsInfo: 'Hassle-free 7-day exchange & return policy.',
     });
