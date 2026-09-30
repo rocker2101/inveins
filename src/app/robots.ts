@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/admin', '/admin/*', '/api/*'],
     },
-    sitemap: 'https://inveins.studio/sitemap.xml',
+    sitemap: 'https://www.inveins.in/sitemap.xml',
   };
 }

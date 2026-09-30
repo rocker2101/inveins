@@ -28,11 +28,11 @@ export const metadata: Metadata = {
     "Indian Streetwear", "DTF Printing Kanpur"
   ],
   authors: [{ name: "INVEINS Studio" }],
-  metadataBase: new URL("https://inveins.studio"),
+  metadataBase: new URL("https://www.inveins.in"),
   openGraph: {
     title: "INVEINS — Form Follows Feeling",
     description: "Considered wardrobe foundations. Architectural drape, heavyweight organic cotton, form-locking activewear.",
-    url: "https://inveins.studio",
+    url: "https://www.inveins.in",
     siteName: "INVEINS",
     locale: "en_IN",
     type: "website",
@@ -62,11 +62,12 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "INVEINS",
-    "legalName": "Inveins",
+    "legalName": "INVEINS",
     "founder": "Shaurya Vishnoi",
     "taxID": "09CLWPV7429M2ZO",
-    "url": "https://inveins.studio",
-    "logo": "https://inveins.studio/logo.png",
+    "identifier": "UDYAM-UP-43-0147583",
+    "url": "https://www.inveins.in",
+    "logo": "https://www.inveins.in/images/logo/inveins-logo-dark.svg",
     "contactPoint": {
       "@type": "ContactPoint",
       "telephone": "+91-7985232434",
@@ -76,8 +77,10 @@ export default function RootLayout({
     },
     "address": {
       "@type": "PostalAddress",
-      "addressLocality": "Kanpur",
+      "streetAddress": "E 48, K D A Colony, Daheli Sujanpur Shyam Nagar",
+      "addressLocality": "Kanpur Nagar",
       "addressRegion": "Uttar Pradesh",
+      "postalCode": "208013",
       "addressCountry": "IN"
     }
   };

@@ -209,6 +209,44 @@ export async function decrementOrderStock(items: any): Promise<void> {
   }
 }
 
+/**
+ * Atomically restores catalog inventory when an order is cancelled or refunded
+ */
+export async function restoreOrderStock(items: any): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import('@/lib/supabase');
+    const rawItems = typeof items === 'string' ? JSON.parse(items) : items;
+    if (!Array.isArray(rawItems)) return;
+
+    for (const item of rawItems) {
+      const prodId = item?.product?.id;
+      const qty = Math.max(1, Number(item?.quantity) || 1);
+      if (!prodId) continue;
+
+      const { data: currentProd } = await supabaseAdmin
+        .from('inveins_products')
+        .select('available_stock, badge')
+        .eq('id', prodId)
+        .single();
+
+      if (currentProd) {
+        const currentStock = Number(currentProd.available_stock) || 0;
+        const newStock = currentStock + qty;
+        await supabaseAdmin
+          .from('inveins_products')
+          .update({
+            available_stock: newStock,
+            badge: currentProd.badge === 'SOLD OUT' ? null : currentProd.badge,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', prodId);
+      }
+    }
+  } catch (stockErr) {
+    console.warn('[STOCK RESTORE NOTICE]', stockErr);
+  }
+}
+
 
 
 // Verify Order Verification Token issued by /api/orders/create

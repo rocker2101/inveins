@@ -51,7 +51,7 @@ export const Footer: React.FC = () => {
             </div>
             <div>
               <h5 className="font-bold text-white uppercase tracking-wider">VERIFIED BUSINESS</h5>
-              <p className="text-[11px] text-neutral-400">GST: 09CLWPV7429M2ZO</p>
+              <p className="text-[11px] text-neutral-400">GST: 09CLWPV7429M2ZO • UDYAM-UP-43-0147583</p>
             </div>
           </div>
         </div>
@@ -81,9 +81,9 @@ export const Footer: React.FC = () => {
             </p>
             <div className="pt-1 text-[11px] text-neutral-400 space-y-1">
               <p className="flex items-center gap-1.5">
-                <MapPin size={13} className="text-[#cc785c]" /> Kanpur Nagar, Uttar Pradesh, India
+                <MapPin size={13} className="text-[#cc785c]" /> E 48, K D A Colony, Daheli Sujanpur, Kanpur 208013
               </p>
-              <p className="text-neutral-400">Shaurya Vishnoi (MD & CEO)</p>
+              <p className="text-neutral-400">Shaurya Vishnoi (Founder & Craftsman)</p>
             </div>
 
             {/* Founder Profile Badge with Photo */}
@@ -221,7 +221,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Legal & Copyright Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
-          <p>© {new Date().getFullYear()} INVEINS APPARELS. All rights reserved. GST: 09CLWPV7429M2ZO.</p>
+          <p>© {new Date().getFullYear()} INVEINS. All rights reserved. GST: 09CLWPV7429M2ZO • Udyam: UDYAM-UP-43-0147583.</p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px]">
             <Link href="/terms" className="hover:text-white transition-colors">
               Terms & Conditions

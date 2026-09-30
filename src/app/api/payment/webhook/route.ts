@@ -40,31 +40,35 @@ export async function POST(req: NextRequest) {
 
     // 2. Cryptographic Webhook Signature Verification
     const isValid = verifyRazorpayWebhookSignature(rawBody, signature, webhookSecret);
-    if (!isValid && process.env.NODE_ENV === 'production') {
+    if (!isValid) {
       logSecurityEvent({
         event: 'INVALID_WEBHOOK_SIGNATURE',
         severity: 'CRITICAL',
         ip,
         endpoint: '/api/payment/webhook',
       });
-      return NextResponse.json({ error: 'Invalid webhook cryptographic signature' }, { status: 400 });
+      if (process.env.NODE_ENV === 'production' || webhookSecret) {
+        return NextResponse.json({ error: 'Invalid webhook cryptographic signature' }, { status: 400 });
+      }
     }
 
     // 3. Parse Event Payload
     const event = JSON.parse(rawBody);
     const eventType = event?.event;
 
-    // 4. Handle "payment.captured" Event
-    if (eventType === 'payment.captured') {
+    // 4. Handle "payment.captured" and "order.paid" Events
+    if (eventType === 'payment.captured' || eventType === 'order.paid') {
       const payment = event.payload?.payment?.entity;
-      if (!payment) {
-        return NextResponse.json({ error: 'Invalid payment payload' }, { status: 400 });
-      }
+      const orderEntity = event.payload?.order?.entity;
 
-      const paymentId = payment.id;
-      const rzpOrderId = payment.order_id;
-      const appOrderId = payment.notes?.order_id;
-      const paidAmountPaise = payment.amount;
+      const paymentId = payment?.id || orderEntity?.id || 'PAY_CAPTURED';
+      const rzpOrderId = payment?.order_id || orderEntity?.id;
+      const appOrderId = payment?.notes?.order_id || orderEntity?.notes?.order_id;
+      const paidAmountPaise = payment?.amount ?? orderEntity?.amount_paid ?? orderEntity?.amount;
+
+      if (!rzpOrderId && !appOrderId) {
+        return NextResponse.json({ error: 'Invalid payment/order payload' }, { status: 400 });
+      }
 
       // Locate corresponding order in database
       let order = null;

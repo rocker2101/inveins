@@ -9,11 +9,12 @@ import { createRazorpayOrder } from '@/lib/payment-security';
 export const dynamic = 'force-dynamic';
 
 function getOrderSigningSecret(): string {
-  const secret = process.env.ORDER_SIGNING_SECRET?.trim();
+  const secret = process.env.ORDER_SIGNING_SECRET?.trim() || process.env.ADMIN_SESSION_SECRET?.trim();
   if (secret) return secret;
-  const fallback = process.env.ADMIN_SESSION_SECRET || process.env.NEXTAUTH_SECRET || 'inveins_production_order_signing_secure_fallback';
-  console.warn('[SECURITY WARNING] ORDER_SIGNING_SECRET is not configured in environment. Using fallback secret.');
-  return fallback;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ORDER_SIGNING_SECRET is required in production environment.');
+  }
+  return 'inveins_dev_order_secret_ephemeral';
 }
 const VALID_COUPONS: Record<string, number> = {
   FIRST10: 10,

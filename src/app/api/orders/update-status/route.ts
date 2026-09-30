@@ -20,19 +20,40 @@ export async function POST(req: NextRequest) {
     const cleanOrderId = sanitizeString(orderId);
     const cleanStatus = sanitizeString(status);
 
-    const validStatuses = ['Pending', 'Confirmed', 'Processing', 'Dispatched', 'Delivered', 'Cancelled', 'Failed'];
+    const validStatuses = ['Pending', 'Confirmed', 'Processing', 'Dispatched', 'Delivered', 'Cancelled', 'Failed', 'Refunded'];
     if (!validStatuses.includes(cleanStatus)) {
       return NextResponse.json({ success: false, message: 'Invalid order status value' }, { status: 400 });
     }
 
+    // 1. Fetch current order to check previous status and items
+    const { data: currentOrder } = await supabaseAdmin
+      .from('inveins_orders')
+      .select('status, items')
+      .eq('id', cleanOrderId)
+      .maybeSingle();
+
+    const previousStatus = currentOrder?.status;
+
+    // 2. Update status in database
     const { error } = await supabaseAdmin
       .from('inveins_orders')
-      .update({ status: cleanStatus })
+      .update({ 
+        status: cleanStatus,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', cleanOrderId);
 
     if (error) {
       console.error('Failed to update order status in Supabase:', error);
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+
+    // 3. If transitioning to Cancelled or Refunded from an active state, restore inventory
+    if ((cleanStatus === 'Cancelled' || cleanStatus === 'Refunded') && 
+        previousStatus && 
+        !['Cancelled', 'Refunded', 'Failed'].includes(previousStatus)) {
+      const { restoreOrderStock } = await import('@/lib/payment-security');
+      await restoreOrderStock(currentOrder.items);
     }
 
     return NextResponse.json({ success: true, message: 'Order status updated successfully' });

@@ -163,6 +163,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [expressSize, setExpressSize] = useState<string>('M');
 
   const isLoaded = useRef(false);
+  const isAdminRef = useRef(false);
 
   // Load user client preferences (cart, wishlist, address) from localStorage on mount
   useEffect(() => {
@@ -229,6 +230,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (sessionRes.ok) {
           const sessionData = await sessionRes.json();
           if (sessionData.authenticated) {
+            isAdminRef.current = true;
             const [ordersRes, wsRes] = await Promise.allSettled([
               fetch('/api/orders/list', { cache: 'no-store' }),
               fetch('/api/wholesale/list', { cache: 'no-store' }),
@@ -304,7 +306,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [savedAddress]);
 
   useEffect(() => {
-    if (!isLoaded.current) return;
+    if (!isLoaded.current || isAdminRef.current) return;
     try {
       localStorage.setItem('inveins_my_orders', JSON.stringify(orders));
     } catch (e) {}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, Clock, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, Clock, MessageSquare, Send, CheckCircle2, MapPin } from 'lucide-react';
 import { sanitizeString, isValidEmail } from '@/lib/sanitize';
 
 export default function ContactPage() {
@@ -80,6 +80,21 @@ export default function ContactPage() {
             </div>
 
             <div className="space-y-4 text-xs text-[#171717]">
+              <div className="flex items-start gap-3">
+                <MapPin size={18} className="text-[#171717] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">REGISTERED OPERATING ADDRESS</p>
+                  <p className="text-[#737373] leading-relaxed">
+                    <strong>INVEINS</strong><br />
+                    E 48, K D A Colony, Daheli Sujanpur, Shyam Nagar,<br />
+                    Kanpur Nagar, Uttar Pradesh 208013, India
+                  </p>
+                  <p className="text-[10px] text-[#737373] mt-1">
+                    GSTIN: 09CLWPV7429M2ZO • Udyam: UDYAM-UP-43-0147583
+                  </p>
+                </div>
+              </div>
+
               <div className="flex items-start gap-3">
                 <Mail size={18} className="text-[#171717] flex-shrink-0 mt-0.5" />
                 <div>

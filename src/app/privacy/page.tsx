@@ -22,7 +22,7 @@ export default function PrivacyPage() {
           PRIVACY POLICY
         </h1>
         <p className="text-xs sm:text-sm text-[#737373] mt-2">
-          Last Updated: {lastUpdated} • INVEINS APPARELS
+          Last Updated: September 30, 2026 • INVEINS (GST: 09CLWPV7429M2ZO • Udyam: UDYAM-UP-43-0147583)
         </p>
       </div>
 
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
         {/* Intro */}
         <div className="p-4 bg-[#fbfbfa] border-l-2 border-[#171717]">
           <p className="font-medium text-[#171717]">
-            At <strong>INVEINS APPARELS</strong> (&quot;INVEINS&quot;, &quot;we&quot;, &quot;our&quot;, &quot;us&quot;), we treat your privacy and data sovereignty with utmost rigor. This Privacy Policy outlines our transparent protocols for collecting, storing, utilizing, and safeguarding your personal information when you access <strong>https://inveins.studio</strong>.
+            At <strong>INVEINS</strong> (&quot;INVEINS&quot;, &quot;we&quot;, &quot;our&quot;, &quot;us&quot;), we treat your privacy and data sovereignty with utmost rigor. This Privacy Policy outlines our transparent protocols for collecting, storing, utilizing, and safeguarding your personal information when you access <strong>https://www.inveins.in</strong>.
           </p>
         </div>
 
@@ -128,9 +128,10 @@ export default function PrivacyPage() {
             In accordance with the Information Technology Act 2000 and consumer protection guidelines, the contact details of our Grievance Officer are provided below:
           </p>
           <div className="text-xs space-y-1 text-neutral-700">
+            <p><strong>Grievance Officer:</strong> Shaurya Vishnoi</p>
             <p><strong>Designation:</strong> Grievance & Compliance Officer</p>
-            <p><strong>Entity:</strong> INVEINS APPARELS</p>
-            <p><strong>Registered Address:</strong> Kanpur Nagar, Uttar Pradesh 208001, India</p>
+            <p><strong>Entity:</strong> INVEINS (GST: 09CLWPV7429M2ZO • Udyam: UDYAM-UP-43-0147583)</p>
+            <p><strong>Registered Address:</strong> E 48, K D A Colony, Daheli Sujanpur, Shyam Nagar, Kanpur Nagar, Uttar Pradesh 208013, India</p>
             <p><strong>Email:</strong> <a href="mailto:inveins24@gmail.com" className="text-[#cc785c] underline">inveins24@gmail.com</a></p>
             <p><strong>Direct Helpline:</strong> +91 79852 32434 (Mon–Fri, 10:00 AM – 6:00 PM IST)</p>
           </div>

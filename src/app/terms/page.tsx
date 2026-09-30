@@ -22,7 +22,7 @@ export default function TermsPage() {
           TERMS & CONDITIONS
         </h1>
         <p className="text-xs sm:text-sm text-[#737373] mt-2">
-          Last Updated: {lastUpdated} • INVEINS APPARELS (GST: 09CLWPV7429M2ZO)
+          Last Updated: September 30, 2026 • INVEINS (GST: 09CLWPV7429M2ZO • Udyam: UDYAM-UP-43-0147583)
         </p>
       </div>
 
@@ -32,7 +32,7 @@ export default function TermsPage() {
         {/* Intro */}
         <div className="p-4 bg-[#fbfbfa] border-l-2 border-[#171717]">
           <p className="font-medium text-[#171717]">
-            Welcome to INVEINS. These Terms and Conditions constitute a legally binding agreement between you (&quot;Customer&quot;, &quot;User&quot;, &quot;You&quot;) and <strong>INVEINS APPARELS</strong> (&quot;INVEINS&quot;, &quot;We&quot;, &quot;Us&quot;, &quot;Our&quot;), operating the website <strong>https://inveins.studio</strong>. By accessing our website, browsing our collections, or placing an order, you agree to be bound by these terms.
+            Welcome to INVEINS. These Terms and Conditions constitute a legally binding agreement between you (&quot;Customer&quot;, &quot;User&quot;, &quot;You&quot;) and <strong>INVEINS</strong> (&quot;INVEINS&quot;, &quot;We&quot;, &quot;Us&quot;, &quot;Our&quot;), operating the website <strong>https://www.inveins.in</strong>. By accessing our website, browsing our collections, or placing an order, you agree to be bound by these terms.
           </p>
         </div>
 
@@ -135,9 +135,9 @@ export default function TermsPage() {
             For legal inquiries, terms clarification, or business correspondence:
           </p>
           <div className="text-xs space-y-1 text-neutral-700">
-            <p><strong>Entity:</strong> INVEINS APPARELS (GST: 09CLWPV7429M2ZO)</p>
-            <p><strong>Managing Director:</strong> Shaurya Vishnoi</p>
-            <p><strong>Location:</strong> Kanpur Nagar, Uttar Pradesh 208001, India</p>
+            <p><strong>Entity:</strong> INVEINS (GST: 09CLWPV7429M2ZO • Udyam: UDYAM-UP-43-0147583)</p>
+            <p><strong>Founder / Managing Director:</strong> Shaurya Vishnoi</p>
+            <p><strong>Registered Address:</strong> E 48, K D A Colony, Daheli Sujanpur, Shyam Nagar, Kanpur Nagar, Uttar Pradesh 208013, India</p>
             <p><strong>Official Email:</strong> <a href="mailto:inveins24@gmail.com" className="text-[#cc785c] underline">inveins24@gmail.com</a></p>
             <p><strong>Direct Helpline:</strong> +91 79852 32434</p>
           </div>
