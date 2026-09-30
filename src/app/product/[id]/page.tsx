@@ -59,21 +59,32 @@ export default function ProductDetailPage() {
     setOpenAccordions(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Dynamic craft & textile highlight: NEVER hardcode or automatically show 280-420 GSM
+  // Dynamic craft & textile highlight: NEVER hardcode or automatically show GSM
   const isGymCompression = product.category?.toLowerCase().includes('compression');
   const isBottoms = product.category?.toLowerCase().includes('lower') || 
                     product.category?.toLowerCase().includes('pant') || 
                     product.category?.toLowerCase().includes('short');
 
-  // Only display GSM if the product explicitly defines its genuine GSM in details/tagline/description
+  // Only display GSM if explicitly provided by the user/admin (never legacy auto-injected strings)
   const explicitGsm = React.useMemo(() => {
+    // 1. Explicit editable gsm field set in admin
+    if (product.gsm && product.gsm.trim()) {
+      return product.gsm.trim().toUpperCase();
+    }
+    // 2. Or genuine GSM in description / details (filtering out old legacy auto-injected defaults)
+    const cleanDetails = (product.details || []).filter(
+      d => !d.includes('260-340 GSM') && !d.includes('280–420 GSM') && !d.includes('280-420 GSM')
+    );
     const combined = [
-      ...(product.details || []),
+      ...cleanDetails,
       product.tagline || '',
       product.description || '',
     ].join(' ');
     const match = combined.match(/\b(\d{2,3}(?:[–-]\d{2,3})?\s*GSM)\b/i);
-    return match ? match[1].toUpperCase() : null;
+    if (match && !match[1].includes('260-340') && !match[1].includes('280-420') && !match[1].includes('280–420')) {
+      return match[1].toUpperCase();
+    }
+    return null;
   }, [product]);
 
   const craftTitle = explicitGsm
@@ -512,9 +523,11 @@ export default function ProductDetailPage() {
                   <p>{product.description}</p>
                   {product.details && product.details.length > 0 && (
                     <ul className="space-y-1 list-disc pl-4 pt-1">
-                      {product.details.map((d, i) => (
-                        <li key={i}>{d}</li>
-                      ))}
+                      {product.details
+                        .filter(d => !d.includes('260-340 GSM') && !d.includes('280–420 GSM') && !d.includes('280-420 GSM'))
+                        .map((d, i) => (
+                          <li key={i}>{d}</li>
+                        ))}
                     </ul>
                   )}
                 </div>

@@ -199,6 +199,7 @@ export default function AdminPage() {
     category: 'Gym Compression' as Product['category'],
     badge: 'NEW' as Product['badge'],
     tagline: '',
+    gsm: '',
     description: '',
     availableStock: '25',
     imageUrl: '',
@@ -221,6 +222,7 @@ export default function AdminPage() {
     category: Product['category'];
     badge: Product['badge'];
     tagline: string;
+    gsm: string;
     description: string;
     availableStock: string;
     images: string[];
@@ -231,6 +233,7 @@ export default function AdminPage() {
     category: 'Tees',
     badge: 'NEW',
     tagline: '',
+    gsm: '',
     description: '',
     availableStock: '20',
     images: [],
@@ -249,12 +252,16 @@ export default function AdminPage() {
 
   const handleStartEdit = (prod: Product) => {
     setEditingProduct(prod);
+    const existingGsm = prod.gsm || 
+      prod.details?.find(d => /\b\d{2,3}(?:[–-]\d{2,3})?\s*GSM\b/i.test(d) && !d.includes('260-340') && !d.includes('280-420') && !d.includes('280–420'))?.match(/\b(\d{2,3}(?:[–-]\d{2,3})?\s*GSM)\b/i)?.[1] || '';
+
     setEditProductForm({
       name: prod.name,
       price: String(prod.price),
       category: prod.category || 'Tees',
       badge: prod.badge || 'NEW',
       tagline: prod.tagline || '',
+      gsm: existingGsm,
       description: prod.description || '',
       availableStock: String(prod.availableStock),
       images: Array.isArray(prod.images) ? [...prod.images] : [],
@@ -304,6 +311,17 @@ export default function AdminPage() {
     if (!editingProduct) return;
     setIsSavingEdit(true);
     try {
+      const rawGsm = (editProductForm.gsm || '').trim();
+      const normalizedGsm = rawGsm ? (rawGsm.toLowerCase().endsWith('gsm') ? rawGsm.toUpperCase() : `${rawGsm} GSM`) : '';
+
+      // Clean existing details: remove any old or legacy auto GSM strings like "260-340 GSM...", "280–420 GSM...", or existing "GSM:" / "Fabric Weight:" entries
+      const existingDetails = (editingProduct.details || []).filter(
+        d => !/\b(\d{2,3}(?:[–-]\d{2,3})?\s*GSM)\b/i.test(d)
+      );
+      const updatedDetails = normalizedGsm
+        ? [`Fabric Weight: ${normalizedGsm}`, ...existingDetails]
+        : existingDetails;
+
       const success = await updateProduct(editingProduct.id, {
         name: editProductForm.name.trim(),
         price: parseFloat(editProductForm.price) || editingProduct.price,
@@ -314,6 +332,8 @@ export default function AdminPage() {
         tagline: editProductForm.tagline.trim(),
         description: editProductForm.description.trim(),
         images: editProductForm.images.length > 0 ? editProductForm.images : editingProduct.images,
+        details: updatedDetails,
+        gsm: normalizedGsm || undefined,
       });
       if (success) {
         setActionToast({ message: `"${editProductForm.name}" updated successfully in database!`, type: 'success' });
@@ -435,6 +455,31 @@ export default function AdminPage() {
         ? [newProductForm.imageUrl.trim()]
         : ['https://images.unsplash.com/photo-1579809011670-aa21121f5ec6?auto=format&fit=crop&w=1200&q=85'];
 
+    const rawGsm = (newProductForm.gsm || '').trim();
+    const normalizedGsm = rawGsm ? (rawGsm.toLowerCase().endsWith('gsm') ? rawGsm.toUpperCase() : `${rawGsm} GSM`) : '';
+
+    const baseDetails = newProductForm.category.toLowerCase().includes('compression')
+      ? [
+          '4-way stretch high-recovery performance fabric',
+          'Form-locking compression fit for enhanced recovery',
+          'Reinforced flatlock anti-chafing seams',
+        ]
+      : newProductForm.category.toLowerCase().includes('lower') || newProductForm.category.toLowerCase().includes('pant')
+      ? [
+          'Heavyweight architectural street silhouette',
+          'Deep utility pockets with reinforced pocket bags',
+          'Pre-washed fabric with clean ankle drape',
+        ]
+      : [
+          'Considered architectural boxy silhouette',
+          'Reinforced collar and double-needle coverstitching',
+          'Pre-washed fabric engineered for shape retention',
+        ];
+
+    const finalDetails = normalizedGsm
+      ? [`Fabric Weight: ${normalizedGsm}`, ...baseDetails]
+      : baseDetails;
+
     await addNewProduct({
       name: newProductForm.name,
       price: priceNum,
@@ -446,23 +491,8 @@ export default function AdminPage() {
       availableStock: stockNum,
       images: catalogImages,
       sizes: newProductForm.sizes,
-      details: newProductForm.category.toLowerCase().includes('compression')
-        ? [
-            '4-way stretch high-recovery performance fabric',
-            'Form-locking compression fit for enhanced recovery',
-            'Reinforced flatlock anti-chafing seams',
-          ]
-        : newProductForm.category.toLowerCase().includes('lower') || newProductForm.category.toLowerCase().includes('pant')
-        ? [
-            'Heavyweight architectural street silhouette',
-            'Deep utility pockets with reinforced pocket bags',
-            'Pre-washed fabric with clean ankle drape',
-          ]
-        : [
-            'Considered architectural boxy silhouette',
-            'Reinforced collar and double-needle coverstitching',
-            'Pre-washed fabric engineered for shape retention',
-          ],
+      details: finalDetails,
+      gsm: normalizedGsm || undefined,
       materialCare: newProductForm.category.toLowerCase().includes('compression')
         ? [
             'High-recovery Poly-Spandex performance blend',
@@ -493,6 +523,7 @@ export default function AdminPage() {
       category: 'Gym Compression',
       badge: 'NEW',
       tagline: '',
+      gsm: '',
       description: '',
       availableStock: '25',
       imageUrl: '',
@@ -1315,6 +1346,22 @@ export default function AdminPage() {
             </div>
 
             <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
+                  FABRIC GSM (WEIGHT)
+                </label>
+                <span className="text-[10px] text-[#737373]">Optional • Leave blank if not applicable</span>
+              </div>
+              <input
+                type="text"
+                value={newProductForm.gsm}
+                onChange={e => setNewProductForm({ ...newProductForm, gsm: e.target.value })}
+                placeholder="e.g. 240 GSM, 280 GSM, 420 GSM (or leave blank)"
+                className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+              />
+            </div>
+
+            <div>
               <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
                 FULL DESCRIPTION
               </label>
@@ -1809,6 +1856,22 @@ export default function AdminPage() {
                   value={editProductForm.tagline}
                   onChange={e => setEditProductForm({ ...editProductForm, tagline: e.target.value })}
                   placeholder="Tagline displayed on cards"
+                  className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717]">
+                    FABRIC GSM (WEIGHT)
+                  </label>
+                  <span className="text-[10px] text-[#737373]">Optional • Leave blank to remove GSM</span>
+                </div>
+                <input
+                  type="text"
+                  value={editProductForm.gsm}
+                  onChange={e => setEditProductForm({ ...editProductForm, gsm: e.target.value })}
+                  placeholder="e.g. 240 GSM, 280 GSM, 420 GSM (or leave blank)"
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                 />
               </div>

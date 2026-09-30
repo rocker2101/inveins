@@ -18,6 +18,7 @@ export interface Product {
   occasion?: 'Everyday Uniform' | 'Studio & Work' | 'Weekend & Lounge' | 'Gym & Active';
   completeLookWith?: string;
   wholesalePrice?: string;
+  gsm?: string;
 }
 
 export const PRODUCTS: Product[] = [
