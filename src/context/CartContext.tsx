@@ -85,12 +85,14 @@ interface CartContextType {
 
   // Order Management & Supabase Sync
   orders: Order[];
+  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
   addOrder: (order: Partial<Order> & Omit<Order, 'id' | 'createdAt'>) => Order;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<boolean>;
-  refreshDatabaseData: () => Promise<void>;
+  refreshDatabaseData: (force?: boolean) => Promise<void>;
 
   wholesaleEnquiries: WholesaleEnquiry[];
+  setWholesaleEnquiries: React.Dispatch<React.SetStateAction<WholesaleEnquiry[]>>;
   addWholesaleEnquiry: (enquiry: Omit<WholesaleEnquiry, 'id' | 'createdAt'>) => Promise<{ success: boolean; message?: string }>;
   deleteWholesaleEnquiry: (enquiryId: string) => Promise<boolean>;
 
@@ -208,52 +210,61 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isSyncingRef = useRef(false);
 
   // Synchronize catalogue publicly; sync orders & enquiries ONLY if authenticated as admin
-  const refreshDatabaseData = useCallback(async () => {
-    if (isSyncingRef.current) return;
+  const refreshDatabaseData = useCallback(async (force?: boolean) => {
+    if (isSyncingRef.current && !force) return;
     isSyncingRef.current = true;
     try {
-      // 1. Fetch public product catalogue
-      const prodRes = await fetch('/api/products', { cache: 'no-store' });
-      if (prodRes.ok) {
-        const prodData = await prodRes.json();
-        if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
-          setProductsList(prodData.products);
-          try {
-            localStorage.setItem('inveins_cached_products', JSON.stringify(prodData.products));
-          } catch (storageErr) {}
-        }
-      }
-
-      // 2. Fetch administrative collections ONLY if user is authenticated admin
-      try {
-        const sessionRes = await fetch('/api/admin/session', { cache: 'no-store' });
-        if (sessionRes.ok) {
-          const sessionData = await sessionRes.json();
-          if (sessionData.authenticated) {
-            isAdminRef.current = true;
-            const [ordersRes, wsRes] = await Promise.allSettled([
-              fetch('/api/orders/list', { cache: 'no-store' }),
-              fetch('/api/wholesale/list', { cache: 'no-store' }),
-            ]);
-
-            if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
-              const data = await ordersRes.value.json();
-              if (data.success && Array.isArray(data.orders)) {
-                setOrders(data.orders);
+      const syncTasks: Promise<any>[] = [
+        // 1. Fetch public product catalogue
+        fetch('/api/products', { cache: 'no-store' })
+          .then(async (prodRes) => {
+            if (prodRes.ok) {
+              const prodData = await prodRes.json();
+              if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
+                setProductsList(prodData.products);
+                try {
+                  localStorage.setItem('inveins_cached_products', JSON.stringify(prodData.products));
+                } catch (storageErr) {}
               }
             }
+          })
+          .catch((err) => console.error('Product catalog sync failed:', err))
+      ];
 
-            if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
-              const wsData = await wsRes.value.json();
-              if (wsData.success && Array.isArray(wsData.enquiries)) {
-                setWholesaleEnquiries(wsData.enquiries);
+      // 2. Fetch administrative collections in parallel if admin
+      syncTasks.push((async () => {
+        try {
+          const sessionRes = await fetch('/api/admin/session', { cache: 'no-store' });
+          if (sessionRes.ok) {
+            const sessionData = await sessionRes.json();
+            if (sessionData.authenticated) {
+              isAdminRef.current = true;
+              const [ordersRes, wsRes] = await Promise.allSettled([
+                fetch('/api/orders/list', { cache: 'no-store' }),
+                fetch('/api/wholesale/list', { cache: 'no-store' }),
+              ]);
+
+              if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+                const data = await ordersRes.value.json();
+                if (data.success && Array.isArray(data.orders)) {
+                  setOrders(data.orders);
+                }
+              }
+
+              if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
+                const wsData = await wsRes.value.json();
+                if (wsData.success && Array.isArray(wsData.enquiries)) {
+                  setWholesaleEnquiries(wsData.enquiries);
+                }
               }
             }
           }
+        } catch (authSyncErr) {
+          // Non-admin visitors do not have access to admin session or order dumps
         }
-      } catch (authSyncErr) {
-        // Non-admin visitors do not have access to admin session or order dumps
-      }
+      })());
+
+      await Promise.allSettled(syncTasks);
     } catch (err) {
       console.error('Catalogue synchronization error:', err);
     } finally {
@@ -269,8 +280,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    const onFocus = () => {
+      refreshDatabaseData();
+    };
+
     window.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('focus', refreshDatabaseData);
+    window.addEventListener('focus', onFocus);
 
     const intervalId = setInterval(() => {
       refreshDatabaseData();
@@ -278,7 +293,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       window.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('focus', refreshDatabaseData);
+      window.removeEventListener('focus', onFocus);
       clearInterval(intervalId);
     };
   }, []);
@@ -665,11 +680,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         savedAddress,
         saveAddress,
         orders,
+        setOrders,
         addOrder,
         updateOrderStatus,
         deleteOrder,
         refreshDatabaseData,
         wholesaleEnquiries,
+        setWholesaleEnquiries,
         addWholesaleEnquiry,
         deleteWholesaleEnquiry,
         productsList,

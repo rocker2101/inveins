@@ -15,10 +15,12 @@ interface DashboardStats {
 export default function AdminPage() {
   const {
     orders,
+    setOrders,
     updateOrderStatus,
     deleteOrder,
     refreshDatabaseData,
     wholesaleEnquiries,
+    setWholesaleEnquiries,
     deleteWholesaleEnquiry,
     productsList,
     deletedProductIds,
@@ -34,6 +36,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [pinError, setPinError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product'>('orders');
@@ -350,19 +353,43 @@ export default function AdminPage() {
     }
   };
 
-  const fetchDashboardStats = useCallback(async () => {
+  const loadAdminData = useCallback(async () => {
+    setIsLoadingOrders(true);
     try {
-      const res = await fetch('/api/admin/dashboard', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.stats) {
-          setServerStats(data.stats);
+      const [statsRes, ordersRes, wsRes] = await Promise.allSettled([
+        fetch('/api/admin/dashboard', { cache: 'no-store' }),
+        fetch('/api/orders/list', { cache: 'no-store' }),
+        fetch('/api/wholesale/list', { cache: 'no-store' }),
+      ]);
+
+      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+        const statsData = await statsRes.value.json();
+        if (statsData.success && statsData.stats) {
+          setServerStats(statsData.stats);
+        }
+      }
+
+      if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+        const ordData = await ordersRes.value.json();
+        if (ordData.success && Array.isArray(ordData.orders)) {
+          setOrders(ordData.orders);
+        }
+      }
+
+      if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
+        const wsData = await wsRes.value.json();
+        if (wsData.success && Array.isArray(wsData.enquiries)) {
+          setWholesaleEnquiries(wsData.enquiries);
         }
       }
     } catch (err) {
-      console.error('Failed to fetch dashboard stats:', err);
+      console.error('Failed to load admin data:', err);
+    } finally {
+      setIsLoadingOrders(false);
     }
-  }, []);
+  }, [setOrders, setWholesaleEnquiries]);
+
+  const fetchDashboardStats = loadAdminData;
 
   // Verify server-side HttpOnly session cookie on mount
   useEffect(() => {
@@ -384,21 +411,20 @@ export default function AdminPage() {
     verifySession();
   }, []);
 
-  // Fetch stats once when authenticated
+  // Fetch stats and orders immediately once authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      refreshDatabaseData();
-      fetchDashboardStats();
+      loadAdminData();
+      refreshDatabaseData(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadAdminData, refreshDatabaseData]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await Promise.all([
-        refreshDatabaseData(),
-        fetchDashboardStats(),
+        loadAdminData(),
+        refreshDatabaseData(true),
       ]);
       setActionToast({ message: 'Authoritative data synchronized with Supabase.', type: 'info' });
       setTimeout(() => setActionToast(null), 3500);
@@ -424,6 +450,7 @@ export default function AdminPage() {
       if (res.ok && data.success) {
         setIsAuthenticated(true);
         setPinError(false);
+        loadAdminData();
       } else {
         setPinError(true);
         setErrorMessage(data.message || 'Incorrect Admin Passcode');
@@ -843,7 +870,12 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {filteredOrders.length === 0 ? (
+          {isLoadingOrders && orders.length === 0 ? (
+            <div className="p-12 text-center bg-white border border-[#e5e4df] text-xs text-[#737373] space-y-3">
+              <Loader2 size={24} className="animate-spin text-[#171717] mx-auto" />
+              <p className="font-bold uppercase tracking-widest text-[#171717]">Loading live orders from Supabase...</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
             <div className="p-12 text-center bg-white border border-[#e5e4df] text-xs text-[#737373]">
               No orders found matching the "{statusFilter}" filter.
             </div>

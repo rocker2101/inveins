@@ -7,6 +7,19 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
+function safeParse(val: any, fallback: any = {}) {
+  if (!val) return fallback;
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Enforce administrative authorization to prevent customer PII exposure
@@ -25,11 +38,12 @@ export async function GET(req: NextRequest) {
 
     // Map database fields to the frontend Order interface
     const orders = (data || []).map((row: any) => {
-      const parsedCustomer = typeof row.customer === 'string' ? JSON.parse(row.customer) : row.customer;
+      const parsedCustomer = safeParse(row.customer, { name: 'Customer', phone: '', address: '', city: '', pincode: '' });
+      const parsedItems = safeParse(row.items, []);
       return {
         id: row.id,
         customer: parsedCustomer,
-        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+        items: Array.isArray(parsedItems) ? parsedItems : [],
         subtotal: Number(row.subtotal) || 0,
         discount: Number(row.discount) || 0,
         shippingFee: Number(row.shipping_fee) || 0,
