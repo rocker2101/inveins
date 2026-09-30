@@ -8,6 +8,33 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
+function safeParseArray(val: any, fallback: any[] = []): any[] {
+  if (!val) return fallback;
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return fallback;
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map(s => s.replace(/^"(.*)"$/, '$1').trim())
+        .filter(Boolean);
+    }
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    if (trimmed.includes(',') && !trimmed.startsWith('data:')) {
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [trimmed];
+  }
+  return fallback;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -37,10 +64,10 @@ export async function GET(req: NextRequest) {
       tagline: row.tagline || '',
       description: row.description || '',
       availableStock: Number(row.available_stock) ?? 0,
-      images: Array.isArray(row.images) ? row.images : typeof row.images === 'string' ? JSON.parse(row.images) : [],
-      sizes: Array.isArray(row.sizes) ? row.sizes : typeof row.sizes === 'string' ? JSON.parse(row.sizes) : ['S', 'M', 'L', 'XL'],
-      details: Array.isArray(row.details) ? row.details : typeof row.details === 'string' ? JSON.parse(row.details) : [],
-      materialCare: Array.isArray(row.material_care) ? row.material_care : typeof row.material_care === 'string' ? JSON.parse(row.material_care) : [],
+      images: safeParseArray(row.images, []),
+      sizes: safeParseArray(row.sizes, ['S', 'M', 'L', 'XL']),
+      details: safeParseArray(row.details, []),
+      materialCare: safeParseArray(row.material_care, []),
       shippingInfo: row.shipping_info || '',
       returnsInfo: row.returns_info || '',
       isActive: row.is_active ?? true,

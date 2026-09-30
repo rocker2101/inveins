@@ -13,10 +13,15 @@ export default function HomePage() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
-  // Filter curated collections
-  const newDropProducts = productsList.filter(p => p.badge === 'NEW' || p.badge === 'HOT').slice(0, 4);
-  const bestsellerProducts = productsList.filter(p => p.badge === 'BESTSELLER' || p.badge === 'HOT').slice(0, 4);
-  const compressionProducts = productsList.filter(p => p.category === 'Gym Compression').slice(0, 4);
+  // Filter curated collections with robust fallback
+  const newDrops = productsList.filter(p => p.badge === 'NEW' || p.badge === 'HOT');
+  const newDropProducts = (newDrops.length > 0 ? newDrops : productsList).slice(0, 4);
+
+  const bestsellers = productsList.filter(p => p.badge === 'BESTSELLER' || p.badge === 'HOT');
+  const bestsellerProducts = (bestsellers.length > 0 ? bestsellers : productsList).slice(0, 4);
+
+  const compression = productsList.filter(p => p.category === 'Gym Compression');
+  const compressionProducts = (compression.length > 0 ? compression : productsList).slice(0, 4);
 
   const handleNewsletter = (e: React.FormEvent) => {
     e.preventDefault();

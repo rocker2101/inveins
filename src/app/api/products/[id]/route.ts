@@ -7,6 +7,33 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
+function safeParseArray(val: any, fallback: any[] = []): any[] {
+  if (!val) return fallback;
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return fallback;
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map(s => s.replace(/^"(.*)"$/, '$1').trim())
+        .filter(Boolean);
+    }
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    if (trimmed.includes(',') && !trimmed.startsWith('data:')) {
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [trimmed];
+  }
+  return fallback;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -37,10 +64,10 @@ export async function GET(
       tagline: data.tagline || '',
       description: data.description || '',
       availableStock: Number(data.available_stock) ?? 0,
-      images: Array.isArray(data.images) ? data.images : [],
-      sizes: Array.isArray(data.sizes) ? data.sizes : ['S', 'M', 'L', 'XL'],
-      details: Array.isArray(data.details) ? data.details : [],
-      materialCare: Array.isArray(data.material_care) ? data.material_care : [],
+      images: safeParseArray(data.images, []),
+      sizes: safeParseArray(data.sizes, ['S', 'M', 'L', 'XL']),
+      details: safeParseArray(data.details, []),
+      materialCare: safeParseArray(data.material_care, []),
       shippingInfo: data.shipping_info || '',
       returnsInfo: data.returns_info || '',
       isActive: data.is_active ?? true,

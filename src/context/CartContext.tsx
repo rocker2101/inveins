@@ -189,12 +189,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedAddr = localStorage.getItem('inveins_saved_address');
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
 
-      // Instant cache restoration: instantly display authoritative catalogue without 20s delay
+      // Instant cache restoration: load cached products only if not legacy mocks
       const cachedCatalog = localStorage.getItem('inveins_cached_products');
       if (cachedCatalog) {
         const parsedCatalog = JSON.parse(cachedCatalog);
         if (Array.isArray(parsedCatalog) && parsedCatalog.length > 0) {
-          setProductsList(parsedCatalog);
+          const hasLegacy = parsedCatalog.some((p: any) => p.id === 'imported-oversized-acid-wash-french-terry-tshirt' || p.price === 250 || p.price === 199);
+          if (!hasLegacy) {
+            setProductsList(parsedCatalog);
+          } else {
+            localStorage.removeItem('inveins_cached_products');
+          }
         }
       }
     } catch (e) {
