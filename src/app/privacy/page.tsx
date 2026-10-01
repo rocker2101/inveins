@@ -62,7 +62,7 @@ export default function PrivacyPage() {
               100% Secure Payment Architecture
             </p>
             <p className="text-emerald-900 text-xs">
-              <strong>INVEINS does NOT store or process your complete credit/debit card numbers, CVVs, or UPI PINs.</strong> All electronic payments are processed directly via <strong>Razorpay Payment Gateway</strong>, which adheres to PCI-DSS Level 1 compliance and uses 256-bit bank-grade encryption.
+              <strong>INVEINS does NOT store or process your complete credit/debit card numbers, CVVs, or UPI PINs.</strong> All electronic payments are processed directly via our RBI-authorized payment aggregator (<strong>Cashfree Payments</strong>), which adheres to PCI-DSS Level 1 compliance and uses 256-bit bank-grade encryption.
             </p>
           </div>
         </section>
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
             We strictly uphold a <strong>zero-spam policy</strong>. We never sell, rent, or trade your personal data to marketing third parties or lead aggregators. We only share essential operational details with trusted service partners:
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-neutral-600">
-            <li><strong>Payment Gateways:</strong> Razorpay Software Private Limited for verifying payment signatures and issuing refunds.</li>
+            <li><strong>Payment Gateways:</strong> Cashfree Payments India Pvt. Ltd. for processing electronic payments, verifying signatures, and issuing refunds.</li>
             <li><strong>Logistics & Couriers:</strong> Verified Indian express couriers (e.g., Delhivery, BlueDart, DTDC, Xpressbees) to execute door-to-door delivery.</li>
             <li><strong>Legal & Regulatory Authorities:</strong> Only when strictly mandated by applicable Indian law, court order, or governmental law enforcement agency.</li>
           </ul>

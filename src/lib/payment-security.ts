@@ -1,165 +1,9 @@
 import crypto from 'crypto';
 
 /**
- * Enterprise Cryptographic Signature Verification for Payment Gateways
- * Protects against payment spoofing, fake payment callbacks, and transaction tampering.
+ * Enterprise Cryptographic Verification & Inventory Row Security
+ * Protects against payment spoofing, fake order callbacks, and race conditions.
  */
-
-function cleanEnv(val?: string): string {
-  if (!val) return '';
-  return val.replace(/^["']|["']$/g, '').trim();
-}
-
-export function isRazorpayConfigured(): boolean {
-  const keyId = cleanEnv(process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
-  const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET);
-  return Boolean(
-    keyId &&
-    keySecret &&
-    !keyId.includes('<') &&
-    !keySecret.includes('<') &&
-    keyId.startsWith('rzp_')
-  );
-}
-
-/**
- * Creates a server-side order with Razorpay's API
- */
-export async function createRazorpayOrder(
-  amountInPaise: number,
-  receipt: string,
-  notes: Record<string, string> = {}
-): Promise<{ id: string; amount: number; currency: string; keyId: string } | null> {
-  const keyId = cleanEnv(process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
-  const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET);
-
-  if (!keyId || !keySecret || !isRazorpayConfigured()) {
-    console.warn("Razorpay credentials not fully configured in environment.");
-    return null;
-  }
-
-  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-
-  const response = await fetch("https://api.razorpay.com/v1/orders", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${auth}`,
-    },
-    body: JSON.stringify({
-      amount: Math.round(amountInPaise),
-      currency: "INR",
-      receipt: receipt.slice(0, 40),
-      notes,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error("Razorpay order creation error:", errorData);
-    throw new Error(errorData?.error?.description || "Failed to create Razorpay payment order");
-  }
-
-  const data = await response.json();
-  return {
-    id: data.id,
-    amount: data.amount,
-    currency: data.currency,
-    keyId,
-  };
-}
-
-// Razorpay HMAC-SHA256 Signature Verification
-export function verifyRazorpaySignature(
-  orderId: string,
-  paymentId: string,
-  signature: string,
-  secret: string = process.env.RAZORPAY_KEY_SECRET || ''
-): boolean {
-  const cleanSec = cleanEnv(secret);
-  if (!orderId || !paymentId || !signature || !cleanSec) {
-    return false;
-  }
-
-  try {
-    const expectedSignature = crypto
-      .createHmac('sha256', cleanSec)
-      .update(`${orderId.trim()}|${paymentId.trim()}`)
-      .digest('hex');
-
-    const expectedBuffer = Buffer.from(expectedSignature);
-    const signatureBuffer = Buffer.from(signature.trim());
-
-    if (expectedBuffer.length !== signatureBuffer.length) {
-      return false;
-    }
-
-    return crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
- * Razorpay Webhook HMAC-SHA256 Signature Verification
- * Verifies that the incoming webhook originated directly from Razorpay's servers.
- */
-export function verifyRazorpayWebhookSignature(
-  rawBody: string,
-  signature: string,
-  secret: string = process.env.RAZORPAY_WEBHOOK_SECRET || ''
-): boolean {
-  const cleanSec = cleanEnv(secret);
-  if (!rawBody || !signature || !cleanSec) {
-    return false;
-  }
-
-  try {
-    const expectedSignature = crypto
-      .createHmac('sha256', cleanSec)
-      .update(rawBody)
-      .digest('hex');
-
-    const expectedBuffer = Buffer.from(expectedSignature);
-    const signatureBuffer = Buffer.from(signature.trim());
-
-    if (expectedBuffer.length !== signatureBuffer.length) {
-      return false;
-    }
-
-    return crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
- * Fetches Razorpay Order details directly from Razorpay API for authoritative cross-verification
- */
-export async function fetchRazorpayOrder(
-  razorpayOrderId: string
-): Promise<{ id: string; amount: number; status: string; notes?: Record<string, string> } | null> {
-  const keyId = cleanEnv(process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
-  const keySecret = cleanEnv(process.env.RAZORPAY_KEY_SECRET);
-
-  if (!keyId || !keySecret) return null;
-
-  const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
-  try {
-    const res = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(razorpayOrderId)}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
-    });
-
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.error('Error fetching Razorpay order from API:', err);
-    return null;
-  }
-}
 
 /**
  * Atomically decrements catalog inventory for an order's items
@@ -247,9 +91,9 @@ export async function restoreOrderStock(items: any): Promise<void> {
   }
 }
 
-
-
-// Verify Order Verification Token issued by /api/orders/create
+/**
+ * Verify Order Verification Token issued by /api/orders/create
+ */
 export function verifyOrderToken(
   orderId: string,
   grandTotal: number,

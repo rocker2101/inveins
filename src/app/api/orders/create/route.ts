@@ -4,7 +4,7 @@ import { PRODUCTS } from '@/data/products';
 import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePhone } from '@/lib/sanitize';
 import { supabaseAdmin } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { createRazorpayOrder } from '@/lib/payment-security';
+import { createCashfreeOrder, isCashfreeConfigured } from '@/lib/cashfree';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,29 +161,36 @@ export async function POST(req: NextRequest) {
     const selectedMethod = (paymentMethod === 'cod' || paymentMethod === 'whatsapp') ? paymentMethod : 'upi';
     const initialStatus = selectedMethod === 'cod' ? 'Confirmed' : 'Pending';
 
-    // 5b. For Online Payments (UPI / Card): Create Authoritative Razorpay Order
-    let razorpayData = null;
-    if (selectedMethod === 'upi' || selectedMethod === 'card') {
-      try {
-        const rzpOrder = await createRazorpayOrder(grandTotal * 100, orderId, {
-          order_id: orderId,
-          customer_phone: sanitizedCustomer.phone,
-        });
+    // 5b. For Online Payments (UPI / Card): Create Authoritative Cashfree Order
+    let cashfreeData = null;
 
-        if (rzpOrder) {
-          razorpayData = {
-            orderId: rzpOrder.id,
-            amount: rzpOrder.amount,
-            currency: rzpOrder.currency,
-            keyId: rzpOrder.keyId,
-          };
+    if (selectedMethod === 'upi' || selectedMethod === 'card') {
+      if (isCashfreeConfigured()) {
+        try {
+          const cfOrder = await createCashfreeOrder({
+            orderId,
+            orderAmount: grandTotal,
+            customerName: sanitizedCustomer.name,
+            customerPhone: sanitizedCustomer.phone,
+            customerEmail: sanitizedCustomer.email,
+          });
+
+          if (cfOrder) {
+            cashfreeData = {
+              orderId: cfOrder.orderId,
+              cfOrderId: cfOrder.cfOrderId,
+              paymentSessionId: cfOrder.paymentSessionId,
+              amount: cfOrder.orderAmount,
+              environment: cfOrder.environment,
+            };
+          }
+        } catch (cfErr: any) {
+          console.error('[CASHFREE] Order creation failed:', cfErr?.message || cfErr);
+          return NextResponse.json(
+            { success: false, message: 'Payment gateway error: ' + (cfErr?.message || 'Failed to initialize payment') },
+            { status: 502 }
+          );
         }
-      } catch (rzpErr: any) {
-        console.error('Razorpay order creation failed:', rzpErr?.message || rzpErr);
-        return NextResponse.json(
-          { success: false, message: 'Payment gateway error: ' + (rzpErr?.message || 'Failed to initialize payment') },
-          { status: 502 }
-        );
       }
     }
 
@@ -201,7 +208,7 @@ export async function POST(req: NextRequest) {
       trackingNumber,
       createdAt,
       verificationToken,
-      razorpayOrderId: razorpayData?.orderId,
+      cashfreeOrderId: cashfreeData?.orderId,
     };
 
     // 6. Persist order directly into Supabase PostgreSQL database
@@ -210,7 +217,7 @@ export async function POST(req: NextRequest) {
         id: orderId,
         customer: {
           ...sanitizedCustomer,
-          ...(razorpayData?.orderId ? { razorpay_order_id: razorpayData.orderId } : {}),
+          ...(cashfreeData?.orderId ? { cashfree_order_id: cashfreeData.orderId } : {}),
         },
         items: verifiedItems,
         subtotal: calculatedSubtotal,
@@ -224,18 +231,7 @@ export async function POST(req: NextRequest) {
         created_at: nowIso,
       };
 
-      if (razorpayData?.orderId) {
-        orderPayload.razorpay_order_id = razorpayData.orderId;
-      }
-
-      let { error: dbError } = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
-
-      // If column 'razorpay_order_id' does not exist in schema cache, retry without the dedicated column
-      if (dbError && (dbError.code === '42703' || dbError.code === 'PGRST204' || dbError.message?.includes('razorpay_order_id') || dbError.message?.includes('schema cache')) && orderPayload.razorpay_order_id) {
-        delete orderPayload.razorpay_order_id;
-        const retryResult = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
-        dbError = retryResult.error;
-      }
+      const { error: dbError } = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
 
       if (dbError) {
         console.error('Supabase DB error saving order:', dbError);
@@ -256,7 +252,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Order validated and created successfully.',
       order: verifiedOrder,
-      razorpay: razorpayData,
+      cashfree: cashfreeData,
     });
   } catch (error) {
     return NextResponse.json(

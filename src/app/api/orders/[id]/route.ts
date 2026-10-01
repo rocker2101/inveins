@@ -55,7 +55,7 @@ export async function GET(
       grandTotal: Number(data.grand_total) || 0,
       paymentMethod: data.payment_method || 'upi',
       paymentId: data.payment_id || parsedCustomer?.payment_id || undefined,
-      razorpayOrderId: data.razorpay_order_id || parsedCustomer?.razorpay_order_id || undefined,
+      cashfreeOrderId: data.cashfree_order_id || parsedCustomer?.cashfree_order_id || undefined,
       status: data.status || 'Confirmed',
       trackingNumber: data.tracking_number,
       verificationToken: data.verification_token,

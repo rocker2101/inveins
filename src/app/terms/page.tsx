@@ -65,14 +65,14 @@ export default function TermsPage() {
         {/* Section 3 */}
         <section className="space-y-3">
           <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#171717] uppercase tracking-wide flex items-center gap-2">
-            <span className="text-[#cc785c]">03.</span> Orders, Payments & Razorpay
+            <span className="text-[#cc785c]">03.</span> Orders, Payments & Payment Gateways
           </h2>
           <p>
-            When you place an order, you agree to provide complete, accurate, and current purchase and contact information. Online payment processing is securely managed by our RBI-licensed payment gateway partner, <strong>Razorpay</strong>.
+            When you place an order, you agree to provide complete, accurate, and current purchase and contact information. Online payment processing is securely managed by our RBI-licensed payment gateway partner, <strong>Cashfree Payments</strong>.
           </p>
           <ul className="list-disc pl-5 space-y-1 text-neutral-600">
             <li>We accept UPI (Google Pay, PhonePe, Paytm, etc.), Net Banking, Debit/Credit Cards, and eligible Wallets.</li>
-            <li>We do not store your confidential card numbers, CVVs, or UPI PINs on our servers. All financial transactions are encrypted end-to-end via Razorpay&apos;s PCI-DSS compliant infrastructure.</li>
+            <li>We do not store your confidential card numbers, CVVs, or UPI PINs on our servers. All financial transactions are encrypted end-to-end via PCI-DSS compliant infrastructure with 256-bit SSL encryption.</li>
             <li>In the event of a payment deduction where the order status remains unconfirmed due to network interruptions, our automated reconciliation will credit the order or initiate an automatic reversal within 24–48 hours.</li>
           </ul>
         </section>

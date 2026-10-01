@@ -4,13 +4,13 @@
 **Date of Audit:** September 29, 2026  
 **Repository:** `rocker2101/inveins`  
 **Application:** INVEINS Fashion Platform  
-**Target Environment:** Next.js 14.2 App Router (Vercel / Node.js 20+), Supabase PostgreSQL, Razorpay Payment Gateway, Cloudinary Media CDN  
+**Target Environment:** Next.js 14.2 App Router (Vercel / Node.js 20+), Supabase PostgreSQL, Cashfree Payment Gateway, Cloudinary Media CDN  
 
 ---
 
 ## 1. Executive Summary
 
-A comprehensive pre-production readiness audit of the entire INVEINS repository was conducted. The audit analyzed all frontend components, App Router routes, API Route Handlers, database schemas, Row-Level Security (RLS) policies, Razorpay payment flows, webhook verification, authentication and authorization systems, rate limiting, and dependencies.
+A comprehensive pre-production readiness audit of the entire INVEINS repository was conducted. The audit analyzed all frontend components, App Router routes, API Route Handlers, database schemas, Row-Level Security (RLS) policies, Cashfree payment flows, webhook verification, authentication and authorization systems, rate limiting, and dependencies.
 
 ### Production Readiness Decision:
 # 🚫 NOT READY (NO-GO)
@@ -38,7 +38,7 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 * **Authentication Readiness:** `PARTIALLY VERIFIED` (HMAC session tokens and timing-safe PIN verification work, but credentials missing from production env)
 * **Authorization Readiness:** `VERIFIED` (`requireAdminSession` protects all sensitive routes)
 * **Performance Readiness:** `VERIFIED` (Static pre-rendering for 18 routes, fast build times, lightweight client bundles)
-* **Deployment Readiness:** `NOT READY` (Test mode Razorpay keys, missing environment variables, empty Cloudinary keys)
+* **Deployment Readiness:** `NOT READY` (Test mode Cashfree keys, missing environment variables, empty Cloudinary keys)
 * **Ecommerce Functional Readiness:** `PARTIALLY VERIFIED` (Cart, checkout, catalog, and wholesale forms work; variant stock is unpartitioned)
 
 ---
@@ -48,7 +48,7 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 ### P0-01: Silent Order Drop on Database Failure — [RESOLVED & VERIFIED]
 * **File:** [`src/app/api/orders/create/route.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/app/api/orders/create/route.ts#L233-L246)
 * **Status:** ✅ **RESOLVED & VERIFIED**
-* **Fix Applied:** In `/api/orders/create`, if `dbError` occurs while writing to `inveins_orders` or if the network throws an exception, the handler immediately aborts with HTTP 500 and does NOT issue or return a Razorpay payment order.
+* **Fix Applied:** In `/api/orders/create`, if `dbError` occurs while writing to `inveins_orders` or if the network throws an exception, the handler immediately aborts with HTTP 500 and does NOT issue or return a Cashfree payment order.
 * **Verification:** Tested in live 7-stage End-to-End loop test (`test-loop.mjs`). Orders now reliably persist in Supabase `inveins_orders` before payment processing.
 
 ---
@@ -101,11 +101,11 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 
 ---
 
-### P1-03: Test-Mode Razorpay Credentials in Environment
+### P1-03: Test-Mode Cashfree Credentials in Environment
 * **File:** [`.env`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/.env#L6-L9)
 * **Problem:** The active `.env` file uses test keys (`rzp_test_TaDBPD7wPrksQW`).
 * **Risk:** Real customer transactions will fail or execute in sandbox mode, producing non-settling dummy charges.
-* **Fix:** Prior to DNS cutover, update environment variables on production hosting to `rzp_live_...` and configure the production Razorpay webhook secret.
+* **Fix:** Prior to DNS cutover, update environment variables on production hosting to `rzp_live_...` and configure the production Cashfree webhook secret.
 
 ---
 
@@ -128,7 +128,7 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 
 ### P2 Issues:
 1. **P2-01: Rate Limiter Memory Cap Clears All Limits:** In [`src/lib/rate-limit.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/lib/rate-limit.ts#L63-L65), `if (tracker.size > MAX_TRACKER_KEYS) tracker.clear()`. An attacker sending requests with 10,000 distinct spoofed IP headers will wipe all existing rate limit records for all users.
-2. **P2-02: CSP Missing Razorpay Telemetry Endpoint:** In [`next.config.mjs`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/next.config.mjs#L61), `connect-src` includes `https://api.razorpay.com`, but omits `https://lumberjack.razorpay.com`. This causes harmless but noisy CSP console errors during checkout telemetry.
+2. **P2-02: CSP Missing Cashfree Telemetry Endpoint:** In [`next.config.mjs`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/next.config.mjs#L61), `connect-src` includes `https://api.Cashfree.com`, but omits `https://lumberjack.Cashfree.com`. This causes harmless but noisy CSP console errors during checkout telemetry.
 3. **P2-03: No Automated Integration Tests:** The project currently has zero automated end-to-end or integration tests. Verification is reliant on manual browser testing.
 4. **P2-04: Coupon Limits are Static and Unrestricted:** Coupons (`FIRST10`, `INVEINS15`, `HEAVY20`) have no per-customer usage tracking in the database; a customer can reuse `FIRST10` indefinitely.
 5. **P2-05: Customer Data Stored as JSON String in Orders Table:** The `customer` field in `inveins_orders` is a serialized JSON object. While flexible, querying or indexing by customer phone or email requires JSON operators (`customer->>'phone'`).
@@ -146,8 +146,8 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 
 | Domain | Mechanism | Implementation Status | Verdict |
 | :--- | :--- | :--- | :--- |
-| **Payment Signature** | Razorpay HMAC-SHA256 | `crypto.createHmac('sha256')` with `crypto.timingSafeEqual` in [`src/lib/payment-security.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/lib/payment-security.ts#L68-L95) | **VERIFIED (SECURE)** |
-| **Webhook Signature** | Raw Request Body HMAC | Consumes `req.text()` directly, verifies `x-razorpay-signature` in [`src/app/api/payment/webhook/route.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/app/api/payment/webhook/route.ts#L19-L51) | **VERIFIED (SECURE)** |
+| **Payment Signature** | Cashfree HMAC-SHA256 | `crypto.createHmac('sha256')` with `crypto.timingSafeEqual` in [`src/lib/payment-security.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/lib/payment-security.ts#L68-L95) | **VERIFIED (SECURE)** |
+| **Webhook Signature** | Raw Request Body HMAC | Consumes `req.text()` directly, verifies `x-Cashfree-signature` in [`src/app/api/payment/webhook/route.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/app/api/payment/webhook/route.ts#L19-L51) | **VERIFIED (SECURE)** |
 | **Order Verification Token** | Customer Tracking HMAC | `crypto.createHmac('sha256')` over `${orderId}\|${grandTotal}\|${phone}\|${createdAt}` in [`src/lib/payment-security.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/lib/payment-security.ts#L208-L232) | **VERIFIED (SECURE)** |
 | **Admin Session Security** | Signed Cookie / Token | Signed HMAC timestamp token with 7-day expiry and `timingSafeEqual` in [`src/lib/auth.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/lib/auth.ts#L51-L93) | **VERIFIED (SECURE)** |
 | **CSRF & Origin Guard** | Origin & Host Matching | Strict `validateRequestOrigin` checks on all admin mutations in [`src/lib/auth.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/lib/auth.ts#L156-L187) | **VERIFIED (SECURE)** |
@@ -169,14 +169,14 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 * Cart state is maintained in [`src/context/CartContext.tsx`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/context/CartContext.tsx) and synchronized with `localStorage`.
 * **Security Check:** The client subtotal and discount are treated as untrusted hints. `/api/orders/create` completely ignores client-supplied totals and recomputes the subtotal, shipping fee (free >= ₹999, else ₹70), and coupon discounts from canonical database prices.
 
-### Workflow 3: Order Placement & Razorpay Payment
+### Workflow 3: Order Placement & Cashfree Payment
 * **Status:** **RISK IDENTIFIED (P0-01)**
 * When online payment (UPI/Card) is selected:
-  1. `/api/orders/create` creates an order record and initializes a Razorpay order via Basic Auth HTTPS REST.
-  2. The frontend opens the official Razorpay Checkout popup.
-  3. Upon payment success, `/api/payment/verify` cryptographically verifies the HMAC signature, correlates the `razorpay_order_id`, validates the amount against the gateway, and checks for payment ID reuse across different orders.
+  1. `/api/orders/create` creates an order record and initializes a Cashfree order via Basic Auth HTTPS REST.
+  2. The frontend opens the official Cashfree Checkout popup.
+  3. Upon payment success, `/api/payment/verify` cryptographically verifies the HMAC signature, correlates the `Cashfree_order_id`, validates the amount against the gateway, and checks for payment ID reuse across different orders.
   4. Webhook `/api/payment/webhook` processes `payment.captured` asynchronously and idempotently.
-  5. **Vulnerability:** If the initial database write fails in `/api/orders/create`, the order is never stored in Supabase, but the Razorpay checkout still opens and charges the customer.
+  5. **Vulnerability:** If the initial database write fails in `/api/orders/create`, the order is never stored in Supabase, but the Cashfree checkout still opens and charges the customer.
 
 ### Workflow 4: Inventory Management & Overselling
 * **Status:** **VERIFIED (ATOMIC)**
@@ -206,7 +206,7 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 | `DELETE` | `/api/orders/[id]` | Yes | ADMIN | No | Delete | Low. Protected by `requireAdminSession`. |
 | `POST` | `/api/orders/update-status`| Yes | ADMIN | No | Write | Low. Protected by `requireAdminSession`. Status enum checked. |
 | `POST` | `/api/payment/verify` | No | Customer | No | Read/Write | Low. Strong cryptographic verification, amount check, and deduplication. |
-| `POST` | `/api/payment/webhook`| No | Razorpay Server | No | Read/Write | Low. Verified with raw body HMAC signature. Idempotent. |
+| `POST` | `/api/payment/webhook`| No | Cashfree Server | No | Read/Write | Low. Verified with raw body HMAC signature. Idempotent. |
 | `POST` | `/api/admin/login` | No | Anonymous | 5 req/15min | None | Low. Rate limited, timing-safe PIN check, HttpOnly cookie. |
 | `POST` | `/api/admin/logout` | No | Anyone | No | None | Low. Clears admin cookie. |
 | `GET` | `/api/admin/session` | No | Anyone | No | None | Low. Returns boolean authentication status. |
@@ -238,10 +238,10 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 | `NODE_ENV` | Private | System | Server / Build | Yes | Present (`production`) |
 | `NEXT_PUBLIC_SITE_URL` | Public | Configuration | Metadata / Sitemaps | Yes | Present |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Public | Configuration | Order WhatsApp dispatch | Yes | Present |
-| `RAZORPAY_KEY_ID` | Private | API Credential | Backend Order Creation | Yes (Live Key) | **TEST KEY PRESENT** |
-| `RAZORPAY_KEY_SECRET` | Private | **SECRET** | Backend Order Creation & Verify | Yes (Live Secret) | **TEST SECRET PRESENT** |
-| `RAZORPAY_WEBHOOK_SECRET` | Private | **SECRET** | Webhook HMAC Verification | Yes (Live Secret) | Present (Test) |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Public | API Credential | Checkout.js Modal Loader | Yes (Live Key) | **TEST KEY PRESENT** |
+| `Cashfree_KEY_ID` | Private | API Credential | Backend Order Creation | Yes (Live Key) | **TEST KEY PRESENT** |
+| `Cashfree_KEY_SECRET` | Private | **SECRET** | Backend Order Creation & Verify | Yes (Live Secret) | **TEST SECRET PRESENT** |
+| `Cashfree_WEBHOOK_SECRET` | Private | **SECRET** | Webhook HMAC Verification | Yes (Live Secret) | Present (Test) |
+| `NEXT_PUBLIC_Cashfree_KEY_ID` | Public | API Credential | Checkout.js Modal Loader | Yes (Live Key) | **TEST KEY PRESENT** |
 | `ORDER_SIGNING_SECRET` | Private | **SECRET** | Order Verification Tokens | Yes | Present |
 | `ADMIN_PIN` | Private | **SECRET** | Admin Dashboard Passcode | Yes | **MISSING (P0-03)** |
 | `ADMIN_SESSION_SECRET` | Private | **SECRET** | Admin Session Token Signing | Yes | **MISSING (P0-03)** |
@@ -264,10 +264,10 @@ While significant hardening has been implemented (cryptographic HMAC payment ver
 * [ ] Ensure all admin routes return 401/403 when unauthenticated.
 
 ### Payments & Checkout
-* [ ] Fix `/api/orders/create` to abort if database write fails before returning Razorpay order.
-* [ ] Switch `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` to live production credentials (`rzp_live_...`).
-* [ ] Configure production Webhook in Razorpay Dashboard (`https://inveins.studio/api/payment/webhook`) with `payment.captured` and `payment.failed` events.
-* [ ] Set `RAZORPAY_WEBHOOK_SECRET` to match the secret generated in the Razorpay Dashboard.
+* [ ] Fix `/api/orders/create` to abort if database write fails before returning Cashfree order.
+* [ ] Switch `Cashfree_KEY_ID` and `Cashfree_KEY_SECRET` to live production credentials (`rzp_live_...`).
+* [ ] Configure production Webhook in Cashfree Dashboard (`https://inveins.studio/api/payment/webhook`) with `payment.captured` and `payment.failed` events.
+* [ ] Set `Cashfree_WEBHOOK_SECRET` to match the secret generated in the Cashfree Dashboard.
 * [ ] Test end-to-end checkout with a live ₹1 test transaction.
 
 ### Storage & Assets
@@ -292,13 +292,13 @@ The application is **NOT READY** for production launch until the 3 P0 blockers a
 ### Mandatory Fixes Before Production Launch:
 
 1. **Fix Silent Order Loss in [`src/app/api/orders/create/route.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/app/api/orders/create/route.ts):**
-   Ensure that if `dbError` occurs while inserting into `inveins_orders`, the handler immediately returns HTTP 500 and does NOT return a Razorpay order.
+   Ensure that if `dbError` occurs while inserting into `inveins_orders`, the handler immediately returns HTTP 500 and does NOT return a Cashfree order.
 2. **Configure `SUPABASE_SERVICE_ROLE_KEY` in Environment:**
    Obtain the service role secret from Supabase and add it to your hosting provider's environment variables so server-side operations bypass RLS.
 3. **Configure `ADMIN_PIN` and `ADMIN_SESSION_SECRET` in Environment:**
    Set non-empty secrets to avoid production admin lockout.
-4. **Switch to Production Razorpay Credentials:**
-   Replace test mode keys with live Razorpay keys and register the live webhook endpoint.
+4. **Switch to Production Cashfree Credentials:**
+   Replace test mode keys with live Cashfree keys and register the live webhook endpoint.
 5. **Add Cloudinary Credentials:**
    Configure Cloudinary so photos are served from CDN rather than stored as bloated inline base64 strings in the database.
 

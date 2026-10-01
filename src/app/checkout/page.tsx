@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
 import { sanitizeString, isValidPhone, isValidPincode } from '@/lib/sanitize';
-import { openRazorpayCheckout } from '@/lib/razorpay-client';
+import { openCashfreeCheckout } from '@/lib/cashfree-client';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -119,17 +119,12 @@ export default function CheckoutPage() {
         return;
       }
 
-      // 2. Check if Razorpay online payment flow is required
-      if (data.razorpay && (paymentMethod === 'upi' || paymentMethod === 'card')) {
-        await openRazorpayCheckout({
+      // 2a. Check if Cashfree online payment flow is available (Primary)
+      if (data.cashfree && (paymentMethod === 'upi' || paymentMethod === 'card')) {
+        await openCashfreeCheckout({
           orderId: data.order.id,
-          razorpayOrderId: data.razorpay.orderId,
-          amount: data.razorpay.amount,
-          currency: data.razorpay.currency || 'INR',
-          keyId: data.razorpay.keyId,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
+          paymentSessionId: data.cashfree.paymentSessionId,
+          environment: data.cashfree.environment,
           onSuccess: (verifyResult: any) => {
             const confirmedOrder: Order = {
               ...data.order,
@@ -153,6 +148,8 @@ export default function CheckoutPage() {
         });
         return;
       }
+
+
 
       // Safeguard: Online payment requested but gateway response not received - prevent free confirmation
       if (paymentMethod === 'upi' || paymentMethod === 'card') {
@@ -565,7 +562,7 @@ export default function CheckoutPage() {
                       <span className="text-xs font-extrabold uppercase tracking-wider text-[#141413]">
                         Credit / Debit Card (Visa, MasterCard, RuPay)
                       </span>
-                      <p className="text-[11px] text-[#6c6a64] mt-0.5">256-bit encrypted Razorpay / Stripe gateway.</p>
+                      <p className="text-[11px] text-[#6c6a64] mt-0.5">256-bit encrypted Cashfree Payments gateway.</p>
                     </div>
                   </div>
                 </label>

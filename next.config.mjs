@@ -58,7 +58,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com https://cdn.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://5.imimg.com https://inveins.in https://www.inveins.in https://*.razorpay.com https://cdn.razorpay.com; connect-src 'self' https://*.supabase.co https://api.razorpay.com https://*.razorpay.com https://res.cloudinary.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com; base-uri 'self'; form-action 'self' https://api.razorpay.com https://*.razorpay.com;",
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.cashfree.com https://*.cashfree.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://images.unsplash.com https://5.imimg.com https://inveins.in https://www.inveins.in https://*.cashfree.com; connect-src 'self' https://*.supabase.co https://api.cashfree.com https://sandbox.cashfree.com https://*.cashfree.com https://res.cloudinary.com; frame-src 'self' https://api.cashfree.com https://sandbox.cashfree.com https://sdk.cashfree.com https://*.cashfree.com; base-uri 'self'; form-action 'self' https://api.cashfree.com https://sandbox.cashfree.com https://*.cashfree.com;",
   },
 ];
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { X, CheckCircle2, ShieldCheck, Zap, Smartphone, CreditCard, Banknote, MessageSquare, ArrowRight, Loader2 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
-import { openRazorpayCheckout } from '@/lib/razorpay-client';
+import { openCashfreeCheckout } from '@/lib/cashfree-client';
 
 export const ExpressCheckoutModal: React.FC = () => {
   const {
@@ -97,17 +97,12 @@ export const ExpressCheckoutModal: React.FC = () => {
         return;
       }
 
-      // Online payment via Razorpay
-      if (data.razorpay && (paymentMethod === 'upi' || paymentMethod === 'card')) {
-        await openRazorpayCheckout({
+      // 2a. Online payment via Cashfree Payments (Primary)
+      if (data.cashfree && (paymentMethod === 'upi' || paymentMethod === 'card')) {
+        await openCashfreeCheckout({
           orderId: data.order.id,
-          razorpayOrderId: data.razorpay.orderId,
-          amount: data.razorpay.amount,
-          currency: data.razorpay.currency || 'INR',
-          keyId: data.razorpay.keyId,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
+          paymentSessionId: data.cashfree.paymentSessionId,
+          environment: data.cashfree.environment,
           onSuccess: (verifyResult: any) => {
             const verified: Order = {
               ...data.order,
@@ -130,6 +125,8 @@ export const ExpressCheckoutModal: React.FC = () => {
         });
         return;
       }
+
+
 
       // Online payment selected but gateway order not returned
       if (paymentMethod === 'upi' || paymentMethod === 'card') {

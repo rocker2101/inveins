@@ -56,21 +56,21 @@ const FAQ_DATA: FAQItem[] = [
     answer: 'If your parcel appears opened, physically tampered with, or damaged during transit, please take photos or a brief unboxing video and notify us within 48 hours of delivery at inveins24@gmail.com. We will arrange a free immediate replacement.',
   },
 
-  // Payments & Razorpay
+  // Payments & Cashfree
   {
     category: 'Payments & Security',
     question: 'What online payment methods do you accept?',
-    answer: 'Through our RBI-authorized payment partner Razorpay, we accept all major Indian and international payment options: UPI (Google Pay, PhonePe, Paytm, BHIM), Net Banking across 50+ banks, Credit & Debit Cards (Visa, Mastercard, RuPay, Maestro), and digital wallets.',
+    answer: 'Through our RBI-authorized payment partner Cashfree Payments, we accept all major Indian and international payment options: UPI (Google Pay, PhonePe, Paytm, BHIM), Net Banking across 50+ banks, Credit & Debit Cards (Visa, Mastercard, RuPay, Maestro), and digital wallets.',
   },
   {
     category: 'Payments & Security',
     question: 'Is my payment information secure on INVEINS?',
-    answer: '100% secure. We do not store or process your credit card numbers, CVVs, or UPI PINs on our servers. All transactions are encrypted with bank-grade 256-bit SSL protocols and processed directly through Razorpay, which is certified Level 1 PCI-DSS compliant.',
+    answer: '100% secure. We do not store or process your credit card numbers, CVVs, or UPI PINs on our servers. All transactions are encrypted with bank-grade 256-bit SSL protocols and processed directly through Cashfree Payments, which is certified Level 1 PCI-DSS compliant.',
   },
   {
     category: 'Payments & Security',
     question: 'Money was deducted from my account but order is not confirmed. What happened?',
-    answer: 'Occasionally, network drops between your banking app and the payment gateway can delay confirmation. If this happens, our automated reconciliation engine will either verify and confirm your order within a few hours or Razorpay will automatically reverse the full amount back to your bank within 24–48 business hours.',
+    answer: 'Occasionally, network drops between your banking app and the payment gateway can delay confirmation. If this happens, our automated reconciliation engine will either verify and confirm your order within a few hours or Cashfree Payments will automatically reverse the full amount back to your bank within 24–48 business hours.',
   },
 
   // Sizing & Fabrics
@@ -154,7 +154,7 @@ export default function FAQPage() {
           FREQUENTLY ASKED QUESTIONS
         </h1>
         <p className="text-xs sm:text-base text-[#737373] leading-relaxed">
-          Quick answers to common questions about sizing, heavyweight textiles, shipping timelines, Razorpay payments, and returns.
+          Quick answers to common questions about sizing, heavyweight textiles, shipping timelines, Cashfree payments, and returns.
         </p>
 
         {/* Search Bar */}
@@ -162,7 +162,7 @@ export default function FAQPage() {
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
-            placeholder="Search questions (e.g. shipping time, refund, size, Razorpay)..."
+            placeholder="Search questions (e.g. shipping time, refund, size, Cashfree)..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-white border border-[#e5e4df] text-xs sm:text-sm text-[#171717] focus:outline-none focus:border-[#171717] transition-colors"

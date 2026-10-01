@@ -95,7 +95,7 @@ export default function RefundPolicyPage() {
           </div>
         </section>
 
-        {/* Section 4: Refund Processing & Timelines (Mandatory for Razorpay) */}
+        {/* Section 4: Refund Processing & Timelines */}
         <section className="space-y-3">
           <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#171717] uppercase tracking-wide flex items-center gap-2">
             <span className="text-[#cc785c]">04.</span> Refund Processing & Timelines
@@ -108,7 +108,7 @@ export default function RefundPolicyPage() {
               Refund Turnaround Time: 5 to 7 Working Days
             </p>
             <p className="text-neutral-600">
-              Upon approval of the return, refunds are initiated immediately and credited back to the <strong>original source of payment</strong> (UPI ID, Net Banking, or Credit/Debit Card via Razorpay) within <strong>5 to 7 business days</strong>, depending on your bank&apos;s settlement cycle.
+              Upon approval of the return, refunds are initiated immediately and credited back to the <strong>original source of payment</strong> (UPI ID, Net Banking, or Credit/Debit Card via Cashfree Payments) within <strong>5 to 7 business days</strong>, depending on your bank&apos;s settlement cycle.
             </p>
             <p className="text-neutral-600 text-xs">
               For Cash on Delivery (COD) orders, our support team will contact you to collect your preferred UPI ID or Bank NEFT details to remit the refund securely.

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         grandTotal: Number(row.grand_total) || 0,
         paymentMethod: row.payment_method || 'upi',
         paymentId: row.payment_id || parsedCustomer?.payment_id || undefined,
-        razorpayOrderId: row.razorpay_order_id || parsedCustomer?.razorpay_order_id || undefined,
+        cashfreeOrderId: row.cashfree_order_id || parsedCustomer?.cashfree_order_id || undefined,
         status: row.status || 'Confirmed',
         trackingNumber: row.tracking_number,
         verificationToken: row.verification_token,

@@ -5,7 +5,7 @@
 * **Project:** INVEINS Fashion (`rocker2101/inveins`)
 * **Audit Date:** September 29, 2026
 * **Environment:** Next.js Production Build (`v14.2.35` / Node.js `v20+` / Windows x64)
-* **Technology Stack:** Next.js 14.2 (App Router), React 18.3, TypeScript 5.6, Tailwind CSS 3.4, Supabase (`@supabase/supabase-js`), Razorpay Payment Gateway, Cloudinary SDK
+* **Technology Stack:** Next.js 14.2 (App Router), React 18.3, TypeScript 5.6, Tailwind CSS 3.4, Supabase (`@supabase/supabase-js`), Cashfree Payment Gateway, Cloudinary SDK
 * **Overall Release Status:** 🚫 **BLOCKED (NO-GO)**
 
 ```text
@@ -32,9 +32,9 @@ Remaining Open Issues:   21
 
 In accordance with strict pre-launch release gates, any system exhibiting **P0 Release Blockers** or **unresolved financial transaction risks** cannot be authorized for production launch.
 
-Although major security hardening milestones were achieved—including dynamic Razorpay Checkout modal wiring, server-authoritative catalog recalculation, raw-body HMAC-SHA256 webhook signature verification, atomic inventory row-level locks (`decrement_product_stock`), and Origin/CSRF enforcement—**3 P0 Blockers** remain active:
+Although major security hardening milestones were achieved—including dynamic Cashfree Checkout modal wiring, server-authoritative catalog recalculation, raw-body HMAC-SHA256 webhook signature verification, atomic inventory row-level locks (`decrement_product_stock`), and Origin/CSRF enforcement—**3 P0 Blockers** remain active:
 
-1. **P0-01:** Silent order drop on database failure: `/api/orders/create` logs DB errors to console but still returns `success: true` with a Razorpay order ID. Customers can pay money for orders that do not exist in the database, leading to missing orders and customer financial loss.
+1. **P0-01:** Silent order drop on database failure: `/api/orders/create` logs DB errors to console but still returns `success: true` with a Cashfree order ID. Customers can pay money for orders that do not exist in the database, leading to missing orders and customer financial loss.
 2. **P0-02:** Database lockout under Row-Level Security: `SUPABASE_SERVICE_ROLE_KEY` is missing from the environment. `supabaseAdmin` falls back to the public `anon` key, which PostgreSQL RLS blocks from accessing `inveins_orders`.
 3. **P0-03:** Production admin lockout: `ADMIN_PIN` and `ADMIN_SESSION_SECRET` are not set in `.env`. In production (`NODE_ENV === "production"`), `/api/admin/login` terminates with HTTP 503 `Authentication service temporarily unavailable`.
 
@@ -53,9 +53,9 @@ Although major security hardening milestones were achieved—including dynamic R
 | **FT-007** | Order Checkout (Direct) | `/checkout`, `/api/orders/create` | Validate form, insert order, trigger payment | **FAIL** | **P0** | Returns `success: true` even if DB insert fails (P0-01). |
 | **FT-008** | Express 1-Click Buy | `ExpressCheckoutModal.tsx` | Instant modal checkout for individual garment | **FAIL** | **P0** | Dependent on `/api/orders/create` (P0-01). |
 | **FT-009** | Global Checkout Modal | `CheckoutModal.tsx` | Complete bag checkout | **PASS** | - | Cleanly redirects to dedicated `/checkout` route. |
-| **FT-010** | Online Payment Launch | `razorpay-client.ts`, `/checkout` | Create Razorpay order and launch modal | **PASS** | - | Basic Auth API order creation and official checkout.js modal loader. |
+| **FT-010** | Online Payment Launch | `Cashfree-client.ts`, `/checkout` | Create Cashfree order and launch modal | **PASS** | - | Basic Auth API order creation and official checkout.js modal loader. |
 | **FT-011** | Payment Verification | `/api/payment/verify` | Verify HMAC signature, amount match, mark Confirmed | **PASS** | - | Timing-safe HMAC-SHA256 verification and cross-order payment deduplication active. |
-| **FT-012** | Razorpay Webhook | `/api/payment/webhook` | Process `payment.captured` & `payment.failed` | **PASS** | - | Raw body HMAC verification and idempotent order status updates. |
+| **FT-012** | Cashfree Webhook | `/api/payment/webhook` | Process `payment.captured` & `payment.failed` | **PASS** | - | Raw body HMAC verification and idempotent order status updates. |
 | **FT-013** | Inventory Decrement | `src/lib/payment-security.ts`, SQL | Atomically deduct stock on payment confirmation | **PASS** | - | PostgreSQL stored procedure with `FOR UPDATE` row-level lock. |
 | **FT-014** | Wholesale Enquiry Submit | `/wholesale`, `/api/wholesale/submit` | Store B2B lead in Supabase | **PARTIAL**| P1 | Honeypot active; dependent on live Supabase connection. |
 | **FT-015** | Admin Authentication | `/admin`, `/api/admin/login` | Secure PIN login setting HttpOnly cookie | **FAIL** | **P0** | Fails with 503 in production when `ADMIN_PIN` is missing (P0-03). |
@@ -70,8 +70,8 @@ Although major security hardening milestones were achieved—including dynamic R
 
 ### BUG-001 (P0): Silent Order Drop & Money Loss on DB Insertion Failure
 * **File:** [`src/app/api/orders/create/route.ts`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/src/app/api/orders/create/route.ts#L225-L246)
-* **Problem:** In `/api/orders/create`, when the Supabase insert (`supabaseAdmin.from('inveins_orders').insert(...)`) fails, the error is logged to `console.error` and execution continues. The endpoint returns `success: true` with a Razorpay order ID.
-* **Impact:** Customer pays money on Razorpay, but the order is missing from Supabase. `/api/payment/verify` returns 404, and the webhook drops the event. Customer is charged without an order being created.
+* **Problem:** In `/api/orders/create`, when the Supabase insert (`supabaseAdmin.from('inveins_orders').insert(...)`) fails, the error is logged to `console.error` and execution continues. The endpoint returns `success: true` with a Cashfree order ID.
+* **Impact:** Customer pays money on Cashfree, but the order is missing from Supabase. `/api/payment/verify` returns 404, and the webhook drops the event. Customer is charged without an order being created.
 * **Fix:**
 ```typescript
 if (dbError) {
@@ -95,7 +95,7 @@ if (dbError) {
 * **Impact:** `/api/admin/login` returns HTTP 503, preventing administrators from accessing the store dashboard.
 * **Fix:** Provide strong secrets for `ADMIN_PIN` and `ADMIN_SESSION_SECRET`.
 
-### BUG-004 (P1): Test Razorpay Credentials in Production Environment
+### BUG-004 (P1): Test Cashfree Credentials in Production Environment
 * **File:** [`.env`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/.env#L6-L9)
 * **Problem:** Active `.env` file contains test credentials (`rzp_test_...`).
 * **Impact:** Transactions operate in sandbox mode; real payments cannot be collected.
@@ -114,7 +114,7 @@ if (dbError) {
 | Risk Scenario | Expected Security Behavior | Actual Implementation Status | Severity |
 | :--- | :--- | :--- | :--- |
 | **Payment Signature Spoofing** | Reject fake callbacks | Timing-safe HMAC-SHA256 verification in `payment-security.ts` | **PASS** |
-| **Amount Tampering** | Reject modified prices | Server recalculates catalog prices and validates with Razorpay API | **PASS** |
+| **Amount Tampering** | Reject modified prices | Server recalculates catalog prices and validates with Cashfree API | **PASS** |
 | **Webhook Forgery** | Verify sender integrity | Raw body HMAC verification in `api/payment/webhook` | **PASS** |
 | **Double Stock Decrement** | Idempotent inventory deduction | Early exit on `status === 'Confirmed'` + DB row locking | **PASS** |
 | **Unauthorized Admin Action** | Enforce auth & origin | `requireAdminSession` checks signed cookie and request origin | **PASS** |
@@ -132,13 +132,13 @@ if (dbError) {
   - [ ] Add `SUPABASE_SERVICE_ROLE_KEY` to production hosting environment.
   - [ ] Add `ADMIN_PIN` and `ADMIN_SESSION_SECRET` to production hosting environment.
 - [ ] **2. Production Payments Setup:**
-  - [ ] Switch `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` to live credentials (`rzp_live_...`).
-  - [ ] Configure live webhook in Razorpay Dashboard (`https://inveins.studio/api/payment/webhook`).
-  - [ ] Set `RAZORPAY_WEBHOOK_SECRET` to match dashboard secret.
+  - [ ] Switch `Cashfree_KEY_ID` and `Cashfree_KEY_SECRET` to live credentials (`rzp_live_...`).
+  - [ ] Configure live webhook in Cashfree Dashboard (`https://inveins.studio/api/payment/webhook`).
+  - [ ] Set `Cashfree_WEBHOOK_SECRET` to match dashboard secret.
 - [ ] **3. Media Storage Setup:**
   - [ ] Add live Cloudinary credentials to `.env.production`.
 - [ ] **4. Database Migrations:**
-  - [ ] Run [`supabase-migration-razorpay.sql`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/supabase-migration-razorpay.sql) in Supabase SQL editor.
+  - [ ] Run [`supabase-migration-Cashfree.sql`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/supabase-migration-Cashfree.sql) in Supabase SQL editor.
   - [ ] Run [`supabase-rls.sql`](file:///c:/Users/ritik/OneDrive/Documents/Cothesis/supabase-rls.sql) in Supabase SQL editor.
 - [ ] **5. Verification:**
   - [ ] Place a live test order (₹1) via UPI and verify confirmation in Supabase.

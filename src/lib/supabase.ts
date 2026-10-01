@@ -50,7 +50,7 @@ export interface DbOrder {
   grand_total: number;
   payment_method: string;
   payment_id?: string;
-  razorpay_order_id?: string;
+  cashfree_order_id?: string;
   status: 'Pending' | 'Confirmed' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Failed';
   tracking_number: string;
   verification_token?: string;
