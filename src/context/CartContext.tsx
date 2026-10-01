@@ -66,7 +66,10 @@ interface CartContextType {
   shippingFee: number;
   grandTotal: number;
   freeShippingThreshold: number;
+  standardShippingFee: number;
   amountNeededForFreeShipping: number;
+  updateShippingSettings: (standardFee: number, freeThreshold: number) => Promise<{ success: boolean; message?: string }>;
+  refreshShippingSettings: () => Promise<void>;
 
   // Coupons
   coupon: Coupon | null;
@@ -130,9 +133,6 @@ interface CartContextType {
   setIsExpressOpen: (open: boolean) => void;
 }
 
-const FREE_SHIPPING_THRESHOLD = 999;
-const STANDARD_SHIPPING_FEE = 70;
-
 const VALID_COUPONS: Record<string, number> = {
   FIRST10: 10,
   INVEINS15: 15,
@@ -150,6 +150,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [wholesaleEnquiries, setWholesaleEnquiries] = useState<WholesaleEnquiry[]>([]);
   const [productsList, setProductsList] = useState<Product[]>(PRODUCTS);
   const [deletedProductIds, setDeletedProductIds] = useState<string[]>([]);
+
+  // Dynamic Store Shipping Settings State
+  const [standardShippingFee, setStandardShippingFee] = useState<number>(70);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(999);
 
   // Modals State
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -202,14 +206,50 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       }
+
+      // Load cached shipping configuration
+      const savedSettings = localStorage.getItem('inveins_shipping_settings');
+      if (savedSettings) {
+        try {
+          const parsedSettings = JSON.parse(savedSettings);
+          if (typeof parsedSettings.standardShippingFee === 'number') {
+            setStandardShippingFee(parsedSettings.standardShippingFee);
+          }
+          if (typeof parsedSettings.freeShippingThreshold === 'number') {
+            setFreeShippingThreshold(parsedSettings.freeShippingThreshold);
+          }
+        } catch (e) {}
+      }
     } catch (e) {
       console.error('Failed to load local storage state', e);
     } finally {
       isLoaded.current = true;
     }
 
-    // Immediately fetch live authoritative catalog from Supabase
+    // Immediately fetch live authoritative catalog and settings
     refreshDatabaseData();
+  }, []);
+
+  const refreshShippingSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.settings) {
+          if (typeof data.settings.standardShippingFee === 'number') {
+            setStandardShippingFee(data.settings.standardShippingFee);
+          }
+          if (typeof data.settings.freeShippingThreshold === 'number') {
+            setFreeShippingThreshold(data.settings.freeShippingThreshold);
+          }
+          try {
+            localStorage.setItem('inveins_shipping_settings', JSON.stringify(data.settings));
+          } catch (storageErr) {}
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync shipping settings:', err);
+    }
   }, []);
 
   const isSyncingRef = useRef(false);
@@ -233,7 +273,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
           })
-          .catch((err) => console.error('Product catalog sync failed:', err))
+          .catch((err) => console.error('Product catalog sync failed:', err)),
+
+        // 2. Fetch store shipping configuration
+        refreshShippingSettings()
       ];
 
       // 2. Fetch administrative collections in parallel if admin
@@ -653,10 +696,47 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setQuickViewProduct(null);
   };
 
+  const updateShippingSettings = async (standardFee: number, freeThreshold: number) => {
+    const validFee = Math.max(0, Math.round(Number(standardFee) || 0));
+    const validThreshold = Math.max(0, Math.round(Number(freeThreshold) || 0));
+
+    setStandardShippingFee(validFee);
+    setFreeShippingThreshold(validThreshold);
+    try {
+      localStorage.setItem('inveins_shipping_settings', JSON.stringify({
+        standardShippingFee: validFee,
+        freeShippingThreshold: validThreshold,
+      }));
+    } catch (e) {}
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          standardShippingFee: validFee,
+          freeShippingThreshold: validThreshold,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update shipping settings');
+      }
+
+      return { success: true, message: 'Shipping settings updated successfully' };
+    } catch (err: any) {
+      console.error('Error updating shipping settings:', err);
+      refreshShippingSettings();
+      return { success: false, message: err.message || 'Failed to update shipping settings' };
+    }
+  };
+
   const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const amountNeededForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-  const shippingFee = subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD ? STANDARD_SHIPPING_FEE : 0;
+  const isFreeShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) || standardShippingFee === 0;
+  const amountNeededForFreeShipping = freeShippingThreshold > 0 ? Math.max(0, freeShippingThreshold - subtotal) : 0;
+  const shippingFee = subtotal > 0 && !isFreeShipping ? standardShippingFee : 0;
   const discountAmount = coupon ? Math.round((subtotal * coupon.discountPercent) / 100) : 0;
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
 
@@ -673,8 +753,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         discountAmount,
         shippingFee,
         grandTotal,
-        freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
+        freeShippingThreshold,
+        standardShippingFee,
         amountNeededForFreeShipping,
+        updateShippingSettings,
+        refreshShippingSettings,
         coupon,
         applyCoupon,
         removeCoupon,

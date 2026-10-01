@@ -5,6 +5,7 @@ import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePh
 import { supabaseAdmin } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { createCashfreeOrder, isCashfreeConfigured } from '@/lib/cashfree';
+import { getStoreSettings } from '@/lib/store-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,8 +139,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Calculate Shipping & Grand Total Authoritatively
-    const shippingFee = calculatedSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+    // 4. Calculate Shipping & Grand Total Authoritatively from Store Settings
+    const storeSettings = await getStoreSettings();
+    const activeFreeShippingThreshold = storeSettings.freeShippingThreshold;
+    const activeStandardShippingFee = storeSettings.standardShippingFee;
+
+    const shippingFee = (activeFreeShippingThreshold > 0 && calculatedSubtotal >= activeFreeShippingThreshold) || activeStandardShippingFee === 0
+      ? 0
+      : activeStandardShippingFee;
     const grandTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee);
 
     // Cryptographically Secure Pseudo-Random Number Generation (CSPRNG) for Order & Tracking IDs

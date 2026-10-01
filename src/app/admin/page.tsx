@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X, Truck } from 'lucide-react';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -29,6 +29,10 @@ export default function AdminPage() {
     updateProduct,
     deleteProduct,
     restoreDefaultProducts,
+    standardShippingFee,
+    freeShippingThreshold,
+    updateShippingSettings,
+    refreshShippingSettings,
   } = useCart();
 
   const [pinInput, setPinInput] = useState('');
@@ -39,8 +43,53 @@ export default function AdminPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [pinError, setPinError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product' | 'shipping'>('orders');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
+
+  // Shipping Configuration Editing State
+  const [shippingFeeInput, setShippingFeeInput] = useState<string>(String(standardShippingFee));
+  const [freeThresholdInput, setFreeThresholdInput] = useState<string>(String(freeShippingThreshold));
+  const [isSavingShipping, setIsSavingShipping] = useState<boolean>(false);
+
+  useEffect(() => {
+    setShippingFeeInput(String(standardShippingFee));
+  }, [standardShippingFee]);
+
+  useEffect(() => {
+    setFreeThresholdInput(String(freeShippingThreshold));
+  }, [freeShippingThreshold]);
+
+  const handleSaveShippingSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const fee = parseFloat(shippingFeeInput);
+    const threshold = parseFloat(freeThresholdInput);
+
+    if (isNaN(fee) || fee < 0) {
+      setActionToast({ message: 'Please enter a valid standard delivery cost (₹0 or more).', type: 'error' });
+      return;
+    }
+    if (isNaN(threshold) || threshold < 0) {
+      setActionToast({ message: 'Please enter a valid free delivery threshold (₹0 or more).', type: 'error' });
+      return;
+    }
+
+    setIsSavingShipping(true);
+    try {
+      const res = await updateShippingSettings(fee, threshold);
+      if (res.success) {
+        setActionToast({
+          message: `Shipping configuration saved! Standard: ₹${Math.round(fee)}, Free over: ₹${Math.round(threshold)}.`,
+          type: 'success',
+        });
+      } else {
+        setActionToast({ message: res.message || 'Failed to update shipping cost', type: 'error' });
+      }
+    } catch (err: any) {
+      setActionToast({ message: err.message || 'Error updating shipping settings', type: 'error' });
+    } finally {
+      setIsSavingShipping(false);
+    }
+  };
 
   // Authoritative server-side stats from Supabase
   const [serverStats, setServerStats] = useState<DashboardStats | null>(null);
@@ -691,6 +740,151 @@ export default function AdminPage() {
     );
   }
 
+  const renderShippingSettingsCard = () => (
+    <div className="bg-white border border-[#e5e4df] p-4 sm:p-6 space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e5e4df] pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#171717] text-[#f5f4f0] flex items-center justify-center font-bold flex-shrink-0">
+            <Truck size={20} />
+          </div>
+          <div>
+            <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#171717] uppercase tracking-wide">
+              Cart Shipping & Delivery Cost
+            </h3>
+            <p className="text-[11px] sm:text-xs text-[#737373] mt-0.5">
+              Directly controls shipping fees charged in the Catalog Cart Drawer, Cart page, and Checkout.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#faf9f5] border border-[#e5e4df] text-[#171717]">
+            Active: ₹{standardShippingFee} flat {freeShippingThreshold > 0 ? `• Free > ₹${freeShippingThreshold}` : '• No Free Delivery'}
+          </span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSaveShippingSettings} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1.5">
+              Standard Delivery Fee (₹) *
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#737373]">₹</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={shippingFeeInput}
+                onChange={(e) => setShippingFeeInput(e.target.value)}
+                placeholder="70"
+                className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 pl-8 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+              />
+            </div>
+            <p className="text-[10px] text-[#737373] mt-1">
+              Charged when subtotal is under the free threshold. Set to 0 for storewide free shipping.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1.5">
+              Free Shipping Order Threshold (₹) *
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#737373]">₹</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={freeThresholdInput}
+                onChange={(e) => setFreeThresholdInput(e.target.value)}
+                placeholder="999"
+                className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 pl-8 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+              />
+            </div>
+            <p className="text-[10px] text-[#737373] mt-1">
+              Orders equal to or above this subtotal get ₹0 shipping in cart drawer & checkout.
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Presets */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#737373]">Quick Presets:</span>
+          <button
+            type="button"
+            onClick={() => { setShippingFeeInput('70'); setFreeThresholdInput('999'); }}
+            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+          >
+            ₹70 Flat / Free &gt; ₹999 (Default)
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShippingFeeInput('0'); setFreeThresholdInput('0'); }}
+            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+          >
+            Free Delivery Everywhere (₹0)
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShippingFeeInput('50'); setFreeThresholdInput('499'); }}
+            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+          >
+            ₹50 Flat / Free &gt; ₹499
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShippingFeeInput('100'); setFreeThresholdInput('1499'); }}
+            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+          >
+            ₹100 Flat / Free &gt; ₹1499
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#e5e4df]">
+          <div className="text-[11px] text-[#737373] flex items-center gap-1.5">
+            <CheckCircle2 size={13} className="text-emerald-600" />
+            <span>Updates live across the Cart Drawer, Cart page, and Checkout immediately.</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {(shippingFeeInput !== String(standardShippingFee) || freeThresholdInput !== String(freeShippingThreshold)) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShippingFeeInput(String(standardShippingFee));
+                  setFreeThresholdInput(String(freeShippingThreshold));
+                }}
+                className="px-3 py-2 text-xs font-bold text-[#737373] hover:text-[#171717] transition-colors cursor-pointer"
+              >
+                Reset
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={isSavingShipping}
+              className="bg-[#171717] hover:bg-[#333333] disabled:opacity-50 text-[#f5f4f0] text-xs font-bold uppercase tracking-wider py-2.5 px-5 flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              {isSavingShipping ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Check size={14} /> Save Shipping Configuration
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
       
@@ -830,7 +1024,17 @@ export default function AdminPage() {
             activeTab === 'inventory' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
           }`}
         >
-          INVENTORY MANAGEMENT ({productsList.length})
+          CATALOG / INVENTORY ({productsList.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('shipping')}
+          className={`pb-3 transition-colors flex items-center gap-1.5 ${
+            activeTab === 'shipping' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
+          }`}
+        >
+          <Truck size={13} />
+          SHIPPING & CART (₹{standardShippingFee})
         </button>
 
         <button
@@ -1084,6 +1288,9 @@ export default function AdminPage() {
               </button>
             )}
           </div>
+
+          {/* Cart Shipping & Delivery Configuration Card */}
+          {renderShippingSettingsCard()}
 
           {/* Mobile View: Inventory Cards (< md) */}
           <div className="md:hidden space-y-3">
@@ -1775,6 +1982,43 @@ export default function AdminPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* TAB 5: SHIPPING & CART DELIVERY CHARGES */}
+      {activeTab === 'shipping' && (
+        <div className="space-y-6">
+          {renderShippingSettingsCard()}
+
+          {/* Shipping Policy & Live Cart Integration Explainer Box */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="bg-white border border-[#e5e4df] p-4 space-y-2">
+              <div className="font-heading font-extrabold text-[#171717] flex items-center gap-1.5 uppercase">
+                <Truck size={14} className="text-[#cc785c]" /> Cart Drawer Integration
+              </div>
+              <p className="text-[#737373] leading-relaxed">
+                The slide-out Cart Drawer displays a live progress bar toward the free delivery threshold. If the cart subtotal is less than the threshold, ₹{standardShippingFee} is added to the subtotal.
+              </p>
+            </div>
+
+            <div className="bg-white border border-[#e5e4df] p-4 space-y-2">
+              <div className="font-heading font-extrabold text-[#171717] flex items-center gap-1.5 uppercase">
+                <ShieldCheck size={14} className="text-emerald-700" /> Cashfree Order Security
+              </div>
+              <p className="text-[#737373] leading-relaxed">
+                When a customer clicks &quot;Pay Now&quot;, the backend server calculates the exact grand total using these authoritative shipping settings so tampering in the browser is impossible.
+              </p>
+            </div>
+
+            <div className="bg-white border border-[#e5e4df] p-4 space-y-2">
+              <div className="font-heading font-extrabold text-[#171717] flex items-center gap-1.5 uppercase">
+                <CheckCircle2 size={14} className="text-blue-700" /> Instant Zero-Build Sync
+              </div>
+              <p className="text-[#737373] leading-relaxed">
+                Settings persist immediately and are broadcast live to all active shopper carts and checkout sessions with instant rollback and quick presets.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
