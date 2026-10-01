@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { 
   ShieldCheck, Lock, CheckCircle2, Truck, CreditCard, 
   ArrowLeft, ArrowRight, Zap, ShoppingBag, MapPin, 
-  Phone, Mail, Package, AlertCircle 
+  Phone, Mail, Package, AlertCircle, Loader2
 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
 import { sanitizeString, isValidPhone, isValidPincode } from '@/lib/sanitize';
@@ -45,6 +45,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'cod' | 'card'>('upi');
   const [upiId, setUpiId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   // Indian States list
@@ -92,6 +93,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (items.length === 0) return;
     setIsProcessing(true);
+    setProcessingStatus(paymentMethod === 'cod' ? 'Placing COD order...' : 'Connecting to gateway...');
     setErrorMsg('');
 
     try {
@@ -116,17 +118,20 @@ export default function CheckoutPage() {
       if (!res.ok || !data.success) {
         setErrorMsg(data.message || 'Order verification failed. Please try again.');
         setIsProcessing(false);
+        setProcessingStatus('');
         return;
       }
 
       // 2a. Check if Cashfree online payment flow is available (Primary)
       if (data.cashfree && (paymentMethod === 'upi' || paymentMethod === 'card')) {
+        setProcessingStatus('Opening UPI payment window...');
         await openCashfreeCheckout({
           orderId: data.order.id,
           paymentSessionId: data.cashfree.paymentSessionId,
           environment: data.cashfree.environment,
           orderToken: data.orderToken,
           onSuccess: (verifyResult: any) => {
+            setProcessingStatus('Payment verified! Finalizing...');
             const confirmedOrder: Order = {
               ...data.order,
               status: 'Confirmed',
@@ -136,14 +141,17 @@ export default function CheckoutPage() {
             setCreatedOrder(confirmedOrder);
             clearCart();
             setIsProcessing(false);
+            setProcessingStatus('');
             setStep('confirmation');
           },
           onFailure: (errorMsg: string) => {
             setIsProcessing(false);
+            setProcessingStatus('');
             setErrorMsg(errorMsg || 'Payment failed or declined. Please retry or select Cash on Delivery.');
           },
           onDismiss: () => {
             setIsProcessing(false);
+            setProcessingStatus('');
             setErrorMsg('Payment window was closed. You can retry payment when ready.');
           },
         });
@@ -155,6 +163,7 @@ export default function CheckoutPage() {
       // Safeguard: Online payment requested but gateway response not received - prevent free confirmation
       if (paymentMethod === 'upi' || paymentMethod === 'card') {
         setIsProcessing(false);
+        setProcessingStatus('');
         setErrorMsg('Payment gateway is currently unavailable for online transactions. Please select Cash on Delivery (COD) to place your order.');
         return;
       }
@@ -179,11 +188,13 @@ export default function CheckoutPage() {
       setCreatedOrder(verified);
       clearCart();
       setIsProcessing(false);
+      setProcessingStatus('');
       setStep('confirmation');
     } catch (err: any) {
       console.error('Order creation error:', err);
       setErrorMsg(err?.message || 'Network error placing order. Please try again.');
       setIsProcessing(false);
+      setProcessingStatus('');
     }
   };
 
@@ -585,7 +596,10 @@ export default function CheckoutPage() {
                   className="min-h-[50px] py-4 px-8 bg-[#141413] hover:bg-black active:bg-neutral-800 text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                 >
                   {isProcessing ? (
-                    <span>CONFIRMING ORDER...</span>
+                    <span className="flex items-center gap-2">
+                      <Loader2 size={15} className="animate-spin text-[#cc785c]" />
+                      <span>{processingStatus || 'CONFIRMING ORDER...'}</span>
+                    </span>
                   ) : (
                     <>
                       <span>PLACE ORDER (₹{grandTotal.toLocaleString('en-IN')})</span>

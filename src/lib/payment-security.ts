@@ -20,41 +20,35 @@ export async function decrementOrderStock(items: any): Promise<void> {
   try {
     const { supabaseAdmin } = await import('@/lib/supabase');
     const rawItems = typeof items === 'string' ? JSON.parse(items) : items;
-    if (!Array.isArray(rawItems)) return;
+    if (!Array.isArray(rawItems) || rawItems.length === 0) return;
 
-    for (const item of rawItems) {
+    // Parallelize updates for all items simultaneously to eliminate sequential network latency
+    const updatePromises = rawItems.map(async (item) => {
       const prodId = item?.product?.id;
       const qty = Math.max(1, Number(item?.quantity) || 1);
-      if (!prodId) continue;
+      if (!prodId) return;
 
-      // 1. Try atomic database RPC function with row lock
-      const { error: rpcError } = await supabaseAdmin.rpc('decrement_product_stock', {
-        product_id: prodId,
-        qty,
-      });
+      const { data: currentProd } = await supabaseAdmin
+        .from('inveins_products')
+        .select('available_stock')
+        .eq('id', prodId)
+        .maybeSingle();
 
-      // 2. Fallback to direct decrement if RPC is not deployed in Supabase
-      if (rpcError) {
-        const { data: currentProd } = await supabaseAdmin
+      if (currentProd && typeof currentProd.available_stock === 'number') {
+        const currentStock = currentProd.available_stock;
+        const newStock = Math.max(0, currentStock - qty);
+        await supabaseAdmin
           .from('inveins_products')
-          .select('available_stock')
-          .eq('id', prodId)
-          .single();
-
-        if (currentProd) {
-          const currentStock = Number(currentProd.available_stock) || 0;
-          const newStock = Math.max(0, currentStock - qty);
-          await supabaseAdmin
-            .from('inveins_products')
-            .update({
-              available_stock: newStock,
-              badge: newStock <= 0 ? 'SOLD OUT' : undefined,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', prodId);
-        }
+          .update({
+            available_stock: newStock,
+            badge: newStock <= 0 ? 'SOLD OUT' : undefined,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', prodId);
       }
-    }
+    });
+
+    await Promise.allSettled(updatePromises);
   } catch (stockErr) {
     console.warn('[STOCK DECREMENT NOTICE]', stockErr);
   }

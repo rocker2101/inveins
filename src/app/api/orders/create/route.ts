@@ -242,8 +242,8 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Atomically decrement catalog inventory for confirmed COD orders
-        await decrementOrderStock(verifiedItems);
+        // Atomically decrement catalog inventory in background (non-blocking for sub-second response)
+        decrementOrderStock(verifiedItems).catch((stockErr) => console.warn('[STOCK DECREMENT BG]', stockErr));
       } catch (dbErr) {
         console.error('Failed to communicate with Supabase:', dbErr);
         return NextResponse.json(

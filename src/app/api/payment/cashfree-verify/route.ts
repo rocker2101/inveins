@@ -163,8 +163,8 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 6. Atomically Decrement Product Inventory
-      await decrementOrderStock(orderToCommit.items);
+      // 6. Atomically Decrement Product Inventory in background (sub-second confirmation)
+      decrementOrderStock(orderToCommit.items).catch((stockErr) => console.warn('[STOCK DECREMENT BG]', stockErr));
 
       logSecurityEvent({
         event: 'CASHFREE_PAYMENT_VERIFIED',
