@@ -1,5 +1,5 @@
 {
-  "standardShippingFee": 70,
-  "freeShippingThreshold": 999,
-  "updatedAt": "2026-10-01T14:34:00.000Z"
+  "standardShippingFee": 0,
+  "freeShippingThreshold": 0,
+  "updatedAt": "2026-10-01T18:28:00.000Z"
 }

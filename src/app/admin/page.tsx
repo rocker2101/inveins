@@ -50,14 +50,43 @@ export default function AdminPage() {
   const [shippingFeeInput, setShippingFeeInput] = useState<string>(String(standardShippingFee));
   const [freeThresholdInput, setFreeThresholdInput] = useState<string>(String(freeShippingThreshold));
   const [isSavingShipping, setIsSavingShipping] = useState<boolean>(false);
+  const isEditingShippingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    setShippingFeeInput(String(standardShippingFee));
-  }, [standardShippingFee]);
+    if (!isEditingShippingRef.current && !isSavingShipping) {
+      setShippingFeeInput(String(standardShippingFee));
+    }
+  }, [standardShippingFee, isSavingShipping]);
 
   useEffect(() => {
-    setFreeThresholdInput(String(freeShippingThreshold));
-  }, [freeShippingThreshold]);
+    if (!isEditingShippingRef.current && !isSavingShipping) {
+      setFreeThresholdInput(String(freeShippingThreshold));
+    }
+  }, [freeShippingThreshold, isSavingShipping]);
+
+  const handleApplyPreset = async (fee: number, threshold: number, presetLabel: string) => {
+    isEditingShippingRef.current = false;
+    setShippingFeeInput(String(fee));
+    setFreeThresholdInput(String(threshold));
+    setIsSavingShipping(true);
+    try {
+      const res = await updateShippingSettings(fee, threshold);
+      if (res.success) {
+        setActionToast({
+          message: fee === 0 
+            ? '✓ Free Delivery Everywhere (₹0) applied & saved!' 
+            : `✓ Shipping preset saved: ${presetLabel}`,
+          type: 'success',
+        });
+      } else {
+        setActionToast({ message: res.message || 'Failed to update shipping cost', type: 'error' });
+      }
+    } catch (err: any) {
+      setActionToast({ message: err.message || 'Error updating shipping settings', type: 'error' });
+    } finally {
+      setIsSavingShipping(false);
+    }
+  };
 
   const handleSaveShippingSettings = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -73,12 +102,15 @@ export default function AdminPage() {
       return;
     }
 
+    isEditingShippingRef.current = false;
     setIsSavingShipping(true);
     try {
       const res = await updateShippingSettings(fee, threshold);
       if (res.success) {
         setActionToast({
-          message: `Shipping configuration saved! Standard: ₹${Math.round(fee)}, Free over: ₹${Math.round(threshold)}.`,
+          message: fee === 0 
+            ? '✓ Free Delivery Everywhere saved! Customers will not be charged shipping.'
+            : `✓ Shipping saved! Standard: ₹${Math.round(fee)}, Free over: ₹${Math.round(threshold)}.`,
           type: 'success',
         });
       } else {
@@ -758,9 +790,16 @@ export default function AdminPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#faf9f5] border border-[#e5e4df] text-[#171717]">
-            Active: ₹{standardShippingFee} flat {freeShippingThreshold > 0 ? `• Free > ₹${freeShippingThreshold}` : '• No Free Delivery'}
-          </span>
+          {standardShippingFee === 0 ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-emerald-50 border border-emerald-300 text-emerald-800 flex items-center gap-1">
+              <CheckCircle2 size={12} className="text-emerald-600" />
+              Active: 100% Free Pan-India Delivery (₹0)
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#faf9f5] border border-[#e5e4df] text-[#171717]">
+              Active: ₹{standardShippingFee} flat {freeShippingThreshold > 0 ? `• Free > ₹${freeShippingThreshold}` : '• Flat Fee Only'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -778,8 +817,11 @@ export default function AdminPage() {
                 step="1"
                 required
                 value={shippingFeeInput}
-                onChange={(e) => setShippingFeeInput(e.target.value)}
-                placeholder="70"
+                onChange={(e) => {
+                  isEditingShippingRef.current = true;
+                  setShippingFeeInput(e.target.value);
+                }}
+                placeholder="0"
                 className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 pl-8 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
               />
             </div>
@@ -800,8 +842,11 @@ export default function AdminPage() {
                 step="1"
                 required
                 value={freeThresholdInput}
-                onChange={(e) => setFreeThresholdInput(e.target.value)}
-                placeholder="999"
+                onChange={(e) => {
+                  isEditingShippingRef.current = true;
+                  setFreeThresholdInput(e.target.value);
+                }}
+                placeholder="0"
                 className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 pl-8 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
               />
             </div>
@@ -813,32 +858,52 @@ export default function AdminPage() {
 
         {/* Quick Presets */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#737373]">Quick Presets:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#737373]">Quick Apply Presets:</span>
           <button
             type="button"
-            onClick={() => { setShippingFeeInput('70'); setFreeThresholdInput('999'); }}
-            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+            disabled={isSavingShipping}
+            onClick={() => handleApplyPreset(0, 0, 'Free Delivery Everywhere')}
+            className={`px-3 py-1.5 text-[10px] font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
+              standardShippingFee === 0
+                ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                : 'border-emerald-600 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            <Check size={12} /> Free Delivery Everywhere (₹0)
+          </button>
+          <button
+            type="button"
+            disabled={isSavingShipping}
+            onClick={() => handleApplyPreset(70, 999, '₹70 Flat / Free > ₹999')}
+            className={`px-2.5 py-1 text-[10px] font-bold border transition-colors cursor-pointer ${
+              standardShippingFee === 70 && freeShippingThreshold === 999
+                ? 'border-[#171717] bg-[#171717] text-white'
+                : 'border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717]'
+            }`}
           >
             ₹70 Flat / Free &gt; ₹999 (Default)
           </button>
           <button
             type="button"
-            onClick={() => { setShippingFeeInput('0'); setFreeThresholdInput('0'); }}
-            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
-          >
-            Free Delivery Everywhere (₹0)
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShippingFeeInput('50'); setFreeThresholdInput('499'); }}
-            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+            disabled={isSavingShipping}
+            onClick={() => handleApplyPreset(50, 499, '₹50 Flat / Free > ₹499')}
+            className={`px-2.5 py-1 text-[10px] font-bold border transition-colors cursor-pointer ${
+              standardShippingFee === 50 && freeShippingThreshold === 499
+                ? 'border-[#171717] bg-[#171717] text-white'
+                : 'border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717]'
+            }`}
           >
             ₹50 Flat / Free &gt; ₹499
           </button>
           <button
             type="button"
-            onClick={() => { setShippingFeeInput('100'); setFreeThresholdInput('1499'); }}
-            className="px-2.5 py-1 text-[10px] font-bold border border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717] transition-colors cursor-pointer"
+            disabled={isSavingShipping}
+            onClick={() => handleApplyPreset(100, 1499, '₹100 Flat / Free > ₹1499')}
+            className={`px-2.5 py-1 text-[10px] font-bold border transition-colors cursor-pointer ${
+              standardShippingFee === 100 && freeShippingThreshold === 1499
+                ? 'border-[#171717] bg-[#171717] text-white'
+                : 'border-[#e5e4df] bg-[#faf9f5] hover:bg-neutral-100 text-[#171717]'
+            }`}
           >
             ₹100 Flat / Free &gt; ₹1499
           </button>
@@ -856,6 +921,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => {
+                  isEditingShippingRef.current = false;
                   setShippingFeeInput(String(standardShippingFee));
                   setFreeThresholdInput(String(freeShippingThreshold));
                 }}

@@ -26,7 +26,7 @@ export const CartDrawer: React.FC = () => {
 
   if (!isCartOpen) return null;
 
-  const progressPercent = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+  const progressPercent = freeShippingThreshold > 0 ? Math.min(100, (subtotal / freeShippingThreshold) * 100) : 100;
 
   const handleWhatsAppCheckout = () => {
     if (items.length === 0) return;

@@ -11,17 +11,28 @@ const MESSAGES = [
 ];
 
 export const AnnouncementBar: React.FC = () => {
-  const { setIsShippingPolicyOpen } = useCart();
+  const { setIsShippingPolicyOpen, standardShippingFee, freeShippingThreshold } = useCart();
   const [index, setIndex] = useState(0);
+
+  const messages = [
+    {
+      text: standardShippingFee === 0 
+        ? 'Complimentary Pan-India Express Shipping on ALL orders today!'
+        : `Complimentary Pan-India Express Shipping on orders above ₹${freeShippingThreshold}`,
+      icon: Truck,
+    },
+    { text: 'Instant 1-Click WhatsApp Express Buy Available on all pieces', icon: Zap },
+    { text: 'Direct from Kanpur Studio • Verified GST: 09CLWPV7429M2ZO', icon: ShieldCheck },
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex(prev => (prev + 1) % MESSAGES.length);
+      setIndex(prev => (prev + 1) % messages.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [messages.length]);
 
-  const current = MESSAGES[index];
+  const current = messages[index] || messages[0];
   const IconComponent = current.icon;
 
   return (

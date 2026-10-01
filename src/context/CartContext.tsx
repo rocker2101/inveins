@@ -713,6 +713,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           standardShippingFee: validFee,
           freeShippingThreshold: validThreshold,
@@ -727,8 +728,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true, message: 'Shipping settings updated successfully' };
     } catch (err: any) {
       console.error('Error updating shipping settings:', err);
-      refreshShippingSettings();
-      return { success: false, message: err.message || 'Failed to update shipping settings' };
+      return { success: false, message: err.message || 'Failed to update shipping settings on server' };
     }
   };
 

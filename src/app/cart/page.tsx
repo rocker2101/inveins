@@ -27,7 +27,7 @@ export default function CartPage() {
   const [couponInput, setCouponInput] = useState('');
   const [couponMessage, setCouponMessage] = useState<{ success: boolean; text: string } | null>(null);
 
-  const progressPercent = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+  const progressPercent = freeShippingThreshold > 0 ? Math.min(100, (subtotal / freeShippingThreshold) * 100) : 100;
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
