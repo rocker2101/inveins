@@ -13,6 +13,7 @@ export interface CashfreePaymentOptions {
   orderId: string;
   paymentSessionId: string;
   environment?: 'sandbox' | 'production';
+  orderToken?: string;
   onSuccess: (verifiedData: any) => void;
   onFailure: (errorMsg: string) => void;
   onDismiss?: () => void;
@@ -110,6 +111,7 @@ export async function openCashfreeCheckout(options: CashfreePaymentOptions): Pro
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           order_id: options.orderId,
+          order_token: options.orderToken,
         }),
       });
 

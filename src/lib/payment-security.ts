@@ -1,9 +1,16 @@
 import crypto from 'crypto';
 
 /**
- * Enterprise Cryptographic Verification & Inventory Row Security
- * Protects against payment spoofing, fake order callbacks, and race conditions.
+ * Safely resolves the server-side order signing secret
  */
+export function getOrderSigningSecret(): string {
+  const secret = process.env.ORDER_SIGNING_SECRET?.trim() || process.env.ADMIN_SESSION_SECRET?.trim();
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ORDER_SIGNING_SECRET is required in production environment.');
+  }
+  return 'inveins_dev_order_secret_ephemeral';
+}
 
 /**
  * Atomically decrements catalog inventory for an order's items

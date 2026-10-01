@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
 import { logSecurityEvent } from '@/lib/audit-logger';
 import { getClientIp } from '@/lib/rate-limit';
+import { getPendingOrder } from '@/lib/pending-orders';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,8 +60,9 @@ export async function POST(req: NextRequest) {
         .eq('id', orderId)
         .maybeSingle();
 
+      const paymentId = String(paymentData.cf_payment_id || `cf_${orderId}`);
+
       if (existingOrder && existingOrder.status !== 'Confirmed') {
-        const paymentId = String(paymentData.cf_payment_id || `cf_${orderId}`);
         const updatedCustomer = {
           ...(typeof existingOrder.customer === 'object' && existingOrder.customer !== null ? existingOrder.customer : {}),
           payment_id: paymentId,
@@ -78,15 +80,46 @@ export async function POST(req: NextRequest) {
           .eq('id', orderId);
 
         await decrementOrderStock(existingOrder.items);
+      } else if (!existingOrder) {
+        // If order was deferred until payment, retrieve from pending cache and persist to Supabase
+        const pending = getPendingOrder(orderId);
+        if (pending) {
+          const updatedCustomer = {
+            ...(typeof pending.customer === 'object' && pending.customer !== null ? pending.customer : {}),
+            payment_id: paymentId,
+            paid_at: new Date().toISOString(),
+            payment_status: 'SUCCESS',
+            cashfree_order_id: orderId,
+          };
 
-        logSecurityEvent({
-          event: 'CASHFREE_WEBHOOK_PAYMENT_CONFIRMED',
-          severity: 'INFO',
-          ip,
-          endpoint: '/api/payment/cashfree-webhook',
-          metadata: { orderId, paymentId },
-        });
+          await supabaseAdmin
+            .from('inveins_orders')
+            .insert({
+              id: orderId,
+              customer: updatedCustomer,
+              items: pending.items,
+              subtotal: pending.subtotal,
+              discount: pending.discount,
+              shipping_fee: pending.shipping_fee,
+              grand_total: pending.grand_total,
+              payment_method: 'cashfree_upi',
+              status: 'Confirmed',
+              tracking_number: pending.tracking_number,
+              verification_token: pending.verification_token,
+              created_at: pending.created_at || new Date().toISOString(),
+            });
+
+          await decrementOrderStock(pending.items);
+        }
       }
+
+      logSecurityEvent({
+        event: 'CASHFREE_WEBHOOK_PAYMENT_CONFIRMED',
+        severity: 'INFO',
+        ip,
+        endpoint: '/api/payment/cashfree-webhook',
+        metadata: { orderId, paymentId },
+      });
     }
 
     return NextResponse.json({ success: true, message: 'Cashfree webhook acknowledged' });

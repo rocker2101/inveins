@@ -6,17 +6,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { createCashfreeOrder, isCashfreeConfigured } from '@/lib/cashfree';
 import { getStoreSettings } from '@/lib/store-settings';
+import { decrementOrderStock, getOrderSigningSecret } from '@/lib/payment-security';
+import { setPendingOrder, signOrderToken, PendingOrderPayload } from '@/lib/pending-orders';
 
 export const dynamic = 'force-dynamic';
-
-function getOrderSigningSecret(): string {
-  const secret = process.env.ORDER_SIGNING_SECRET?.trim() || process.env.ADMIN_SESSION_SECRET?.trim();
-  if (secret) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('ORDER_SIGNING_SECRET is required in production environment.');
-  }
-  return 'inveins_dev_order_secret_ephemeral';
-}
 const VALID_COUPONS: Record<string, number> = {
   FIRST10: 10,
   INVEINS15: 15,
@@ -218,48 +211,65 @@ export async function POST(req: NextRequest) {
       cashfreeOrderId: cashfreeData?.orderId,
     };
 
-    // 6. Persist order directly into Supabase PostgreSQL database
-    try {
-      const orderPayload: Record<string, any> = {
-        id: orderId,
-        customer: {
-          ...sanitizedCustomer,
-          ...(cashfreeData?.orderId ? { cashfree_order_id: cashfreeData.orderId } : {}),
-        },
-        items: verifiedItems,
-        subtotal: calculatedSubtotal,
-        discount: discountAmount,
-        shipping_fee: shippingFee,
-        grand_total: grandTotal,
-        payment_method: selectedMethod,
-        status: initialStatus,
-        tracking_number: trackingNumber,
-        verification_token: verificationToken,
-        created_at: nowIso,
-      };
+    const orderPayload: PendingOrderPayload = {
+      id: orderId,
+      customer: {
+        ...sanitizedCustomer,
+        ...(cashfreeData?.orderId ? { cashfree_order_id: cashfreeData.orderId } : {}),
+      },
+      items: verifiedItems,
+      subtotal: calculatedSubtotal,
+      discount: discountAmount,
+      shipping_fee: shippingFee,
+      grand_total: grandTotal,
+      payment_method: selectedMethod,
+      status: 'Confirmed',
+      tracking_number: trackingNumber,
+      verification_token: verificationToken,
+      created_at: nowIso,
+    };
 
-      const { error: dbError } = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
+    // 6. For Cash on Delivery (COD), persist immediately to Supabase
+    if (selectedMethod === 'cod' || selectedMethod === 'whatsapp') {
+      try {
+        const { error: dbError } = await supabaseAdmin.from('inveins_orders').insert(orderPayload);
 
-      if (dbError) {
-        console.error('Supabase DB error saving order:', dbError);
+        if (dbError) {
+          console.error('Supabase DB error saving order:', dbError);
+          return NextResponse.json(
+            { success: false, message: 'Database service unavailable. Order could not be saved.' },
+            { status: 500 }
+          );
+        }
+
+        // Atomically decrement catalog inventory for confirmed COD orders
+        await decrementOrderStock(verifiedItems);
+      } catch (dbErr) {
+        console.error('Failed to communicate with Supabase:', dbErr);
         return NextResponse.json(
-          { success: false, message: 'Database service unavailable. Order could not be saved.' },
+          { success: false, message: 'Failed to communicate with database. Order could not be created.' },
           { status: 500 }
         );
       }
-    } catch (dbErr) {
-      console.error('Failed to communicate with Supabase:', dbErr);
-      return NextResponse.json(
-        { success: false, message: 'Failed to communicate with database. Order could not be created.' },
-        { status: 500 }
-      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'COD order confirmed and recorded successfully.',
+        order: verifiedOrder,
+      });
     }
+
+    // 7. For Online Payments (UPI / Card): Defer Supabase insertion until payment is verified.
+    // Database remains 100% clean — no rows are inserted if the user abandons or cancels payment.
+    setPendingOrder(orderId, orderPayload);
+    const orderToken = signOrderToken(orderPayload);
 
     return NextResponse.json({
       success: true,
-      message: 'Order validated and created successfully.',
+      message: 'Payment session initialized. Order will be recorded upon successful payment.',
       order: verifiedOrder,
       cashfree: cashfreeData,
+      orderToken,
     });
   } catch (error) {
     return NextResponse.json(

@@ -125,6 +125,7 @@ export default function CheckoutPage() {
           orderId: data.order.id,
           paymentSessionId: data.cashfree.paymentSessionId,
           environment: data.cashfree.environment,
+          orderToken: data.orderToken,
           onSuccess: (verifyResult: any) => {
             const confirmedOrder: Order = {
               ...data.order,
