@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
 import { PRODUCTS } from '@/data/products';
+import { supabaseAdmin } from '@/lib/supabase';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.inveins.in';
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -20,9 +21,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/wishlist`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
   ];
 
-  const productRoutes: MetadataRoute.Sitemap = PRODUCTS.map(p => ({
+  let dynamicProducts = PRODUCTS;
+  try {
+    const { data: dbProducts } = await supabaseAdmin
+      .from('inveins_products')
+      .select('id, slug, updated_at')
+      .eq('is_active', true);
+
+    if (dbProducts && dbProducts.length > 0) {
+      dynamicProducts = dbProducts.map(p => ({
+        id: p.id,
+        updated_at: p.updated_at,
+      })) as any;
+    }
+  } catch (err) {
+    console.warn('[SITEMAP] Fallback to static catalog products');
+  }
+
+  const productRoutes: MetadataRoute.Sitemap = dynamicProducts.map(p => ({
     url: `${baseUrl}/product/${p.id}`,
-    lastModified: new Date(),
+    lastModified: (p as any).updated_at ? new Date((p as any).updated_at) : new Date(),
     changeFrequency: 'weekly',
     priority: 0.8,
   }));
