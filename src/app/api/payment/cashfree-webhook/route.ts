@@ -110,6 +110,38 @@ export async function POST(req: NextRequest) {
             });
 
           await decrementOrderStock(pending.items);
+        } else {
+          // Absolute Safety Fallback: Fetch order metadata directly from Cashfree so money is never unrecorded
+          try {
+            const { fetchCashfreeOrder } = await import('@/lib/cashfree');
+            const cfOrder = await fetchCashfreeOrder(orderId);
+            if (cfOrder && cfOrder.order_status === 'PAID') {
+              await supabaseAdmin.from('inveins_orders').upsert({
+                id: orderId,
+                customer: {
+                  name: cfOrder.customer_details?.customer_name || 'Customer',
+                  phone: cfOrder.customer_details?.customer_phone || '',
+                  email: cfOrder.customer_details?.customer_email || '',
+                  payment_id: paymentId,
+                  paid_at: new Date().toISOString(),
+                  payment_status: 'SUCCESS',
+                  cashfree_order_id: orderId,
+                },
+                items: [],
+                subtotal: Number(cfOrder.order_amount) || 0,
+                discount: 0,
+                shipping_fee: 0,
+                grand_total: Number(cfOrder.order_amount) || 0,
+                payment_method: 'cashfree_upi',
+                status: 'Confirmed',
+                tracking_number: `TRK-${orderId.replace('INV-', '')}`,
+                verification_token: `cf_${paymentId}`,
+                created_at: new Date().toISOString(),
+              });
+            }
+          } catch (fallbackErr) {
+            console.error('[CASHFREE WEBHOOK] Fallback reconstruction failed:', fallbackErr);
+          }
         }
       }
 

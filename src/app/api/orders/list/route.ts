@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('inveins_orders')
       .select('*')
+      .neq('status', 'Payment Pending')
       .order('created_at', { ascending: false });
 
     if (error) {

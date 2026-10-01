@@ -103,6 +103,7 @@ export const ExpressCheckoutModal: React.FC = () => {
           orderId: data.order.id,
           paymentSessionId: data.cashfree.paymentSessionId,
           environment: data.cashfree.environment,
+          orderToken: data.orderToken,
           onSuccess: (verifyResult: any) => {
             const verified: Order = {
               ...data.order,

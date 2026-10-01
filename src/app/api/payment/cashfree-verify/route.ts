@@ -83,10 +83,25 @@ export async function POST(req: NextRequest) {
       }
 
       if (!orderToCommit) {
-        return NextResponse.json(
-          { success: false, message: 'Order session expired or invalid. Please contact support.' },
-          { status: 400 }
-        );
+        orderToCommit = {
+          id: cleanOrderId,
+          customer: {
+            name: cfOrder.customer_details?.customer_name || 'Customer',
+            phone: cfOrder.customer_details?.customer_phone || '',
+            email: cfOrder.customer_details?.customer_email || '',
+            cashfree_order_id: cleanOrderId,
+          },
+          items: [],
+          subtotal: Number(cfOrder.order_amount) || 0,
+          discount: 0,
+          shipping_fee: 0,
+          grand_total: Number(cfOrder.order_amount) || 0,
+          payment_method: 'cashfree_upi',
+          status: 'Confirmed',
+          tracking_number: `TRK-${cleanOrderId.replace('INV-', '')}`,
+          verification_token: `cf_${cleanOrderId}`,
+          created_at: new Date().toISOString(),
+        };
       }
 
       // 4. Verify amount matches Cashfree paid amount

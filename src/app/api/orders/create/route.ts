@@ -259,14 +259,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 7. For Online Payments (UPI / Card): Defer Supabase insertion until payment is verified.
-    // Database remains 100% clean — no rows are inserted if the user abandons or cancels payment.
+    // 7. For Online Payments (UPI / Card): Persist to Supabase with 'Payment Pending'
+    // Guarantees persistence across serverless lambdas & webhooks while keeping admin panel clean
+    const onlineOrderPayload = {
+      ...orderPayload,
+      status: 'Payment Pending',
+      payment_method: 'cashfree_upi',
+    };
+
+    try {
+      await supabaseAdmin.from('inveins_orders').upsert(onlineOrderPayload);
+    } catch (saveErr) {
+      console.warn('[ORDER INIT] Error pre-saving pending online order:', saveErr);
+    }
+
     setPendingOrder(orderId, orderPayload);
     const orderToken = signOrderToken(orderPayload);
 
     return NextResponse.json({
       success: true,
-      message: 'Payment session initialized. Order will be recorded upon successful payment.',
+      message: 'Payment session initialized. Order will be confirmed upon successful payment.',
       order: verifiedOrder,
       cashfree: cashfreeData,
       orderToken,
