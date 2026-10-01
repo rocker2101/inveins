@@ -157,9 +157,9 @@ export async function POST(req: NextRequest) {
       .update(verificationPayload)
       .digest('hex');
 
-    // Payment method & initial status: COD is Confirmed, online methods start as Pending
+    // Payment method & initial status: COD is Pending (cash collected on delivery), online starts as Pending
     const selectedMethod = (paymentMethod === 'cod' || paymentMethod === 'whatsapp') ? paymentMethod : 'upi';
-    const initialStatus = selectedMethod === 'cod' ? 'Confirmed' : 'Pending';
+    const initialStatus = 'Pending';
 
     // 5b. For Online Payments (UPI / Card): Create Authoritative Cashfree Order
     let cashfreeData = null;
@@ -223,7 +223,7 @@ export async function POST(req: NextRequest) {
       shipping_fee: shippingFee,
       grand_total: grandTotal,
       payment_method: selectedMethod,
-      status: 'Confirmed',
+      status: initialStatus,
       tracking_number: trackingNumber,
       verification_token: verificationToken,
       created_at: nowIso,
