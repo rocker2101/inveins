@@ -74,8 +74,10 @@ export async function createCashfreeOrder(
     : 'care@inveins.in';
 
   const defaultAppUrl = cleanEnv(process.env.NEXT_PUBLIC_APP_URL) || 'https://www.inveins.in';
+  const liveDomain = 'https://www.inveins.in';
+  const siteUrl = defaultAppUrl.includes('localhost') ? liveDomain : defaultAppUrl;
   const returnUrl = params.returnUrl || `${defaultAppUrl}/checkout?cf_id={order_id}`;
-  const notifyUrl = params.notifyUrl || `${defaultAppUrl}/api/payment/cashfree-webhook`;
+  const notifyUrl = params.notifyUrl || `${siteUrl}/api/payment/cashfree-webhook`;
 
   const payload = {
     order_id: params.orderId,

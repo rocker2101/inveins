@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   ShieldCheck, Lock, CheckCircle2, Truck, CreditCard, 
   ArrowLeft, ArrowRight, Zap, ShoppingBag, MapPin, 
@@ -13,8 +13,10 @@ import { useCart, SavedAddress, Order } from '@/context/CartContext';
 import { sanitizeString, isValidPhone, isValidPincode } from '@/lib/sanitize';
 import { openCashfreeCheckout } from '@/lib/cashfree-client';
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const cfOrderId = searchParams.get('cf_id') || searchParams.get('order_id');
   const {
     items,
     subtotal,
@@ -47,6 +49,37 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Handle Cashfree redirect callback (when gateway redirects back to /checkout?cf_id=...)
+  useEffect(() => {
+    if (!cfOrderId) return;
+    setIsProcessing(true);
+    setProcessingStatus('Verifying payment with gateway...');
+    fetch('/api/payment/cashfree-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: cfOrderId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.order) {
+          addOrder(data.order);
+          setCreatedOrder(data.order);
+          clearCart();
+          setStep('confirmation');
+        } else {
+          setErrorMsg(data.message || 'Payment verification failed. Please check your order status.');
+        }
+      })
+      .catch((err) => {
+        console.error('Error verifying redirected order:', err);
+        setErrorMsg('Network error verifying payment. If amount was debited, your order will be confirmed shortly.');
+      })
+      .finally(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+      });
+  }, [cfOrderId]);
 
   // Indian States list
   const INDIAN_STATES = [
@@ -199,6 +232,16 @@ export default function CheckoutPage() {
   };
 
   if (items.length === 0 && step !== 'confirmation') {
+    if (cfOrderId || isProcessing) {
+      return (
+        <div className="max-w-3xl mx-auto px-4 py-28 text-center space-y-4">
+          <Loader2 size={36} className="animate-spin text-[#cc785c] mx-auto" />
+          <h2 className="font-heading font-extrabold text-xl text-[#141413]">VERIFYING YOUR PAYMENT...</h2>
+          <p className="text-xs text-[#6c6a64]">{processingStatus || 'Confirming transaction with Cashfree payment gateway...'}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-3xl mx-auto px-4 py-24 text-center space-y-4">
         <div className="w-16 h-16 rounded-full bg-[#faf9f5] border border-[#e6e2d8] flex items-center justify-center mx-auto text-[#6c6a64]">
@@ -679,3 +722,19 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#faf9f5] flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="animate-spin text-[#cc785c]" size={36} />
+          <p className="text-xs uppercase tracking-widest font-bold text-[#6c6a64]">Loading Checkout...</p>
+        </div>
+      }
+    >
+      <CheckoutContent />
+    </Suspense>
+  );
+}
+
