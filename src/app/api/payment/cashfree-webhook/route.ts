@@ -61,14 +61,19 @@ export async function POST(req: NextRequest) {
 
       if (existingOrder && existingOrder.status !== 'Confirmed') {
         const paymentId = String(paymentData.cf_payment_id || `cf_${orderId}`);
+        const updatedCustomer = {
+          ...(typeof existingOrder.customer === 'object' && existingOrder.customer !== null ? existingOrder.customer : {}),
+          payment_id: paymentId,
+          paid_at: new Date().toISOString(),
+          payment_status: 'SUCCESS',
+        };
 
         await supabaseAdmin
           .from('inveins_orders')
           .update({
             status: 'Confirmed',
-            payment_id: paymentId,
             payment_method: 'cashfree_upi',
-            updated_at: new Date().toISOString(),
+            customer: updatedCustomer,
           })
           .eq('id', orderId);
 

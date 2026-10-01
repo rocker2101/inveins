@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
       .from('inveins_orders')
       .update({ 
         status: cleanStatus,
-        updated_at: new Date().toISOString(),
       })
       .eq('id', cleanOrderId);
 

@@ -49,8 +49,16 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Authoritative Verification with Cashfree PG
+    let cfPaymentId: string | undefined = undefined;
+
     if (isCashfreeConfigured()) {
-      const cfOrder = await fetchCashfreeOrder(cleanOrderId);
+      let cfOrder = await fetchCashfreeOrder(cleanOrderId);
+
+      // If pending/active, brief retry (1.2s) in case webhook/bank confirmation is settling
+      if (cfOrder && cfOrder.order_status !== 'PAID') {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        cfOrder = await fetchCashfreeOrder(cleanOrderId);
+      }
 
       if (!cfOrder) {
         return NextResponse.json(
@@ -89,22 +97,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Mark Order as Confirmed in Supabase
+    // 3. Mark Order as Confirmed in Supabase (Clean Schema-Safe Update)
     const paymentId = `cf_${cleanOrderId}_${Date.now()}`;
+    const updatedCustomer = {
+      ...(typeof existingOrder.customer === 'object' && existingOrder.customer !== null ? existingOrder.customer : {}),
+      payment_id: paymentId,
+      paid_at: new Date().toISOString(),
+      payment_status: 'SUCCESS',
+    };
+
     const { error: updateErr } = await supabaseAdmin
       .from('inveins_orders')
       .update({
         status: 'Confirmed',
-        payment_id: paymentId,
         payment_method: 'cashfree_upi',
-        updated_at: new Date().toISOString(),
+        customer: updatedCustomer,
       })
       .eq('id', cleanOrderId);
 
     if (updateErr) {
       console.error('[CASHFREE] Error updating order status:', updateErr);
       return NextResponse.json(
-        { success: false, message: 'Database error updating order status.' },
+        { success: false, message: 'Database error updating order status: ' + updateErr.message },
         { status: 500 }
       );
     }
@@ -125,6 +139,11 @@ export async function POST(req: NextRequest) {
       message: 'Cashfree payment authoritatively verified and order confirmed.',
       orderId: cleanOrderId,
       paymentId,
+      order: {
+        ...existingOrder,
+        status: 'Confirmed',
+        paymentId,
+      },
     });
   } catch (err: any) {
     console.error('[CASHFREE] Verification exception:', err);
