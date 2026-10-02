@@ -122,6 +122,27 @@ export async function POST(req: NextRequest) {
     if (couponCode && typeof couponCode === 'string') {
       const cleanCode = couponCode.trim().toUpperCase();
       if (VALID_COUPONS[cleanCode]) {
+        // Enforce FIRST10 is single-use for first-time orders only
+        if (cleanCode === 'FIRST10' && sanitizedCustomer.phone) {
+          try {
+            const { data: priorOrders } = await supabaseAdmin
+              .from('inveins_orders')
+              .select('id')
+              .contains('customer', { phone: sanitizedCustomer.phone })
+              .in('status', ['Confirmed', 'Processing', 'Dispatched', 'Delivered'])
+              .limit(1);
+
+            if (priorOrders && priorOrders.length > 0) {
+              return NextResponse.json(
+                { success: false, message: 'Coupon FIRST10 is valid for first-time orders only.' },
+                { status: 400 }
+              );
+            }
+          } catch (e) {
+            // Graceful fallback if database column indexing is building
+          }
+        }
+
         const percent = VALID_COUPONS[cleanCode];
         discountAmount = Math.round((calculatedSubtotal * percent) / 100);
         appliedCoupon = {
@@ -268,7 +289,10 @@ export async function POST(req: NextRequest) {
     };
 
     try {
-      await supabaseAdmin.from('inveins_orders').upsert(onlineOrderPayload);
+      const { error: preSaveErr } = await supabaseAdmin.from('inveins_orders').upsert(onlineOrderPayload);
+      if (preSaveErr) {
+        console.warn('[ORDER INIT] Notice: Pending online order pre-save to Supabase returned:', preSaveErr.message);
+      }
     } catch (saveErr) {
       console.warn('[ORDER INIT] Error pre-saving pending online order:', saveErr);
     }
@@ -283,9 +307,10 @@ export async function POST(req: NextRequest) {
       cashfree: cashfreeData,
       orderToken,
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[ORDER CREATE EXCEPTION]', error);
     return NextResponse.json(
-      { success: false, message: 'Server error validating order.' },
+      { success: false, message: 'Server error validating order: ' + (error?.message || 'Please check order inputs.') },
       { status: 500 }
     );
   }

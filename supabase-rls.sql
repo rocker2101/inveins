@@ -95,3 +95,29 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ==============================================================================
+-- 6. STORE SETTINGS TABLE (inveins_store_settings)
+-- Manages delivery charges & free shipping thresholds persistently
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS inveins_store_settings (
+  id TEXT PRIMARY KEY DEFAULT 'global',
+  standard_shipping_fee NUMERIC NOT NULL DEFAULT 70,
+  free_shipping_threshold NUMERIC NOT NULL DEFAULT 999,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO inveins_store_settings (id, standard_shipping_fee, free_shipping_threshold)
+VALUES ('global', 70, 999)
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE inveins_store_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access to store settings" ON inveins_store_settings;
+CREATE POLICY "Allow public read access to store settings"
+  ON inveins_store_settings FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow service role full access to store settings" ON inveins_store_settings;
+CREATE POLICY "Allow service role full access to store settings"
+  ON inveins_store_settings FOR ALL TO service_role USING (true);
+

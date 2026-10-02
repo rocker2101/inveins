@@ -100,7 +100,7 @@ export default function AccountPage() {
                         {order.status}
                       </span>
                       <a
-                        href={`https://wa.me/917985232434?text=Hi%20INVEINS%2C%20checking%20status%20for%20Order%20${order.id}`}
+                        href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '917985232434'}?text=Hi%20INVEINS%2C%20checking%20status%20for%20Order%20${order.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs font-bold text-[#cc785c] hover:underline flex items-center gap-1"

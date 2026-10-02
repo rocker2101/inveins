@@ -54,11 +54,22 @@ export async function POST(req: NextRequest) {
 
     // Process PAYMENT_SUCCESS_WEBHOOK or ORDER_PAID
     if (eventType === 'PAYMENT_SUCCESS_WEBHOOK' || eventType === 'ORDER_PAID' || paymentData.payment_status === 'SUCCESS') {
-      const { data: existingOrder } = await supabaseAdmin
+      let { data: existingOrder } = await supabaseAdmin
         .from('inveins_orders')
         .select('*')
         .eq('id', orderId)
         .maybeSingle();
+
+      // If not immediately found in read replica, wait 600ms and re-query to catch recent pre-save
+      if (!existingOrder) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        const { data: retriedOrder } = await supabaseAdmin
+          .from('inveins_orders')
+          .select('*')
+          .eq('id', orderId)
+          .maybeSingle();
+        existingOrder = retriedOrder;
+      }
 
       const paymentId = String(paymentData.cf_payment_id || `cf_${orderId}`);
 
@@ -79,7 +90,9 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', orderId);
 
-        await decrementOrderStock(existingOrder.items);
+        if (Array.isArray(existingOrder.items) && existingOrder.items.length > 0) {
+          await decrementOrderStock(existingOrder.items);
+        }
       } else if (!existingOrder) {
         // If order was deferred until payment, retrieve from pending cache and persist to Supabase
         const pending = getPendingOrder(orderId);

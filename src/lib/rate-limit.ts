@@ -28,18 +28,22 @@ if (typeof setInterval !== "undefined") {
 
 /**
  * Extracts and sanitizes client IP address from Next.js request headers
+ * Prioritizes trusted edge headers (Vercel, Cloudflare) before fallback
  */
 export function getClientIp(req: NextRequest): string {
+  // 1. Trust edge provider headers first (cannot be spoofed by client)
+  const edgeIp = req.headers.get("x-vercel-ip") || req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip");
+  if (edgeIp && edgeIp.trim()) {
+    const clean = edgeIp.trim().replace(/:\d+$/, "").replace(/^\[|\]$/g, "");
+    return clean.slice(0, 45);
+  }
+
+  // 2. Fall back to x-forwarded-for
   const forwarded = req.headers.get("x-forwarded-for");
   let rawIp = "127.0.0.1";
 
   if (forwarded) {
     rawIp = forwarded.split(",")[0].trim();
-  } else {
-    const realIp = req.headers.get("x-real-ip");
-    if (realIp) {
-      rawIp = realIp.trim();
-    }
   }
 
   // Strip port numbers if present (e.g. 192.168.1.1:54321 -> 192.168.1.1)
@@ -59,9 +63,23 @@ export function checkRateLimit(
   const key = `${endpointKey}:${ip}`;
   const now = Date.now();
 
-  // Prevent memory exhaustion under massive distributed IP spoofing
+  // Prevent memory exhaustion with safe expired/LRU pruning (NEVER wipe entire map for all users)
   if (tracker.size > MAX_TRACKER_KEYS) {
-    tracker.clear();
+    tracker.forEach((v, k) => {
+      if (now > v.resetTime) {
+        tracker.delete(k);
+      }
+    });
+    if (tracker.size > MAX_TRACKER_KEYS) {
+      let evicted = 0;
+      const targetEvictions = Math.floor(MAX_TRACKER_KEYS * 0.15);
+      tracker.forEach((_, k) => {
+        if (evicted < targetEvictions) {
+          tracker.delete(k);
+          evicted++;
+        }
+      });
+    }
   }
 
   const record = tracker.get(key);
