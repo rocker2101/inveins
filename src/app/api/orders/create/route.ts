@@ -291,10 +291,18 @@ export async function POST(req: NextRequest) {
     try {
       const { error: preSaveErr } = await supabaseAdmin.from('inveins_orders').upsert(onlineOrderPayload);
       if (preSaveErr) {
-        console.warn('[ORDER INIT] Notice: Pending online order pre-save to Supabase returned:', preSaveErr.message);
+        console.error('[ORDER INIT ERROR] Failed to persist pending online order to Supabase:', preSaveErr.message);
+        return NextResponse.json(
+          { success: false, message: 'Database service unavailable. Order could not be created.' },
+          { status: 500 }
+        );
       }
-    } catch (saveErr) {
-      console.warn('[ORDER INIT] Error pre-saving pending online order:', saveErr);
+    } catch (saveErr: any) {
+      console.error('[ORDER INIT EXCEPTION] Error pre-saving pending online order:', saveErr);
+      return NextResponse.json(
+        { success: false, message: 'Failed to communicate with database. Order could not be created.' },
+        { status: 500 }
+      );
     }
 
     setPendingOrder(orderId, orderPayload);

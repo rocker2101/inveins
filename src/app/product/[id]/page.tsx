@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { Product } from '@/data/products';
 import { ProductCard } from '@/components/ProductCard';
 import { 
   Plus, Minus, MapPin, Ruler, ChevronDown, ChevronUp, 
@@ -13,9 +14,7 @@ import {
   Maximize2, X 
 } from 'lucide-react';
 
-export default function ProductDetailPage() {
-  const params = useParams();
-  const productId = params.id as string;
+function ProductDetailContent({ product }: { product: Product }) {
   const { 
     productsList, 
     addToCart, 
@@ -24,12 +23,6 @@ export default function ProductDetailPage() {
     isInWishlist, 
     toggleWishlist 
   } = useCart();
-
-  const product = productsList.find(p => p.id === productId);
-
-  if (!product) {
-    notFound();
-  }
 
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] || 'M');
@@ -759,3 +752,64 @@ export default function ProductDetailPage() {
     </div>
   );
 }
+
+export default function ProductDetailPage() {
+  const params = useParams();
+  const productId = params?.id as string;
+  const { productsList } = useCart();
+
+  const cachedProduct = productsList.find(p => p.id === productId);
+  const [product, setProduct] = useState<Product | null>(cachedProduct || null);
+  const [loading, setLoading] = useState(!cachedProduct);
+  const [notFoundTriggered, setNotFoundTriggered] = useState(false);
+
+  useEffect(() => {
+    if (cachedProduct) {
+      setProduct(cachedProduct);
+      setLoading(false);
+      return;
+    }
+
+    if (!productId) return;
+
+    let isMounted = true;
+    setLoading(true);
+
+    fetch(`/api/products/${encodeURIComponent(productId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!isMounted) return;
+        if (data.success && data.product) {
+          setProduct(data.product);
+        } else {
+          setNotFoundTriggered(true);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setNotFoundTriggered(true);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [productId, cachedProduct]);
+
+  if (notFoundTriggered) {
+    notFound();
+  }
+
+  if (loading || !product) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
+        <div className="w-8 h-8 border-2 border-[#141413] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs uppercase tracking-widest font-bold text-[#6c6a64]">Loading garment details...</span>
+      </div>
+    );
+  }
+
+  return <ProductDetailContent product={product} />;
+}
+

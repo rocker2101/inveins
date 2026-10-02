@@ -12,9 +12,12 @@ ALTER TABLE IF EXISTS inveins_wholesale_enquiries ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies if any to ensure clean idempotent migration
 DROP POLICY IF EXISTS "Allow public read access to active products" ON inveins_products;
 DROP POLICY IF EXISTS "Allow service role full access to products" ON inveins_products;
+DROP POLICY IF EXISTS "Allow service role full access to orders" ON inveins_orders;
 DROP POLICY IF EXISTS "Deny direct anon access to orders" ON inveins_orders;
+DROP POLICY IF EXISTS "Allow public read access to orders" ON inveins_orders;
 DROP POLICY IF EXISTS "Allow public submission of wholesale enquiries" ON inveins_wholesale_enquiries;
 DROP POLICY IF EXISTS "Deny public reading of wholesale enquiries" ON inveins_wholesale_enquiries;
+DROP POLICY IF EXISTS "Allow service role full access to wholesale enquiries" ON inveins_wholesale_enquiries;
 
 -- ==============================================================================
 -- 2. PRODUCTS TABLE (inveins_products)
@@ -39,7 +42,23 @@ CREATE POLICY "Allow service role full access to products"
 -- 3. ORDERS TABLE (inveins_orders)
 -- Direct client access via anon key is COMPLETELY BLOCKED to protect Customer PII.
 -- All operations are securely routed through Next.js server-side API routes.
+-- Purge ANY existing legacy or GUI policies that might permit public read access:
 -- ==============================================================================
+DO $$ 
+DECLARE 
+    pol record;
+BEGIN 
+    FOR pol IN 
+        SELECT policyname 
+        FROM pg_policies 
+        WHERE tablename = 'inveins_orders' 
+    LOOP 
+        EXECUTE format('DROP POLICY IF EXISTS %I ON inveins_orders', pol.policyname); 
+    END LOOP; 
+END $$;
+
+ALTER TABLE IF EXISTS inveins_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS inveins_orders FORCE ROW LEVEL SECURITY;
 
 -- Allow service_role (and authenticated backend) full access
 CREATE POLICY "Allow service role full access to orders"
