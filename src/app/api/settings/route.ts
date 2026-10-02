@@ -3,7 +3,6 @@ import { getStoreSettings, updateStoreSettings } from '@/lib/store-settings';
 import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 /**
  * Public GET: Fetches current store shipping configuration for cart & checkout
@@ -11,10 +10,17 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const settings = await getStoreSettings();
-    return NextResponse.json({
-      success: true,
-      settings,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        settings,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: 'Failed to fetch settings', error: error?.message },

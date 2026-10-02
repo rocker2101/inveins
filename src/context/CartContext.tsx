@@ -232,7 +232,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshShippingSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings', { cache: 'no-store' });
+      const res = await fetch('/api/settings');
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.settings) {
@@ -261,7 +261,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const syncTasks: Promise<any>[] = [
         // 1. Fetch public product catalogue
-        fetch('/api/products', { cache: 'no-store' })
+        fetch('/api/products')
           .then(async (prodRes) => {
             if (prodRes.ok) {
               const prodData = await prodRes.json();
@@ -279,38 +279,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshShippingSettings()
       ];
 
-      // 2. Fetch administrative collections in parallel if admin
-      syncTasks.push((async () => {
-        try {
-          const sessionRes = await fetch('/api/admin/session', { cache: 'no-store' });
-          if (sessionRes.ok) {
-            const sessionData = await sessionRes.json();
-            if (sessionData.authenticated) {
-              isAdminRef.current = true;
-              const [ordersRes, wsRes] = await Promise.allSettled([
-                fetch('/api/orders/list', { cache: 'no-store' }),
-                fetch('/api/wholesale/list', { cache: 'no-store' }),
-              ]);
+      // 2. Fetch administrative collections ONLY if user is actually visiting the admin area
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+        syncTasks.push((async () => {
+          try {
+            const sessionRes = await fetch('/api/admin/session');
+            if (sessionRes.ok) {
+              const sessionData = await sessionRes.json();
+              if (sessionData.authenticated) {
+                isAdminRef.current = true;
+                const [ordersRes, wsRes] = await Promise.allSettled([
+                  fetch('/api/orders/list'),
+                  fetch('/api/wholesale/list'),
+                ]);
 
-              if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
-                const data = await ordersRes.value.json();
-                if (data.success && Array.isArray(data.orders)) {
-                  setOrders(data.orders);
+                if (ordersRes.status === 'fulfilled' && ordersRes.value.ok) {
+                  const data = await ordersRes.value.json();
+                  if (data.success && Array.isArray(data.orders)) {
+                    setOrders(data.orders);
+                  }
                 }
-              }
 
-              if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
-                const wsData = await wsRes.value.json();
-                if (wsData.success && Array.isArray(wsData.enquiries)) {
-                  setWholesaleEnquiries(wsData.enquiries);
+                if (wsRes.status === 'fulfilled' && wsRes.value.ok) {
+                  const wsData = await wsRes.value.json();
+                  if (wsData.success && Array.isArray(wsData.enquiries)) {
+                    setWholesaleEnquiries(wsData.enquiries);
+                  }
                 }
               }
             }
+          } catch (authSyncErr) {
+            // Non-admin visitors do not have access to admin session or order dumps
           }
-        } catch (authSyncErr) {
-          // Non-admin visitors do not have access to admin session or order dumps
-        }
-      })());
+        })());
+      }
 
       await Promise.allSettled(syncTasks);
     } catch (err) {
@@ -320,31 +322,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Sync with Supabase on tab focus and periodically (every 25 seconds)
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshDatabaseData();
-      }
-    };
-
-    const onFocus = () => {
-      refreshDatabaseData();
-    };
-
-    window.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('focus', onFocus);
-
-    const intervalId = setInterval(() => {
-      refreshDatabaseData();
-    }, 25000);
-
-    return () => {
-      window.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('focus', onFocus);
-      clearInterval(intervalId);
-    };
-  }, []);
+  // Removed aggressive 25-second polling and window focus listeners.
+  // Catalog and shipping settings are loaded on initial mount and updated upon manual actions.
 
   // Save cart & wishlist changes to localStorage
   useEffect(() => {

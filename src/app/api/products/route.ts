@@ -5,8 +5,6 @@ import { sanitizeString } from '@/lib/sanitize';
 import { requireAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
 function safeParseArray(val: any, fallback: any[] = []): any[] {
   if (!val) return fallback;
@@ -74,7 +72,16 @@ export async function GET(req: NextRequest) {
       createdAt: row.created_at,
     }));
 
-    return NextResponse.json({ success: true, products });
+    return NextResponse.json(
+      { success: true, products },
+      {
+        headers: {
+          'Cache-Control': includeInactive
+            ? 'no-store, max-age=0'
+            : 'public, s-maxage=300, stale-while-revalidate=600',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('Server error in /api/products:', err);
     return NextResponse.json({ success: false, message: 'Failed to fetch products', products: [] }, { status: 500 });
