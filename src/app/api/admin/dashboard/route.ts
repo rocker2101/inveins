@@ -11,6 +11,15 @@ export async function GET(req: NextRequest) {
     const authError = requireAdminSession(req);
     if (authError) return authError;
 
+    // Silently auto-clean abandoned payment-pending drafts older than 24 hours
+    try {
+      const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      await Promise.allSettled([
+        supabaseAdmin.from('inveins_orders').delete().eq('status', 'Payment Pending').lt('created_at', cutoffIso),
+        supabaseAdmin.from('inveins_checkout_drafts').delete().lt('created_at', cutoffIso),
+      ]);
+    } catch {}
+
     // 1. Query Orders count & sum subtotal
     const { data: ordersData, error: ordersError } = await supabaseAdmin
       .from('inveins_orders')
@@ -21,7 +30,9 @@ export async function GET(req: NextRequest) {
     }
 
     const orders = ordersData || [];
-    const validOrders = orders.filter((o: any) => o.status !== 'Cancelled');
+    // Strict real orders: COD (Pending/Confirmed/Dispatched/Delivered) & Paid (Confirmed/Dispatched/Delivered)
+    // Exclude abandoned/unpaid 'Payment Pending' and 'Cancelled' orders
+    const validOrders = orders.filter((o: any) => o.status !== 'Cancelled' && o.status !== 'Payment Pending');
     const totalOrders = validOrders.length;
     const totalRevenue = validOrders.reduce((sum: number, o: any) => sum + (Number(o.grand_total ?? o.subtotal) || 0), 0);
 

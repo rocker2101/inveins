@@ -94,8 +94,18 @@ export async function POST(req: NextRequest) {
           await decrementOrderStock(existingOrder.items);
         }
       } else if (!existingOrder) {
-        // If order was deferred until payment, retrieve from pending cache and persist to Supabase
-        const pending = getPendingOrder(orderId);
+        // If order was deferred until payment, retrieve from pending cache OR draft table
+        let pending = getPendingOrder(orderId);
+        if (!pending) {
+          const { data: draft } = await supabaseAdmin
+            .from('inveins_checkout_drafts')
+            .select('*')
+            .eq('id', orderId)
+            .maybeSingle();
+          if (draft) {
+            pending = draft as any;
+          }
+        }
         if (pending) {
           const updatedCustomer = {
             ...(typeof pending.customer === 'object' && pending.customer !== null ? pending.customer : {}),
@@ -123,6 +133,11 @@ export async function POST(req: NextRequest) {
             });
 
           await decrementOrderStock(pending.items);
+
+          // Clean up draft from inveins_checkout_drafts now that it's confirmed in inveins_orders
+          try {
+            await supabaseAdmin.from('inveins_checkout_drafts').delete().eq('id', orderId);
+          } catch {}
         } else {
           // Absolute Safety Fallback: Fetch order metadata directly from Cashfree so money is never unrecorded
           try {

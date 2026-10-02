@@ -140,3 +140,35 @@ DROP POLICY IF EXISTS "Allow service role full access to store settings" ON inve
 CREATE POLICY "Allow service role full access to store settings"
   ON inveins_store_settings FOR ALL TO service_role USING (true);
 
+-- ==============================================================================
+-- 7. CHECKOUT DRAFTS TABLE (inveins_checkout_drafts)
+-- Holds pending online payment sessions during Cashfree checkout.
+-- When payment succeeds, the order is moved to inveins_orders.
+-- Keeps inveins_orders 100% clean with ONLY COD and successful Paid orders!
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS inveins_checkout_drafts (
+  id TEXT PRIMARY KEY,
+  customer JSONB,
+  items JSONB,
+  subtotal NUMERIC,
+  discount NUMERIC,
+  shipping_fee NUMERIC,
+  grand_total NUMERIC,
+  payment_method TEXT,
+  status TEXT DEFAULT 'Payment Pending',
+  tracking_number TEXT,
+  verification_token TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE inveins_checkout_drafts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Deny direct anon access to checkout drafts" ON inveins_checkout_drafts;
+CREATE POLICY "Deny direct anon access to checkout drafts"
+  ON inveins_checkout_drafts FOR ALL TO anon USING (false);
+
+DROP POLICY IF EXISTS "Allow service role full access to checkout drafts" ON inveins_checkout_drafts;
+CREATE POLICY "Allow service role full access to checkout drafts"
+  ON inveins_checkout_drafts FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+

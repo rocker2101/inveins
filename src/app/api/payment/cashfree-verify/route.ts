@@ -78,6 +78,16 @@ export async function POST(req: NextRequest) {
       if (!orderToCommit) {
         orderToCommit = getPendingOrder(cleanOrderId);
       }
+      if (!orderToCommit) {
+        const { data: draft } = await supabaseAdmin
+          .from('inveins_checkout_drafts')
+          .select('*')
+          .eq('id', cleanOrderId)
+          .maybeSingle();
+        if (draft) {
+          orderToCommit = draft as any;
+        }
+      }
       if (!orderToCommit && existingOrder) {
         orderToCommit = existingOrder as any;
       }
@@ -180,6 +190,11 @@ export async function POST(req: NextRequest) {
 
       // 6. Atomically Decrement Product Inventory in background (sub-second confirmation)
       decrementOrderStock(orderToCommit.items).catch((stockErr) => console.warn('[STOCK DECREMENT BG]', stockErr));
+
+      // 7. Clean up draft from inveins_checkout_drafts now that it is confirmed in inveins_orders
+      try {
+        await supabaseAdmin.from('inveins_checkout_drafts').delete().eq('id', cleanOrderId);
+      } catch {}
 
       logSecurityEvent({
         event: 'CASHFREE_PAYMENT_VERIFIED',
