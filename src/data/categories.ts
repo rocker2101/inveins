@@ -1,0 +1,38 @@
+export interface CategoryItem {
+  id: string;
+  title: string;
+  desc: string;
+  image: string;
+  href: string;
+}
+
+export const DEFAULT_CATEGORIES: CategoryItem[] = [
+  {
+    id: 'heavyweight-tees',
+    title: 'HEAVYWEIGHT TEES',
+    desc: '280-320 GSM French Terry & Acid Wash',
+    image: '/images/categories/heavyweight-tees.png',
+    href: '/shop?category=Tees',
+  },
+  {
+    id: 'gym-compression',
+    title: 'GYM COMPRESSION',
+    desc: '4-Way Stretch Spandex Recovery Blends',
+    image: '/images/categories/gym-compression.png',
+    href: '/shop?category=Gym+Compression',
+  },
+  {
+    id: 'french-terry-lowers',
+    title: 'FRENCH TERRY LOWERS',
+    desc: 'Straight-Fit Baggies & Bamboo Pants',
+    image: '/images/categories/french-terry-lowers.png',
+    href: '/shop?category=Joggers',
+  },
+  {
+    id: 'hoodies-and-polos',
+    title: 'HOODIES & POLOS',
+    desc: '430 GSM Loopknit Cotton & Knitted Polos',
+    image: '/images/categories/hoodies-and-polos.png',
+    href: '/shop?category=Outerwear',
+  },
+];

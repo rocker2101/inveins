@@ -9,7 +9,7 @@ import { ProductCard } from '@/components/ProductCard';
 import { InfinityDraggableSlider } from '@/components/InfinityDraggableSlider';
 
 export default function HomePage() {
-  const { productsList } = useCart();
+  const { productsList, categories } = useCart();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
@@ -38,7 +38,7 @@ export default function HomePage() {
       <InfinityDraggableSlider />
 
       {/* 2. VISUAL CATEGORY GRID */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 !mt-6 sm:!mt-8">
         <div className="flex items-end justify-between border-b border-[#e6e2d8] pb-4">
           <div>
             <span className="text-[10px] font-extrabold tracking-widest text-[#6c6a64] uppercase">
@@ -57,34 +57,38 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {[
+          {(categories && categories.length > 0 ? categories : [
             {
+              id: 'heavyweight-tees',
               title: 'HEAVYWEIGHT TEES',
               desc: '280-320 GSM French Terry & Acid Wash',
               image: '/images/categories/heavyweight-tees.png',
               href: '/shop?category=Tees',
             },
             {
+              id: 'gym-compression',
               title: 'GYM COMPRESSION',
               desc: '4-Way Stretch Spandex Recovery Blends',
               image: '/images/categories/gym-compression.png',
               href: '/shop?category=Gym+Compression',
             },
             {
+              id: 'french-terry-lowers',
               title: 'FRENCH TERRY LOWERS',
               desc: 'Straight-Fit Baggies & Bamboo Pants',
               image: '/images/categories/french-terry-lowers.png',
               href: '/shop?category=Joggers',
             },
             {
+              id: 'hoodies-and-polos',
               title: 'HOODIES & POLOS',
               desc: '430 GSM Loopknit Cotton & Knitted Polos',
               image: '/images/categories/hoodies-and-polos.png',
               href: '/shop?category=Outerwear',
             },
-          ].map(cat => (
+          ]).map(cat => (
             <Link
-              key={cat.title}
+              key={cat.id || cat.title}
               href={cat.href}
               className="group relative aspect-[3/4] bg-neutral-900 overflow-hidden block border border-[#e6e2d8]"
             >
@@ -298,7 +302,7 @@ export default function HomePage() {
                   <p className="text-[11px] text-[#6c6a64] uppercase font-bold tracking-wider">Pre-Shrunk Weave</p>
                 </div>
                 <div>
-                  <h4 className="font-heading font-extrabold text-xl text-[#141413]">09CLWPV</h4>
+                  <h4 className="font-heading font-extrabold text-xs sm:text-sm md:text-base text-[#141413] tracking-tight">09CLWPV7429M2ZO</h4>
                   <p className="text-[11px] text-[#6c6a64] uppercase font-bold tracking-wider">GST Registered</p>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Product, PRODUCTS } from '@/data/products';
+import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
 
 export interface CartItem {
   product: Product;
@@ -70,6 +71,11 @@ interface CartContextType {
   amountNeededForFreeShipping: number;
   updateShippingSettings: (standardFee: number, freeThreshold: number) => Promise<{ success: boolean; message?: string }>;
   refreshShippingSettings: () => Promise<void>;
+
+  // Homepage Shop by Category
+  categories: CategoryItem[];
+  updateCategories: (categories: CategoryItem[]) => Promise<{ success: boolean; message?: string }>;
+  refreshCategories: () => Promise<void>;
 
   // Coupons
   coupon: Coupon | null;
@@ -155,6 +161,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [standardShippingFee, setStandardShippingFee] = useState<number>(70);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(999);
 
+  // Dynamic Homepage Categories State
+  const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
+
   // Modals State
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -220,6 +229,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (e) {}
       }
+
+      const savedCategories = localStorage.getItem('inveins_categories');
+      if (savedCategories) {
+        try {
+          const parsedCats = JSON.parse(savedCategories);
+          if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+            setCategories(parsedCats);
+          }
+        } catch (e) {}
+      }
     } catch (e) {
       console.error('Failed to load local storage state', e);
     } finally {
@@ -252,6 +271,23 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const refreshCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories);
+          try {
+            localStorage.setItem('inveins_categories', JSON.stringify(data.categories));
+          } catch (storageErr) {}
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync categories:', err);
+    }
+  }, []);
+
   const isSyncingRef = useRef(false);
 
   // Synchronize catalogue publicly; sync orders & enquiries ONLY if authenticated as admin
@@ -276,7 +312,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .catch((err) => console.error('Product catalog sync failed:', err)),
 
         // 2. Fetch store shipping configuration
-        refreshShippingSettings()
+        refreshShippingSettings(),
+
+        // 3. Fetch homepage categories
+        refreshCategories()
       ];
 
       // 2. Fetch administrative collections ONLY if user is actually visiting the admin area
@@ -711,6 +750,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateCategories = async (newCategories: CategoryItem[]) => {
+    setCategories(newCategories);
+    try {
+      localStorage.setItem('inveins_categories', JSON.stringify(newCategories));
+    } catch (e) {}
+
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ categories: newCategories }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update categories');
+      }
+
+      return { success: true, message: 'Categories updated successfully' };
+    } catch (err: any) {
+      console.error('Error updating categories:', err);
+      return { success: false, message: err.message || 'Failed to update categories on server' };
+    }
+  };
+
   const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const isFreeShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) || standardShippingFee === 0;
@@ -737,6 +802,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         amountNeededForFreeShipping,
         updateShippingSettings,
         refreshShippingSettings,
+        categories,
+        updateCategories,
+        refreshCategories,
         coupon,
         applyCoupon,
         removeCoupon,

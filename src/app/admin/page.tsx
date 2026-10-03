@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X, Truck } from 'lucide-react';
+import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X, Truck, Layers, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -33,6 +34,9 @@ export default function AdminPage() {
     freeShippingThreshold,
     updateShippingSettings,
     refreshShippingSettings,
+    categories,
+    updateCategories,
+    refreshCategories,
   } = useCart();
 
   const [pinInput, setPinInput] = useState('');
@@ -43,7 +47,7 @@ export default function AdminPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [pinError, setPinError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product' | 'shipping'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product' | 'shipping' | 'categories'>('orders');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
 
   // Shipping Configuration Editing State
@@ -120,6 +124,115 @@ export default function AdminPage() {
       setActionToast({ message: err.message || 'Error updating shipping settings', type: 'error' });
     } finally {
       setIsSavingShipping(false);
+    }
+  };
+
+  // Category Grid Configuration State
+  const [localCategories, setLocalCategories] = useState<CategoryItem[]>(categories || DEFAULT_CATEGORIES);
+  const [isSavingCategories, setIsSavingCategories] = useState(false);
+  const [uploadingCategoryIndex, setUploadingCategoryIndex] = useState<number | null>(null);
+  const isEditingCategoriesRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!isEditingCategoriesRef.current && categories && categories.length > 0) {
+      setLocalCategories(categories);
+    }
+  }, [categories]);
+
+  const handleCategoryFieldChange = (index: number, field: keyof CategoryItem, value: string) => {
+    isEditingCategoriesRef.current = true;
+    setLocalCategories(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleAddCategoryItem = () => {
+    isEditingCategoriesRef.current = true;
+    const newId = `category-${Date.now()}`;
+    setLocalCategories(prev => [
+      ...prev,
+      {
+        id: newId,
+        title: 'NEW CATEGORY',
+        desc: 'Custom Fabric / Fit Details',
+        image: '/images/categories/heavyweight-tees.png',
+        href: '/shop',
+      },
+    ]);
+  };
+
+  const handleRemoveCategoryItem = (index: number) => {
+    isEditingCategoriesRef.current = true;
+    setLocalCategories(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMoveCategoryItem = (index: number, direction: 'up' | 'down') => {
+    isEditingCategoriesRef.current = true;
+    setLocalCategories(prev => {
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+  };
+
+  const handleResetCategoriesToDefault = () => {
+    isEditingCategoriesRef.current = true;
+    setLocalCategories(DEFAULT_CATEGORIES);
+    setActionToast({ message: 'Default categories loaded into editor. Click "Save All Changes" to publish.', type: 'info' });
+  };
+
+  const handleUploadCategoryImage = async (index: number, file: File) => {
+    if (!file) return;
+    setUploadingCategoryIndex(index);
+    try {
+      const formData = new FormData();
+      formData.append('files', file);
+
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Image upload failed');
+      }
+
+      const uploadedUrl = data.urls?.[0] || data.url;
+      if (uploadedUrl) {
+        handleCategoryFieldChange(index, 'image', uploadedUrl);
+        setActionToast({ message: '✓ Category image uploaded successfully!', type: 'success' });
+      }
+    } catch (err: any) {
+      console.error('Category image upload error:', err);
+      setActionToast({ message: err?.message || 'Failed to upload category image', type: 'error' });
+    } finally {
+      setUploadingCategoryIndex(null);
+    }
+  };
+
+  const handleSaveCategories = async () => {
+    setIsSavingCategories(true);
+    try {
+      const res = await updateCategories(localCategories);
+      if (res.success) {
+        isEditingCategoriesRef.current = false;
+        setActionToast({ message: '✓ Homepage categories updated & live!', type: 'success' });
+      } else {
+        setActionToast({ message: res.message || 'Failed to save categories', type: 'error' });
+      }
+    } catch (err: any) {
+      console.error('Save categories error:', err);
+      setActionToast({ message: err.message || 'Error saving categories', type: 'error' });
+    } finally {
+      setIsSavingCategories(false);
     }
   };
 
@@ -1091,6 +1204,16 @@ export default function AdminPage() {
           }`}
         >
           CATALOG / INVENTORY ({productsList.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`pb-3 transition-colors flex items-center gap-1.5 ${
+            activeTab === 'categories' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
+          }`}
+        >
+          <Layers size={13} />
+          CATEGORIES ({localCategories.length})
         </button>
 
         <button
@@ -2082,6 +2205,317 @@ export default function AdminPage() {
               </div>
               <p className="text-[#737373] leading-relaxed">
                 Settings persist immediately and are broadcast live to all active shopper carts and checkout sessions with instant rollback and quick presets.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: HOMEPAGE "SHOP BY CATEGORY" MANAGEMENT */}
+      {activeTab === 'categories' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white border border-[#e5e4df] p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e5e4df] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#171717] text-[#f5f4f0] flex items-center justify-center font-bold flex-shrink-0">
+                  <Layers size={20} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#171717] uppercase tracking-wide">
+                    Homepage &quot;Shop By Category&quot; Cards
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-[#737373] mt-0.5">
+                    Customize the visual showcase cards displayed on the homepage. Edit titles, fabrics, target collection links, and upload cover photos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetCategoriesToDefault}
+                  className="px-3 py-2 bg-[#f5f4f0] hover:bg-[#eae8e3] text-[#171717] border border-[#e5e4df] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  Reset Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddCategoryItem}
+                  className="px-3 py-2 bg-[#171717] hover:bg-black text-[#faf9f5] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Plus size={13} />
+                  Add Category
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingCategories}
+                  onClick={handleSaveCategories}
+                  className="px-4 py-2 bg-[#cc785c] hover:bg-[#b8674c] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  {isSavingCategories ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} />
+                      Save All Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* List of Category Cards */}
+            <div className="grid grid-cols-1 gap-6">
+              {localCategories.map((cat, idx) => (
+                <div
+                  key={cat.id || idx}
+                  className="border border-[#e5e4df] bg-[#faf9f5] p-4 sm:p-5 relative space-y-4 hover:border-[#171717] transition-colors"
+                >
+                  {/* Top Bar of the Category Card */}
+                  <div className="flex items-center justify-between border-b border-[#e5e4df] pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-[#171717] text-white text-[11px] font-mono font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <span className="font-heading font-extrabold text-sm text-[#171717] tracking-tight uppercase">
+                        {cat.title || 'UNTITLED CATEGORY'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => handleMoveCategoryItem(idx, 'up')}
+                        title="Move Up"
+                        className="p-1.5 bg-white border border-[#e5e4df] text-[#171717] hover:bg-[#f5f4f0] disabled:opacity-30 cursor-pointer"
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === localCategories.length - 1}
+                        onClick={() => handleMoveCategoryItem(idx, 'down')}
+                        title="Move Down"
+                        className="p-1.5 bg-white border border-[#e5e4df] text-[#171717] hover:bg-[#f5f4f0] disabled:opacity-30 cursor-pointer"
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+                      {localCategories.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCategoryItem(idx)}
+                          title="Delete Category"
+                          className="p-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 cursor-pointer ml-1"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Main Grid: Visual Preview + Edit Form */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                    {/* Live Preview Card */}
+                    <div className="md:col-span-4 lg:col-span-3 flex flex-col items-center">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#737373] mb-2 self-start flex items-center gap-1">
+                        <Eye size={12} /> Live Homepage Preview:
+                      </div>
+                      <div className="relative aspect-[3/4] w-full max-w-[200px] bg-neutral-900 overflow-hidden border border-[#e5e4df] shadow-md group">
+                        {cat.image ? (
+                          <img
+                            src={cat.image}
+                            alt={cat.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs font-mono">
+                            No Image
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3.5 text-white pointer-events-none">
+                          <h4 className="font-heading font-extrabold text-sm tracking-tight text-white leading-tight">
+                            {cat.title || 'CATEGORY TITLE'}
+                          </h4>
+                          <p className="text-[10px] text-neutral-300 mt-0.5 line-clamp-2">
+                            {cat.desc || 'Fabric specifications or description'}
+                          </p>
+                          <div className="pt-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                            <span>Explore Line</span>
+                            <ChevronRight size={12} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Inputs */}
+                    <div className="md:col-span-8 lg:col-span-9 space-y-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                            Category Title *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={cat.title}
+                            onChange={(e) => handleCategoryFieldChange(idx, 'title', e.target.value)}
+                            placeholder="e.g. HEAVYWEIGHT TEES"
+                            className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                            Destination Link (URL) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={cat.href}
+                            onChange={(e) => handleCategoryFieldChange(idx, 'href', e.target.value)}
+                            placeholder="/shop?category=Tees"
+                            className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-medium text-[#171717] focus:outline-none focus:border-[#171717]"
+                          />
+                          {/* Quick presets */}
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            <span className="text-[9px] text-[#737373] self-center mr-1">Presets:</span>
+                            {[
+                              { label: 'Tees', val: '/shop?category=Tees' },
+                              { label: 'Gym Compression', val: '/shop?category=Gym+Compression' },
+                              { label: 'Joggers', val: '/shop?category=Joggers' },
+                              { label: 'Shirts', val: '/shop?category=Shirts' },
+                              { label: 'Outerwear', val: '/shop?category=Outerwear' },
+                              { label: 'All Shop', val: '/shop' },
+                            ].map(preset => (
+                              <button
+                                key={preset.label}
+                                type="button"
+                                onClick={() => handleCategoryFieldChange(idx, 'href', preset.val)}
+                                className={`text-[9px] px-1.5 py-0.5 border cursor-pointer ${
+                                  cat.href === preset.val
+                                    ? 'bg-[#171717] text-white border-[#171717]'
+                                    : 'bg-white text-[#737373] border-[#e5e4df] hover:border-[#171717] hover:text-[#171717]'
+                                }`}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                          Subtitle / Material Description
+                        </label>
+                        <input
+                          type="text"
+                          value={cat.desc}
+                          onChange={(e) => handleCategoryFieldChange(idx, 'desc', e.target.value)}
+                          placeholder="e.g. 280-320 GSM French Terry & Acid Wash"
+                          className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-medium text-[#171717] focus:outline-none focus:border-[#171717]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                          Cover Image URL or Direct Upload
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={cat.image}
+                            onChange={(e) => handleCategoryFieldChange(idx, 'image', e.target.value)}
+                            placeholder="/images/categories/heavyweight-tees.png or https://..."
+                            className="flex-1 bg-white border border-[#e5e4df] p-2.5 text-xs font-mono text-[#171717] focus:outline-none focus:border-[#171717]"
+                          />
+                          <label className="px-3.5 py-2.5 bg-[#171717] hover:bg-black text-[#faf9f5] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors">
+                            {uploadingCategoryIndex === idx ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <UploadCloud size={13} />
+                                Upload Photo
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingCategoryIndex === idx}
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadCategoryImage(idx, file);
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Save Action Bar */}
+            <div className="flex justify-end pt-4 border-t border-[#e5e4df]">
+              <button
+                type="button"
+                disabled={isSavingCategories}
+                onClick={handleSaveCategories}
+                className="px-6 py-3 bg-[#cc785c] hover:bg-[#b8674c] text-white text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+              >
+                {isSavingCategories ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Publishing Changes...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} />
+                    Publish & Save All Categories
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Category Feature Explainer Box */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="bg-white border border-[#e5e4df] p-4 space-y-2">
+              <div className="font-heading font-extrabold text-[#171717] flex items-center gap-1.5 uppercase">
+                <Layers size={14} className="text-[#cc785c]" /> Homepage Visual Grid
+              </div>
+              <p className="text-[#737373] leading-relaxed">
+                Cards edited here immediately appear under &quot;SHOP BY CATEGORY&quot; right beneath the lookbook slider on the homepage.
+              </p>
+            </div>
+
+            <div className="bg-white border border-[#e5e4df] p-4 space-y-2">
+              <div className="font-heading font-extrabold text-[#171717] flex items-center gap-1.5 uppercase">
+                <UploadCloud size={14} className="text-emerald-700" /> Direct CDN Media Upload
+              </div>
+              <p className="text-[#737373] leading-relaxed">
+                Upload campaign and lookbook photos straight from your device or phone. Images are automatically optimized and served via CDN.
+              </p>
+            </div>
+
+            <div className="bg-white border border-[#e5e4df] p-4 space-y-2">
+              <div className="font-heading font-extrabold text-[#171717] flex items-center gap-1.5 uppercase">
+                <CheckCircle2 size={14} className="text-blue-700" /> Instant Storefront Sync
+              </div>
+              <p className="text-[#737373] leading-relaxed">
+                All visitor sessions and mobile shoppers receive category updates in real time with instant caching and local fallbacks.
               </p>
             </div>
           </div>

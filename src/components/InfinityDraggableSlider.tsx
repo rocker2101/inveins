@@ -2,8 +2,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, MoveHorizontal } from 'lucide-react';
 
 export interface LookbookCard {
   id: string;
@@ -73,7 +71,6 @@ export const InfinityDraggableSlider: React.FC = () => {
   const [startX, setStartX] = useState(0);
   const [scrollLeftState, setScrollLeftState] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [hasMoved, setHasMoved] = useState(false);
 
   // Smooth continuous auto-sliding ticker
   useEffect(() => {
@@ -104,7 +101,6 @@ export const InfinityDraggableSlider: React.FC = () => {
     const el = scrollRef.current;
     if (!el) return;
     setIsDragging(true);
-    setHasMoved(false);
     setStartX(e.pageX - el.offsetLeft);
     setScrollLeftState(el.scrollLeft);
   };
@@ -116,9 +112,6 @@ export const InfinityDraggableSlider: React.FC = () => {
     e.preventDefault();
     const x = e.pageX - el.offsetLeft;
     const walk = (x - startX) * 1.5;
-    if (Math.abs(walk) > 6) {
-      setHasMoved(true);
-    }
     el.scrollLeft = scrollLeftState - walk;
   };
 
@@ -131,7 +124,6 @@ export const InfinityDraggableSlider: React.FC = () => {
     const el = scrollRef.current;
     if (!el) return;
     setIsDragging(true);
-    setHasMoved(false);
     setStartX(e.touches[0].pageX - el.offsetLeft);
     setScrollLeftState(el.scrollLeft);
   };
@@ -142,20 +134,11 @@ export const InfinityDraggableSlider: React.FC = () => {
     if (!el) return;
     const x = e.touches[0].pageX - el.offsetLeft;
     const walk = (x - startX) * 1.5;
-    if (Math.abs(walk) > 6) {
-      setHasMoved(true);
-    }
     el.scrollLeft = scrollLeftState - walk;
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-  };
-
-  const scrollByOffset = (offset: number) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: offset, behavior: 'smooth' });
   };
 
   return (
@@ -186,13 +169,7 @@ export const InfinityDraggableSlider: React.FC = () => {
               key={`${card.id}-${idx}`}
               className="flex-shrink-0 group"
             >
-              <Link
-                href={card.href}
-                onClick={e => {
-                  if (hasMoved) {
-                    e.preventDefault();
-                  }
-                }}
+              <div
                 className={`block relative w-[230px] sm:w-[270px] md:w-[310px] h-[330px] sm:h-[390px] md:h-[430px] rounded-[24px] sm:rounded-[32px] overflow-hidden bg-neutral-900 shadow-xl sm:shadow-2xl transition-all duration-300 transform ${card.tilt}`}
               >
                 {/* Clean Editorial Fashion Image */}
@@ -203,6 +180,7 @@ export const InfinityDraggableSlider: React.FC = () => {
                   sizes="(max-width: 768px) 230px, (max-width: 1024px) 270px, 310px"
                   className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                   priority={idx < 4}
+                  draggable={false}
                 />
 
                 {/* Sleek Floating Pill at Bottom */}
@@ -219,30 +197,9 @@ export const InfinityDraggableSlider: React.FC = () => {
                     {card.title}
                   </h3>
                 </div>
-              </Link>
+              </div>
             </div>
           ))}
-        </div>
-
-        {/* Subtle Bottom Controls */}
-        <div className="flex items-center justify-center gap-3 mt-3">
-          <button
-            onClick={() => scrollByOffset(-320)}
-            className="w-8 h-8 rounded-full bg-white/90 border border-[#141413]/10 text-[#141413] hover:bg-[#141413] hover:text-white transition-all shadow-xs flex items-center justify-center cursor-pointer"
-            aria-label="Previous Slide"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-[10px] font-mono font-extrabold text-[#6c6a64] tracking-widest uppercase">
-            TOUCH / DRAG TO EXPLORE
-          </span>
-          <button
-            onClick={() => scrollByOffset(320)}
-            className="w-8 h-8 rounded-full bg-white/90 border border-[#141413]/10 text-[#141413] hover:bg-[#141413] hover:text-white transition-all shadow-xs flex items-center justify-center cursor-pointer"
-            aria-label="Next Slide"
-          >
-            <ChevronRight size={16} />
-          </button>
         </div>
       </div>
     </section>
