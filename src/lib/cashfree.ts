@@ -174,6 +174,19 @@ export function verifyCashfreeWebhookSignature(
     return false;
   }
 
+  // Anti-replay: Reject webhooks older than 15 minutes or with excessive future drift (>5m)
+  const tsNum = parseInt(timestamp, 10);
+  if (!isNaN(tsNum)) {
+    const timestampMs = tsNum > 1e11 ? tsNum : tsNum * 1000;
+    const now = Date.now();
+    const driftMs = now - timestampMs;
+    // Disallow timestamps older than 15 minutes or > 5 minutes in the future
+    if (driftMs > 15 * 60 * 1000 || driftMs < -5 * 60 * 1000) {
+      console.warn('[CASHFREE] Webhook rejected due to timestamp expiration/replay:', { timestamp, driftMs });
+      return false;
+    }
+  }
+
   try {
     const dataToSign = `${timestamp}${rawBody}`;
     const expectedSignature = crypto

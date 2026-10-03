@@ -84,7 +84,16 @@ export async function POST(req: NextRequest) {
 
       const paymentId = String(paymentData.cf_payment_id || `cf_${orderId}`);
 
-      if (existingOrder && existingOrder.status !== 'Confirmed') {
+      const POST_PAYMENT_STATES = ['Confirmed', 'Processing', 'Dispatched', 'Shipped', 'Delivered'];
+
+      if (existingOrder && POST_PAYMENT_STATES.includes(existingOrder.status)) {
+        return NextResponse.json({
+          success: true,
+          message: `Order ${orderId} is already in state "${existingOrder.status}". Webhook acknowledged idempotently.`,
+        });
+      }
+
+      if (existingOrder) {
         const updatedCustomer = {
           ...(typeof existingOrder.customer === 'object' && existingOrder.customer !== null ? existingOrder.customer : {}),
           payment_id: paymentId,

@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
       .eq('id', cleanOrderId)
       .maybeSingle();
 
-    if (existingOrder && (existingOrder.status === 'Confirmed' || existingOrder.status === 'Processing' || existingOrder.status === 'Shipped')) {
+    const CONFIRMED_STATES = ['Confirmed', 'Processing', 'Dispatched', 'Shipped', 'Delivered'];
+    if (existingOrder && CONFIRMED_STATES.includes(existingOrder.status)) {
       return NextResponse.json({
         success: true,
         message: 'Order has already been confirmed.',
@@ -193,7 +194,7 @@ export async function POST(req: NextRequest) {
       } else {
         const { error: insertErr } = await supabaseAdmin
           .from('inveins_orders')
-          .insert(finalOrderPayload);
+          .upsert(finalOrderPayload, { onConflict: 'id' });
 
         if (insertErr) {
           console.error('[CASHFREE] Error recording confirmed order into Supabase:', insertErr);

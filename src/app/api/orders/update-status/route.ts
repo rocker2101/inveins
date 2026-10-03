@@ -55,6 +55,15 @@ export async function POST(req: NextRequest) {
       await restoreOrderStock(currentOrder.items);
     }
 
+    // 4. If transitioning from Cancelled or Refunded back to an active state, re-decrement inventory
+    const activeStates = ['Confirmed', 'Processing', 'Dispatched', 'Delivered'];
+    if (activeStates.includes(cleanStatus) && 
+        previousStatus && 
+        ['Cancelled', 'Refunded'].includes(previousStatus)) {
+      const { decrementOrderStock } = await import('@/lib/payment-security');
+      await decrementOrderStock(currentOrder.items);
+    }
+
     return NextResponse.json({ success: true, message: 'Order status updated successfully' });
   } catch (err: any) {
     console.error('Error updating order status:', err);

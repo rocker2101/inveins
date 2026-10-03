@@ -47,6 +47,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (standardShippingFee !== undefined && (typeof standardShippingFee !== 'number' || isNaN(standardShippingFee) || standardShippingFee < 0 || standardShippingFee > 10000)) {
+      return NextResponse.json(
+        { success: false, message: 'standardShippingFee must be a valid number between 0 and 10,000.' },
+        { status: 400 }
+      );
+    }
+
+    if (freeShippingThreshold !== undefined && (typeof freeShippingThreshold !== 'number' || isNaN(freeShippingThreshold) || freeShippingThreshold < 0 || freeShippingThreshold > 100000)) {
+      return NextResponse.json(
+        { success: false, message: 'freeShippingThreshold must be a valid number between 0 and 100,000.' },
+        { status: 400 }
+      );
+    }
+
     const updated = await updateStoreSettings({
       standardShippingFee: typeof standardShippingFee === 'number' ? standardShippingFee : undefined,
       freeShippingThreshold: typeof freeShippingThreshold === 'number' ? freeShippingThreshold : undefined,
