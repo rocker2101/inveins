@@ -82,11 +82,14 @@ export default function AboutPage() {
                 e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1000&q=85";
               }}
             />
-            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-xs px-3.5 py-2 border border-[#e5e4df]">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#171717] block">
+            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-xs px-3.5 py-2 border border-[#e5e4df] shadow-xs">
+              <span className="font-heading font-extrabold text-xs uppercase tracking-wider text-[#171717] block">
+                Shaurya Vishnoi
+              </span>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#cc785c] block mt-0.5">
                 FOUNDER & CREATIVE DIRECTOR
               </span>
-              <span className="text-[10px] text-[#737373] font-medium">
+              <span className="text-[10px] text-[#737373] font-medium block">
                 INVEINS Kanpur Studio
               </span>
             </div>
@@ -113,10 +116,10 @@ export default function AboutPage() {
             <div className="pt-4 border-t border-[#e5e4df] flex items-center justify-between flex-wrap gap-4">
               <div>
                 <span className="font-heading font-extrabold text-sm uppercase tracking-wider text-[#171717] block">
-                  FOUNDER & CRAFTSMAN
+                  Shaurya Vishnoi
                 </span>
-                <span className="text-[11px] text-[#737373]">
-                  INVEINS Apparel Studio • Kanpur, India
+                <span className="text-[11px] text-[#737373] block">
+                  Founder & Craftsman • INVEINS Apparel Studio, Kanpur
                 </span>
               </div>
               <Link
