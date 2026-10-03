@@ -433,6 +433,12 @@ export const Header: React.FC = () => {
           }
         }}
         onMouseLeave={handleMouseLeave}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('a')) {
+            setActiveMenu(null);
+          }
+        }}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
           {/* ---------- 1. MEN MEGA MENU ---------- */}

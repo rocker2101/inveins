@@ -1,26 +1,66 @@
 'use client';
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { ProductCard } from '@/components/ProductCard';
 import { Search, Sparkles, SlidersHorizontal, Check, X, RotateCcw, ChevronDown } from 'lucide-react';
 
+function normalizeCategory(cat: string | null): string {
+  if (!cat) return 'All';
+  try {
+    const decoded = decodeURIComponent(cat.replace(/\+/g, ' ')).trim();
+    const lower = decoded.toLowerCase();
+    if (lower === 'all' || lower === '') return 'All';
+    if (lower === 'tees' || lower === 't-shirts' || lower === 'tshirts' || lower === 'tops' || lower === 't-shirt') return 'Tees';
+    if (lower === 'gym compression' || lower === 'compression' || lower === 'gym' || lower === 'activewear') return 'Gym Compression';
+    if (lower === 'joggers' || lower === 'lowers' || lower === 'bottoms' || lower === 'bottomwear' || lower === 'pants') return 'Joggers';
+    if (lower === 'shirts' || lower === 'polos' || lower === 'shirt' || lower === 'polo') return 'Shirts';
+    if (lower === 'outerwear' || lower === 'hoodies' || lower === 'sweatshirts' || lower === 'hoodie' || lower === 'layers') return 'Outerwear';
+    if (lower === 'custom b2b' || lower === 'b2b') return 'Custom B2B';
+    return decoded;
+  } catch (e) {
+    return cat;
+  }
+}
+
 function ShopContent() {
   const { productsList } = useCart();
   const searchParams = useSearchParams();
-  const initialCategory = searchParams.get('category') || 'All';
-  const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const router = useRouter();
 
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || searchParams.get('q') || '');
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => normalizeCategory(searchParams.get('category')));
   const [selectedSize, setSelectedSize] = useState<string>('All');
   const [selectedFit, setSelectedFit] = useState<string>('All');
   const [selectedOccasion, setSelectedOccasion] = useState<string>('All');
   const [priceRange, setPriceRange] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'newest' | 'low-high' | 'high-low'>('newest');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Sync state whenever URL query params change (e.g. user clicks a category in header mega-menu while already on /shop)
+  useEffect(() => {
+    const rawCat = searchParams.get('category');
+    setSelectedCategory(normalizeCategory(rawCat));
+
+    const q = searchParams.get('search') || searchParams.get('q');
+    if (q !== null) {
+      setSearchTerm(q);
+    }
+  }, [searchParams]);
+
+  const handleSelectCategory = (catValue: string) => {
+    setSelectedCategory(catValue);
+    const params = new URLSearchParams(searchParams.toString());
+    if (catValue === 'All') {
+      params.delete('category');
+    } else {
+      params.set('category', catValue);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/shop?${qs}` : '/shop', { scroll: false });
+  };
 
   const categoriesList = [
     { label: 'All Garments', value: 'All' },
@@ -33,12 +73,19 @@ function ShopContent() {
   ];
 
   const filteredProducts = useMemo(() => {
+    const normSelected = selectedCategory.trim().toLowerCase();
+
     return productsList.filter(product => {
+      const normProdCat = product.category.trim().toLowerCase();
+
       const matchesCategory =
         selectedCategory === 'All' ||
-        product.category === selectedCategory ||
-        (selectedCategory === 'T-shirts' && product.category === 'Tees') ||
-        (selectedCategory === 'Essentials' && product.category === 'Tees');
+        normProdCat === normSelected ||
+        (normSelected === 'tees' && (normProdCat === 'tees' || normProdCat === 't-shirts')) ||
+        (normSelected === 'gym compression' && normProdCat === 'gym compression') ||
+        (normSelected === 'joggers' && normProdCat === 'joggers') ||
+        (normSelected === 'shirts' && normProdCat === 'shirts') ||
+        (normSelected === 'outerwear' && normProdCat === 'outerwear');
 
       const matchesSize = selectedSize === 'All' || product.sizes.includes(selectedSize);
       const matchesFit = selectedFit === 'All' || product.fit === selectedFit;
@@ -71,6 +118,7 @@ function ShopContent() {
     setSelectedOccasion('All');
     setPriceRange('All');
     setSearchTerm('');
+    router.replace('/shop', { scroll: false });
   };
 
   const hasActiveFilters = 
@@ -93,7 +141,9 @@ function ShopContent() {
           {selectedCategory !== 'All' && (
             <>
               <span>/</span>
-              <span className="text-[#cc785c]">{selectedCategory}</span>
+              <span className="text-[#cc785c]">
+                {categoriesList.find(c => c.value.toLowerCase() === selectedCategory.toLowerCase())?.label || selectedCategory}
+              </span>
             </>
           )}
         </div>
@@ -111,11 +161,13 @@ function ShopContent() {
       {/* Category Horizontal Filter Chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {categoriesList.map(cat => {
-          const isActive = selectedCategory === cat.value;
+          const isActive =
+            (cat.value === 'All' && selectedCategory === 'All') ||
+            selectedCategory.toLowerCase() === cat.value.toLowerCase();
           return (
             <button
               key={cat.value}
-              onClick={() => setSelectedCategory(cat.value)}
+              onClick={() => handleSelectCategory(cat.value)}
               className={`whitespace-nowrap px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
                 isActive
                   ? 'bg-[#141413] text-[#faf9f5] shadow-xs'
@@ -212,8 +264,8 @@ function ShopContent() {
           </span>
           {selectedCategory !== 'All' && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#e6e2d8] font-bold text-[#141413]">
-              Category: {selectedCategory}
-              <button onClick={() => setSelectedCategory('All')}><X size={12} /></button>
+              Category: {categoriesList.find(c => c.value.toLowerCase() === selectedCategory.toLowerCase())?.label || selectedCategory}
+              <button onClick={() => handleSelectCategory('All')}><X size={12} /></button>
             </span>
           )}
           {selectedSize !== 'All' && (
@@ -298,6 +350,33 @@ function ShopContent() {
                 >
                   <X size={20} />
                 </button>
+              </div>
+
+              {/* Category Filter */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#141413]">
+                  SHOP BY CATEGORY
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {categoriesList.map(cat => {
+                    const isActive =
+                      (cat.value === 'All' && selectedCategory === 'All') ||
+                      selectedCategory.toLowerCase() === cat.value.toLowerCase();
+                    return (
+                      <button
+                        key={cat.value}
+                        onClick={() => handleSelectCategory(cat.value)}
+                        className={`px-3 py-1.5 text-xs font-bold transition-all ${
+                          isActive
+                            ? 'bg-[#141413] text-white'
+                            : 'bg-white border border-[#e6e2d8] text-[#141413]'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Fit Filter */}
