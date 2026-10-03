@@ -10,7 +10,7 @@ const CACHE_TTL_MS = 60 * 1000; // 1 minute in-memory cache
 const categoriesFilePath = path.join(process.cwd(), 'src', 'data', 'categories.json');
 
 /**
- * Reads homepage category items with fallback: In-Memory -> Disk JSON -> Defaults
+ * Reads homepage category items with fallback: In-Memory -> Supabase -> Disk JSON -> Defaults
  */
 export async function getCategories(): Promise<CategoryItem[]> {
   const now = Date.now();
@@ -18,7 +18,30 @@ export async function getCategories(): Promise<CategoryItem[]> {
     return cachedCategories;
   }
 
-  // 1. Try reading categories.json from local disk if available
+  // 1. Try reading from Supabase table if available
+  try {
+    const { supabaseAdmin } = await import('@/lib/supabase');
+    const { data: dbCategories, error: dbErr } = await supabaseAdmin
+      .from('inveins_categories')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    if (!dbErr && dbCategories && dbCategories.length > 0) {
+      cachedCategories = dbCategories.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        desc: c.desc_text || c.desc || '',
+        image: c.image,
+        href: c.href,
+      }));
+      lastFetchedAt = now;
+      return cachedCategories!;
+    }
+  } catch (supabaseErr) {
+    // Non-blocking fallback to local disk/defaults
+  }
+
+  // 2. Try reading categories.json from local disk if available
   try {
     if (fs.existsSync(categoriesFilePath)) {
       const content = fs.readFileSync(categoriesFilePath, 'utf-8');
@@ -30,17 +53,17 @@ export async function getCategories(): Promise<CategoryItem[]> {
       }
     }
   } catch (diskErr) {
-    console.warn('[CATEGORIES] Notice: Could not read categories.json from disk:', diskErr);
+    // Read-only serverless environment
   }
 
-  // 2. Default fallback
+  // 3. Default fallback
   cachedCategories = [...DEFAULT_CATEGORIES];
   lastFetchedAt = now;
   return cachedCategories;
 }
 
 /**
- * Updates homepage category items across memory and disk
+ * Updates homepage category items across memory, Supabase database, and disk
  */
 export async function saveCategories(newCategories: CategoryItem[]): Promise<CategoryItem[]> {
   if (!Array.isArray(newCategories)) {
@@ -58,7 +81,24 @@ export async function saveCategories(newCategories: CategoryItem[]): Promise<Cat
   cachedCategories = [...sanitized];
   lastFetchedAt = Date.now();
 
-  // Try writing to disk
+  // 1. Try persisting to Supabase table
+  try {
+    const { supabaseAdmin } = await import('@/lib/supabase');
+    const rows = sanitized.map((item, index) => ({
+      id: item.id,
+      title: item.title,
+      desc_text: item.desc,
+      image: item.image,
+      href: item.href,
+      sort_order: index,
+      updated_at: new Date().toISOString(),
+    }));
+    await supabaseAdmin.from('inveins_categories').upsert(rows);
+  } catch (dbErr) {
+    console.warn('[CATEGORIES] Notice: Supabase categories table sync pending:', dbErr);
+  }
+
+  // 2. Try writing to disk if writable
   try {
     const dir = path.dirname(categoriesFilePath);
     if (!fs.existsSync(dir)) {
@@ -66,7 +106,7 @@ export async function saveCategories(newCategories: CategoryItem[]): Promise<Cat
     }
     fs.writeFileSync(categoriesFilePath, JSON.stringify(sanitized, null, 2), 'utf-8');
   } catch (err) {
-    console.warn('[CATEGORIES] Notice: Filesystem write skipped or read-only:', err);
+    // In serverless Vercel, filesystem is read-only. In-memory and Supabase handle persistence.
   }
 
   return sanitized;

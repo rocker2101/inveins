@@ -17,23 +17,34 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get('x-webhook-signature') || '';
     const timestamp = req.headers.get('x-webhook-timestamp') || '';
 
-    // 1. Signature Verification
-    if (isCashfreeConfigured()) {
-      const isValid = verifyCashfreeWebhookSignature(rawBody, signature, timestamp);
-      if (!isValid) {
-        logSecurityEvent({
-          event: 'FORGED_CASHFREE_WEBHOOK_SIGNATURE',
-          severity: 'CRITICAL',
-          ip,
-          endpoint: '/api/payment/cashfree-webhook',
-          metadata: { timestamp, signature },
-        });
+    // 1. Signature Verification (Fail-Closed)
+    if (!isCashfreeConfigured()) {
+      logSecurityEvent({
+        event: 'WEBHOOK_GATEWAY_CONFIG_MISSING',
+        severity: 'CRITICAL',
+        ip,
+        endpoint: '/api/payment/cashfree-webhook',
+      });
+      return NextResponse.json(
+        { success: false, message: 'Payment gateway configuration missing' },
+        { status: 503 }
+      );
+    }
 
-        return NextResponse.json(
-          { success: false, message: 'Invalid Cashfree webhook signature' },
-          { status: 401 }
-        );
-      }
+    const isValid = verifyCashfreeWebhookSignature(rawBody, signature, timestamp);
+    if (!isValid) {
+      logSecurityEvent({
+        event: 'FORGED_CASHFREE_WEBHOOK_SIGNATURE',
+        severity: 'CRITICAL',
+        ip,
+        endpoint: '/api/payment/cashfree-webhook',
+        metadata: { timestamp, signature },
+      });
+
+      return NextResponse.json(
+        { success: false, message: 'Invalid Cashfree webhook signature' },
+        { status: 401 }
+      );
     }
 
     let payload: any;

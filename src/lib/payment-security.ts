@@ -120,7 +120,7 @@ export function verifyOrderToken(
   customerPhone: string,
   createdAt: string,
   token: string,
-  secret: string = process.env.ORDER_SIGNING_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'inveins_dev_order_secret_ephemeral')
+  secret: string = getOrderSigningSecret()
 ): boolean {
   if (!secret) return false;
   try {

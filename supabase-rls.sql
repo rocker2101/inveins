@@ -171,4 +171,28 @@ DROP POLICY IF EXISTS "Allow service role full access to checkout drafts" ON inv
 CREATE POLICY "Allow service role full access to checkout drafts"
   ON inveins_checkout_drafts FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+-- ==============================================================================
+-- 8. CATEGORIES TABLE (inveins_categories)
+-- Manages homepage shop-by-category cards persistently
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS inveins_categories (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  desc_text TEXT,
+  image TEXT NOT NULL,
+  href TEXT NOT NULL,
+  sort_order INT DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE inveins_categories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access to categories" ON inveins_categories;
+CREATE POLICY "Allow public read access to categories"
+  ON inveins_categories FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow service role full access to categories" ON inveins_categories;
+CREATE POLICY "Allow service role full access to categories"
+  ON inveins_categories FOR ALL TO service_role USING (true) WITH CHECK (true);
+
 
