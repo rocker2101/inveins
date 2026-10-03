@@ -107,3 +107,40 @@ TARGET_URL=http://localhost:3000 node scripts/production-audit-test.mjs
 * **Expected Result:** HTTP 400 Bad Request (`{"error":"Spam detected"}`).
 * **Current Status:** **PASS**
 * **Last Verified:** 2026-10-04
+
+---
+
+### REG-011: Cross-Order Token Binding Assertion (FINDING-011)
+* **Test ID:** `PAY-004`
+* **Trigger:** Send `POST /api/payment/cashfree-verify` with an `order_token` generated for order A while specifying `order_id: order B`.
+* **Expected Result:** HTTP 400 Bad Request (`Invalid order token for the requested order ID.`).
+* **Current Status:** **PASS**
+* **Last Verified:** 2026-10-04
+
+---
+
+### REG-012: Block Silent Base64 Catalog Bloat (FINDING-012)
+* **Test ID:** `UPLOAD-001`
+* **Trigger:** Submit binary image upload >50KB in serverless environment with unconfigured Cloudinary credentials.
+* **Expected Result:** HTTP 502 or 503 error; never returns multi-megabyte inline base64 string.
+* **Current Status:** **PASS**
+* **Last Verified:** 2026-10-04
+
+---
+
+### REG-013: Order Items & Customer Bounds (FINDING-014)
+* **Test ID:** `INPUT-004`
+* **Trigger:** Send `POST /api/orders/create` with 51 items, oversized customer address, or invalid JSON syntax.
+* **Expected Result:** HTTP 400 Bad Request across all scenarios.
+* **Current Status:** **PASS**
+* **Last Verified:** 2026-10-04
+
+---
+
+### REG-014: Inactive Product Enumeration Lockdown (FINDING-015)
+* **Test ID:** `PROD-001`
+* **Trigger:** Send `GET /api/products?all=true` without admin session cookie or header.
+* **Expected Result:** Returns only active products (`is_active = true`); inactive products excluded.
+* **Current Status:** **PASS**
+* **Last Verified:** 2026-10-04
+

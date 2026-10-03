@@ -104,7 +104,13 @@ export async function POST(req: NextRequest) {
             const cldResult = await uploadToCloudinary(buffer, "inveins_products");
             uploadedUrls.push(cldResult.url);
           } catch (cldErr: any) {
-            console.warn("Cloudinary upload failed, falling back to data URL:", cldErr?.message);
+            console.warn("Cloudinary upload failed:", cldErr?.message);
+            if (isProductionServerless && buffer.length > 50 * 1024) {
+              return NextResponse.json(
+                { success: false, message: `Cloudinary CDN upload failed (${cldErr?.message || "Storage unavailable"}). Large inline Base64 storage is blocked in production to protect catalog performance.` },
+                { status: 502 }
+              );
+            }
             const mime = file.type || "image/jpeg";
             const base64 = buffer.toString("base64");
             uploadedUrls.push(`data:${mime};base64,${base64}`);
@@ -125,6 +131,12 @@ export async function POST(req: NextRequest) {
           await fs.writeFile(filePath, buffer);
           uploadedUrls.push(`/uploads/${filename}`);
         } else {
+          if (buffer.length > 50 * 1024) {
+            return NextResponse.json(
+              { success: false, message: "Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) must be configured in production. Large inline Base64 images are blocked." },
+              { status: 503 }
+            );
+          }
           const mime = file.type || "image/jpeg";
           const base64 = buffer.toString("base64");
           uploadedUrls.push(`data:${mime};base64,${base64}`);
@@ -189,7 +201,13 @@ export async function POST(req: NextRequest) {
           const cldResult = await uploadToCloudinary(buffer, "inveins_products");
           publicUrl = cldResult.url;
         } catch (cldErr: any) {
-          console.warn("Cloudinary upload failed, falling back to original base64:", cldErr?.message);
+          console.warn("Cloudinary upload failed:", cldErr?.message);
+          if (isProductionServerless && buffer.length > 50 * 1024) {
+            return NextResponse.json(
+              { success: false, message: `Cloudinary CDN upload failed (${cldErr?.message || "Storage unavailable"}). Large inline Base64 storage is blocked in production to protect catalog performance.` },
+              { status: 502 }
+            );
+          }
           publicUrl = imageBase64;
         }
       } else if (!isProductionServerless) {
@@ -207,6 +225,12 @@ export async function POST(req: NextRequest) {
         await fs.writeFile(filePath, buffer);
         publicUrl = `/uploads/${filename}`;
       } else {
+        if (buffer.length > 50 * 1024) {
+          return NextResponse.json(
+            { success: false, message: "Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) must be configured in production. Large inline Base64 images are blocked." },
+            { status: 503 }
+          );
+        }
         publicUrl = imageBase64;
       }
 

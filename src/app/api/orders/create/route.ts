@@ -29,8 +29,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const { customer, items, paymentMethod, couponCode } = body;
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or malformed JSON request body.' },
+        { status: 400 }
+      );
+    }
+
+    const { customer, items, paymentMethod, couponCode } = body || {};
 
     // 1. Validate Customer Information
     if (customer && !customer.city && customer.address) {
@@ -40,6 +49,15 @@ export async function POST(req: NextRequest) {
 
     if (!customer || !customer.name || !customer.phone || !customer.address || !customer.city || !customer.pincode) {
       return NextResponse.json({ success: false, message: 'All required customer shipping fields must be provided.' }, { status: 400 });
+    }
+
+    if (
+      customer.name.length > 100 ||
+      customer.address.length > 500 ||
+      customer.city.length > 100 ||
+      (customer.email && customer.email.length > 120)
+    ) {
+      return NextResponse.json({ success: false, message: 'Customer information exceeds allowable input length.' }, { status: 400 });
     }
 
     if (!isValidPhone(customer.phone)) {
@@ -67,6 +85,10 @@ export async function POST(req: NextRequest) {
     // 2. Validate Items & Re-calculate Genuine Server Prices
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ success: false, message: 'Order must contain at least one item.' }, { status: 400 });
+    }
+
+    if (items.length > 50) {
+      return NextResponse.json({ success: false, message: 'Order cannot contain more than 50 items.' }, { status: 400 });
     }
 
     let calculatedSubtotal = 0;

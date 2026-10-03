@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sanitizeString } from '@/lib/sanitize';
 
-import { requireAdminSession } from '@/lib/auth';
+import { requireAdminSession, getSessionFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +36,9 @@ function safeParseArray(val: any, fallback: any[] = []): any[] {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const includeInactive = searchParams.get('all') === 'true';
+    const session = getSessionFromRequest(req);
+    const isAdmin = session && (session.role === 'ADMIN' || session.role === 'STAFF');
+    const includeInactive = searchParams.get('all') === 'true' && Boolean(isAdmin);
 
     let query = supabaseAdmin.from('inveins_products').select('*');
     if (!includeInactive) {

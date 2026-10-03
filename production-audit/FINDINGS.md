@@ -170,3 +170,87 @@ Status Lifecycle: `OPEN` → `FIXED` → `VERIFIED` (or `WAIVED`)
 * **Fix Plan:** Replace raw `<img>` tags with Next.js `<Image />` component.
 * **Regression Test:** `ADMIN-002`
 * **Regression Result:** PENDING
+
+---
+
+## FINDING-011 (REDTEAM-001)
+
+* **Category:** Payment & Authorization (BOLA)
+* **Severity:** P1 — HIGH
+* **Status:** VERIFIED
+* **Discovered:** 2026-10-04
+* **Resolved:** 2026-10-04
+* **Affected Component:** `src/app/api/payment/cashfree-verify/route.ts`
+* **Problem:** In `POST /api/payment/cashfree-verify`, `verifyOrderToken(order_token)` extracted order data without checking that `parsedToken.id === cleanOrderId`. An attacker paying for order X could provide a signed token from order Y (having the same paid amount) to substitute customer details, items, and verification tokens.
+* **Impact:** Cross-order item and metadata substitution during payment verification.
+* **Fix:** Added strict binding assertion: if `parsedToken.id !== cleanOrderId`, logs `ORDER_TOKEN_ID_MISMATCH` and terminates with HTTP 400 (`Invalid order token for the requested order ID.`).
+* **Verification:** Simulated mismatched token against order verification endpoint; verified rejection with HTTP 400.
+* **Regression Test:** `PAY-004`
+* **Regression Result:** PASS
+
+---
+
+## FINDING-012 (REDTEAM-002)
+
+* **Category:** Performance & Asset Storage
+* **Severity:** P1 — HIGH
+* **Status:** VERIFIED
+* **Discovered:** 2026-10-04
+* **Resolved:** 2026-10-04
+* **Affected Component:** `src/app/api/admin/upload/route.ts`
+* **Problem:** If Cloudinary CDN failed or credentials were unconfigured, the upload endpoint silently fell back to encoding up to 5MB binary images into multi-megabyte inline Base64 data URLs. This was the exact mechanism that originally caused the 3.8MB catalog bloat (FINDING-005).
+* **Impact:** Inadvertent re-injection of multi-megabyte base64 strings into the database, causing 100+ second client latency.
+* **Fix:** Enforced strict guard in production serverless: blocked generating Base64 strings larger than 50KB when Cloudinary fails or is unconfigured; returns HTTP 502/503 requiring valid Cloudinary CDN.
+* **Verification:** Uploaded mock 100KB payload in serverless mode without Cloudinary; verified rejection with HTTP 503 instead of silent Base64 generation.
+* **Regression Test:** `UPLOAD-001`
+* **Regression Result:** PASS
+
+---
+
+## FINDING-013 (REDTEAM-003)
+
+* **Category:** Session Security & Token Invalidation
+* **Severity:** P2 — MEDIUM
+* **Status:** OPEN (Operational Roadmap)
+* **Discovered:** 2026-10-04
+* **Affected Component:** `src/app/api/admin/logout/route.ts`, `src/lib/auth.ts`
+* **Problem:** Admin session tokens are stateless HMAC tokens valid for 7 days. `POST /api/admin/logout` only clears the client-side cookie. If an attacker exfiltrates the session token, it remains usable until the 7-day TTL expires.
+* **Impact:** Inability to immediately revoke compromised administrative sessions from the server side.
+* **Fix Plan:** Implement distributed token revocation list (Redis/KV) or store an `admin_session_epoch` in Supabase store settings that invalidates all tokens issued prior to epoch.
+* **Regression Test:** `AUTH-004`
+* **Regression Result:** PENDING
+
+---
+
+## FINDING-014 (REDTEAM-004)
+
+* **Category:** Input Validation & Resource Exhaustion (DoS)
+* **Severity:** P2 — MEDIUM
+* **Status:** VERIFIED
+* **Discovered:** 2026-10-04
+* **Resolved:** 2026-10-04
+* **Affected Component:** `src/app/api/orders/create/route.ts`
+* **Problem:** `POST /api/orders/create` lacked an upper bound on `items` array length and customer shipping field lengths, and threw uncaught 500 exceptions on malformed JSON bodies.
+* **Impact:** Denial-of-service via resource exhaustion (O(N) catalogue scans and database stock decrements); server error disclosure on invalid JSON.
+* **Fix:** Capped `items.length` to max 50 items; added field length boundaries (`name <= 100`, `address <= 500`, `city <= 100`, `email <= 120`); caught JSON syntax errors with HTTP 400.
+* **Verification:** Verified 51+ items and oversized address are rejected with HTTP 400; malformed JSON returns HTTP 400.
+* **Regression Test:** `INPUT-004`
+* **Regression Result:** PASS
+
+---
+
+## FINDING-015 (REDTEAM-005)
+
+* **Category:** Authorization & Information Disclosure
+* **Severity:** P2 — MEDIUM
+* **Status:** VERIFIED
+* **Discovered:** 2026-10-04
+* **Resolved:** 2026-10-04
+* **Affected Component:** `src/app/api/products/route.ts`
+* **Problem:** `GET /api/products?all=true` permitted unauthenticated guest visitors to bypass the `is_active = true` filter and view unlisted, draft, or inactive catalog products.
+* **Impact:** Enumeration and exposure of unlaunched or hidden product lines by competitors.
+* **Fix:** Restricted `includeInactive` flag strictly to requests carrying a valid admin or staff session.
+* **Verification:** Queried `GET /api/products?all=true` as an unauthenticated guest; verified inactive products are omitted.
+* **Regression Test:** `PROD-001`
+* **Regression Result:** PASS
+

@@ -97,3 +97,64 @@ Permanent engineering ledger of all architectural fixes, security patches, and o
 * **Risk:** Very low.
 * **Tests Run:** `PAY-003`
 * **Regression Result:** PASS
+
+---
+
+## FIX-009: Strict Order ID Binding in Cashfree Payment Verification
+* **Date:** 2026-10-04
+* **Finding ID:** `FINDING-011` (P1)
+* **Files Changed:** `src/app/api/payment/cashfree-verify/route.ts`
+* **Reason:** Attacker could pass a valid `order_token` from another order having the same amount to substitute customer details and items.
+* **Change Made:** Added assertion `if (parsedToken.id !== cleanOrderId)` returning HTTP 400 and logging security event.
+* **Risk:** Low.
+* **Tests Run:** `PAY-004`
+* **Regression Result:** PASS
+
+---
+
+## FIX-010: Block Silent Base64 Catalog Bloat on Serverless Upload
+* **Date:** 2026-10-04
+* **Finding ID:** `FINDING-012` (P1)
+* **Files Changed:** `src/app/api/admin/upload/route.ts`
+* **Reason:** In serverless mode without Cloudinary, uploads silently generated multi-megabyte Base64 strings that poisoned the database.
+* **Change Made:** Blocked generating inline Base64 strings >50KB in serverless mode; returns HTTP 502/503 requiring Cloudinary.
+* **Risk:** Low.
+* **Tests Run:** `UPLOAD-001`
+* **Regression Result:** PASS
+
+---
+
+## FIX-011: Enforce Input Length Boundaries and Safe JSON Parsing on Orders
+* **Date:** 2026-10-04
+* **Finding ID:** `FINDING-014` (P2)
+* **Files Changed:** `src/app/api/orders/create/route.ts`
+* **Reason:** Prevent denial of service via unbounded `items` arrays, oversized customer string payloads, and 500 exceptions on invalid JSON.
+* **Change Made:** Capped `items.length <= 50`, added string length bounds, and wrapped `req.json()` with safe HTTP 400 return.
+* **Risk:** Low.
+* **Tests Run:** `INPUT-004`
+* **Regression Result:** PASS
+
+---
+
+## FIX-012: Restrict Inactive Product Enumeration
+* **Date:** 2026-10-04
+* **Finding ID:** `FINDING-015` (P2)
+* **Files Changed:** `src/app/api/products/route.ts`
+* **Reason:** Any unauthenticated guest could pass `?all=true` and see unlaunched/draft products.
+* **Change Made:** Evaluated `getSessionFromRequest(req)` and required `isAdmin` to honor `includeInactive`.
+* **Risk:** Low.
+* **Tests Run:** `PROD-001`
+* **Regression Result:** PASS
+
+---
+
+## FIX-013: Add Contact Enquiries Schema & RLS Lockdown
+* **Date:** 2026-10-04
+* **Finding ID:** `None (Hardening)`
+* **Files Changed:** `supabase-rls.sql`
+* **Reason:** Ensure `inveins_contact_enquiries` is protected by Row-Level Security if created in Supabase.
+* **Change Made:** Added Section 9 to `supabase-rls.sql` with public INSERT and denied anon SELECT.
+* **Risk:** Low.
+* **Tests Run:** `BUILD-001`
+* **Regression Result:** PASS
+

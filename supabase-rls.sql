@@ -195,4 +195,31 @@ DROP POLICY IF EXISTS "Allow service role full access to categories" ON inveins_
 CREATE POLICY "Allow service role full access to categories"
   ON inveins_categories FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+-- ==============================================================================
+-- 9. CONTACT ENQUIRIES TABLE (inveins_contact_enquiries)
+-- Public can submit customer contact enquiries; only backend service_role can read
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS inveins_contact_enquiries (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  subject TEXT,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE inveins_contact_enquiries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public submission of contact enquiries" ON inveins_contact_enquiries;
+CREATE POLICY "Allow public submission of contact enquiries"
+  ON inveins_contact_enquiries FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Deny direct anon reading of contact enquiries" ON inveins_contact_enquiries;
+CREATE POLICY "Deny direct anon reading of contact enquiries"
+  ON inveins_contact_enquiries FOR SELECT TO anon USING (false);
+
+DROP POLICY IF EXISTS "Allow service role full access to contact enquiries" ON inveins_contact_enquiries;
+CREATE POLICY "Allow service role full access to contact enquiries"
+  ON inveins_contact_enquiries FOR ALL TO service_role USING (true) WITH CHECK (true);
+
 

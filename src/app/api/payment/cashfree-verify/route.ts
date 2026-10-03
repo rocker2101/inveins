@@ -73,7 +73,23 @@ export async function POST(req: NextRequest) {
       // 3. Resolve the authoritative order payload
       let orderToCommit: PendingOrderPayload | null = null;
       if (order_token) {
-        orderToCommit = verifyOrderToken(order_token);
+        const parsedToken = verifyOrderToken(order_token);
+        if (parsedToken) {
+          if (parsedToken.id !== cleanOrderId) {
+            logSecurityEvent({
+              event: 'ORDER_TOKEN_ID_MISMATCH',
+              severity: 'CRITICAL',
+              ip,
+              endpoint: '/api/payment/cashfree-verify',
+              metadata: { expectedId: cleanOrderId, receivedId: parsedToken.id },
+            });
+            return NextResponse.json(
+              { success: false, message: 'Invalid order token for the requested order ID.' },
+              { status: 400 }
+            );
+          }
+          orderToCommit = parsedToken;
+        }
       }
       if (!orderToCommit) {
         orderToCommit = getPendingOrder(cleanOrderId);
