@@ -107,6 +107,7 @@ interface CartContextType {
 
   // Inventory Stock & Product Management
   productsList: Product[];
+  setProductsList: React.Dispatch<React.SetStateAction<Product[]>>;
   deletedProductIds: string[];
   updateProductStock: (productId: string, newStock: number, newBadge?: Product['badge']) => Promise<void>;
   addNewProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
@@ -154,7 +155,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [savedAddress, setSavedAddress] = useState<SavedAddress | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wholesaleEnquiries, setWholesaleEnquiries] = useState<WholesaleEnquiry[]>([]);
-  const [productsList, setProductsList] = useState<Product[]>(PRODUCTS);
+  const [productsList, setProductsList] = useState<Product[]>([]);
   const [deletedProductIds, setDeletedProductIds] = useState<string[]>([]);
 
   // Dynamic Store Shipping Settings State
@@ -186,11 +187,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedCart = localStorage.getItem('inveins_cart');
       if (savedCart) {
         const parsedCart: CartItem[] = JSON.parse(savedCart);
-        const updatedCart = parsedCart.map(item => {
-          const fresh = PRODUCTS.find(p => p.id === item.product.id);
-          return fresh ? { ...item, product: { ...item.product, price: fresh.price } } : item;
-        });
-        setItems(updatedCart);
+        setItems(parsedCart);
       }
 
       const savedWishlist = localStorage.getItem('inveins_wishlist');
@@ -202,18 +199,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedAddr = localStorage.getItem('inveins_saved_address');
       if (savedAddr) setSavedAddress(JSON.parse(savedAddr));
 
-      // Instant cache restoration: load cached products only if not legacy mocks
+      // Instant cache restoration: load cached products
       const cachedCatalog = localStorage.getItem('inveins_cached_products');
       if (cachedCatalog) {
-        const parsedCatalog = JSON.parse(cachedCatalog);
-        if (Array.isArray(parsedCatalog) && parsedCatalog.length > 0) {
-          const hasLegacy = parsedCatalog.some((p: any) => p.id === 'imported-oversized-acid-wash-french-terry-tshirt' || p.price === 250 || p.price === 199);
-          if (!hasLegacy) {
+        try {
+          const parsedCatalog = JSON.parse(cachedCatalog);
+          if (Array.isArray(parsedCatalog) && parsedCatalog.length > 0) {
             setProductsList(parsedCatalog);
-          } else {
-            localStorage.removeItem('inveins_cached_products');
           }
-        }
+        } catch (e) {}
       }
 
       // Load cached shipping configuration
@@ -297,11 +291,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const syncTasks: Promise<any>[] = [
         // 1. Fetch public product catalogue
-        fetch('/api/products')
+        fetch(`/api/products?t=${Date.now()}`, { cache: 'no-store' })
           .then(async (prodRes) => {
             if (prodRes.ok) {
               const prodData = await prodRes.json();
-              if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
+              if (prodData.success && Array.isArray(prodData.products)) {
                 setProductsList(prodData.products);
                 try {
                   localStorage.setItem('inveins_cached_products', JSON.stringify(prodData.products));
@@ -686,10 +680,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'DELETE',
       });
       const data = await res.json();
-      return Boolean(res.ok && data.success);
+      if (res.ok && data.success) {
+        await refreshDatabaseData(true);
+        return true;
+      }
+      return false;
     } catch (err) {
       console.error('Failed to delete product from Supabase:', err);
-      refreshDatabaseData();
+      refreshDatabaseData(true);
       return false;
     }
   };
@@ -825,6 +823,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addWholesaleEnquiry,
         deleteWholesaleEnquiry,
         productsList,
+        setProductsList,
         deletedProductIds,
         updateProductStock,
         addNewProduct,

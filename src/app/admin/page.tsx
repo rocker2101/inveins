@@ -24,6 +24,7 @@ export default function AdminPage() {
     setWholesaleEnquiries,
     deleteWholesaleEnquiry,
     productsList,
+    setProductsList,
     deletedProductIds,
     updateProductStock,
     addNewProduct,
@@ -550,10 +551,11 @@ export default function AdminPage() {
   const loadAdminData = useCallback(async () => {
     setIsLoadingOrders(true);
     try {
-      const [statsRes, ordersRes, wsRes] = await Promise.allSettled([
+      const [statsRes, ordersRes, wsRes, prodsRes] = await Promise.allSettled([
         fetch('/api/admin/dashboard', { cache: 'no-store' }),
         fetch('/api/orders/list', { cache: 'no-store' }),
         fetch('/api/wholesale/list', { cache: 'no-store' }),
+        fetch(`/api/products?all=true&t=${Date.now()}`, { cache: 'no-store' }),
       ]);
 
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
@@ -576,12 +578,19 @@ export default function AdminPage() {
           setWholesaleEnquiries(wsData.enquiries);
         }
       }
+
+      if (prodsRes.status === 'fulfilled' && prodsRes.value.ok) {
+        const prodData = await prodsRes.value.json();
+        if (prodData.success && Array.isArray(prodData.products)) {
+          setProductsList(prodData.products);
+        }
+      }
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
       setIsLoadingOrders(false);
     }
-  }, [setOrders, setWholesaleEnquiries]);
+  }, [setOrders, setWholesaleEnquiries, setProductsList]);
 
   const fetchDashboardStats = loadAdminData;
 
@@ -786,12 +795,14 @@ export default function AdminPage() {
     const name = productToDelete.name;
     const id = productToDelete.id;
     setProductToDelete(null);
+    setProductsList(prev => prev.filter(p => p.id !== id));
     const success = await deleteProduct(id);
     if (success) {
       setActionToast({ message: `"${name}" removed from catalog and database.`, type: 'success' });
-      fetchDashboardStats();
+      await loadAdminData();
     } else {
       setActionToast({ message: `Failed to delete "${name}".`, type: 'error' });
+      await loadAdminData();
     }
     setTimeout(() => setActionToast(null), 4000);
   };
@@ -1483,7 +1494,14 @@ export default function AdminPage() {
 
           {/* Mobile View: Inventory Cards (< md) */}
           <div className="md:hidden space-y-3">
-            {productsList.map(prod => {
+            {productsList.length === 0 ? (
+              <div className="bg-white border border-[#e5e4df] p-8 text-center text-xs text-[#737373] space-y-2">
+                <Package size={28} className="mx-auto text-[#737373]/50" />
+                <p className="font-bold text-[#171717] uppercase tracking-wider">No Products In Database</p>
+                <p>Add a new garment using the &quot;+ ADD NEW CLOTH&quot; tab above.</p>
+              </div>
+            ) : (
+              productsList.map(prod => {
               const stockVal = editingStock[prod.id] !== undefined ? editingStock[prod.id] : prod.availableStock;
               const isLowStock = prod.availableStock > 0 && prod.availableStock < 5;
 
@@ -1566,7 +1584,7 @@ export default function AdminPage() {
                   </button>
                 </div>
               );
-            })}
+            }))}
           </div>
 
           {/* Desktop View: Inventory Table (>= md) */}
@@ -1583,7 +1601,16 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-                {productsList.map(prod => {
+                {productsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center text-xs text-[#737373]">
+                      <Package size={28} className="mx-auto text-[#737373]/50 mb-2" />
+                      <span className="font-bold text-[#171717] uppercase tracking-wider block">No Products In Database</span>
+                      <span>Add garments using the &quot;+ ADD NEW CLOTH&quot; tab above.</span>
+                    </td>
+                  </tr>
+                ) : (
+                  productsList.map(prod => {
                   const stockVal = editingStock[prod.id] !== undefined ? editingStock[prod.id] : prod.availableStock;
                   const isLowStock = prod.availableStock > 0 && prod.availableStock < 5;
 
@@ -1654,7 +1681,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
