@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { PRODUCTS } from '@/data/products';
 import { sanitizeString, isValidEmail, isValidPhone, isValidPincode, normalizePhone } from '@/lib/sanitize';
 import { supabaseAdmin } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -94,9 +93,9 @@ export async function POST(req: NextRequest) {
     let calculatedSubtotal = 0;
     const verifiedItems = [];
 
-    // Query DB products for accurate current pricing if available, else static catalogue
+    // Query DB products for accurate current pricing
     const { data: dbProducts } = await supabaseAdmin.from('inveins_products').select('*');
-    const availableCatalogue = (dbProducts && dbProducts.length > 0) ? dbProducts : PRODUCTS;
+    const availableCatalogue = dbProducts || [];
 
     for (const rawItem of items) {
       const { productId, selectedSize, quantity } = rawItem;

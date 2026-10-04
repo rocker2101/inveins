@@ -1,5 +1,4 @@
 import { MetadataRoute } from 'next';
-import { PRODUCTS } from '@/data/products';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -21,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/wishlist`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
   ];
 
-  let dynamicProducts = PRODUCTS;
+  let dynamicProducts: any[] = [];
   try {
     const { data: dbProducts } = await supabaseAdmin
       .from('inveins_products')
