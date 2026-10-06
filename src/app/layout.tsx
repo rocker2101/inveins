@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   title: "INVEINS — Form Follows Feeling | Heavyweight Essentials & Gym Activewear",
   description: "INVEINS crafts considered heavyweight French Terry tees (280-420 GSM), form-locking gym compression wear, and architectural baggie lowers. Engineered in Kanpur with direct Pan-India express delivery.",
   keywords: [
-    "INVEINS", "Heavyweight T Shirt", "280 GSM Cotton", "Gym Compression T Shirt", 
-    "Acid Wash Boxy Tee", "French Terry Lowers", "Oversized Tee India", "Kanpur Apparel", 
+    "INVEINS", "Heavyweight T Shirt", "280 GSM Cotton", "Gym Compression T Shirt",
+    "Acid Wash Boxy Tee", "French Terry Lowers", "Oversized Tee India", "Kanpur Apparel",
     "Indian Streetwear", "DTF Printing Kanpur"
   ],
   authors: [{ name: "INVEINS Studio" }],

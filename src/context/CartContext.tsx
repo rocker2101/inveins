@@ -267,7 +267,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/categories');
+      const res = await fetch(`/api/categories?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
@@ -767,6 +767,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || 'Failed to update categories');
       }
 
+      await refreshCategories();
       return { success: true, message: 'Categories updated successfully' };
     } catch (err: any) {
       console.error('Error updating categories:', err);

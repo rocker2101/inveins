@@ -78,9 +78,6 @@ export async function saveCategories(newCategories: CategoryItem[]): Promise<Cat
     href: String(item.href || '/shop').trim(),
   }));
 
-  cachedCategories = [...sanitized];
-  lastFetchedAt = Date.now();
-
   // 1. Try persisting to Supabase table
   try {
     const { supabaseAdmin } = await import('@/lib/supabase');
@@ -93,9 +90,26 @@ export async function saveCategories(newCategories: CategoryItem[]): Promise<Cat
       sort_order: index,
       updated_at: new Date().toISOString(),
     }));
-    await supabaseAdmin.from('inveins_categories').upsert(rows);
+
+    // Upsert current items
+    const { error: upsertErr } = await supabaseAdmin.from('inveins_categories').upsert(rows);
+    if (upsertErr) {
+      console.error('[CATEGORIES] Supabase upsert error:', upsertErr);
+    }
+
+    // Clean up any removed categories
+    const currentIds = rows.map(r => r.id);
+    if (currentIds.length > 0) {
+      const { data: existingRows } = await supabaseAdmin.from('inveins_categories').select('id');
+      if (existingRows && existingRows.length > 0) {
+        const toDelete = existingRows.filter((r: any) => !currentIds.includes(r.id)).map((r: any) => r.id);
+        if (toDelete.length > 0) {
+          await supabaseAdmin.from('inveins_categories').delete().in('id', toDelete);
+        }
+      }
+    }
   } catch (dbErr) {
-    console.warn('[CATEGORIES] Notice: Supabase categories table sync pending:', dbErr);
+    console.warn('[CATEGORIES] Notice: Supabase categories sync notice:', dbErr);
   }
 
   // 2. Try writing to disk if writable
@@ -108,6 +122,10 @@ export async function saveCategories(newCategories: CategoryItem[]): Promise<Cat
   } catch (err) {
     // In serverless Vercel, filesystem is read-only. In-memory and Supabase handle persistence.
   }
+
+  // Always update in-memory cache with fresh sanitized data
+  cachedCategories = [...sanitized];
+  lastFetchedAt = Date.now();
 
   return sanitized;
 }

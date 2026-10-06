@@ -33,7 +33,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-16 pb-20 pt-2 sm:pt-4">
-      
+
       {/* 1. TOP LOOKBOOK INFINITY DRAGGABLE SLIDER */}
       <InfinityDraggableSlider />
 
@@ -56,7 +56,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {(categories && categories.length > 0 ? categories : [
             {
               id: 'heavyweight-tees',
@@ -260,7 +260,7 @@ export default function HomePage() {
       <section className="bg-white border-y border-[#e6e2d8] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            
+
             <div className="lg:col-span-5 relative aspect-[4/5] bg-[#f4f1ea] overflow-hidden border border-[#e6e2d8]">
               <Image
                 src="https://5.imimg.com/data5/SELLER/Default/2026/3/590934041/EV/YM/MP/180956315/embroidery-500x500.jpeg"

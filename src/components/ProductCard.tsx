@@ -144,23 +144,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         )}
       </div>
 
-      {/* Product Content Details */}
-      <div className="p-3 sm:p-5 flex flex-col flex-grow justify-between space-y-2 sm:space-y-3">
+      {/* Product Content Details (Uniform Clean Streetwear Aesthetic) */}
+      <div className="p-3 sm:p-4 flex flex-col flex-grow justify-between space-y-2.5">
         <div>
+          {/* Category & Fit Tag (e.g., TEES • OVERSIZED FIT) + GSM Pill */}
           <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#6c6a64] mb-1">
-            <span className="truncate">{product.category}</span>
-            {product.fit && <span className="truncate ml-1">{product.fit}</span>}
+            <span className="truncate">
+              {product.category}
+              {product.fit ? ` • ${product.fit}` : (product.name.toLowerCase().includes('oversized') ? ' • OVERSIZED' : (product.name.toLowerCase().includes('compression') ? ' • COMPRESSION' : ''))}
+            </span>
+            {(() => {
+              const gsm = product.gsm || product.details?.find(d => /\b\d{2,3}(?:[–-]\d{2,3})?\s*GSM\b/i.test(d))?.match(/\b(\d{2,3}(?:[–-]\d{2,3})?\s*GSM)\b/i)?.[1]?.toUpperCase();
+              return gsm ? (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 bg-[#f4f1ea] text-[#141413] border border-[#e6e2d8] rounded-xs flex-shrink-0 ml-1">
+                  {gsm}
+                </span>
+              ) : null;
+            })()}
           </div>
 
+          {/* Single-Line Truncated Product Title */}
           <Link href={`/product/${product.id}`} className="block">
-            <h3 className="font-heading font-extrabold text-xs sm:text-base text-[#141413] group-hover:text-[#cc785c] transition-colors line-clamp-1 leading-snug">
+            <h3 
+              className="font-heading font-extrabold text-xs sm:text-sm text-[#141413] group-hover:text-[#cc785c] transition-colors truncate leading-snug"
+              title={product.name}
+            >
               {product.name}
             </h3>
           </Link>
-
-          <p className="text-[11px] text-[#6c6a64] mt-1 line-clamp-2 leading-relaxed hidden sm:block">
-            {product.tagline}
-          </p>
         </div>
 
         {/* Price & Action Row */}
@@ -198,7 +209,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 onClick={(e) => handleQuickAdd(e, selectedSize)}
-                className="w-full min-h-[40px] sm:min-h-[38px] py-2 px-1 sm:px-2 bg-white border border-[#141413] hover:bg-[#faf9f5] active:bg-[#f4f1ea] text-[#141413] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors"
+                className="w-full min-h-[38px] py-2 px-1 sm:px-2 bg-white border border-[#141413] hover:bg-[#faf9f5] active:bg-[#f4f1ea] text-[#141413] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 aria-label={`Add ${selectedSize} to bag`}
               >
                 <ShoppingBag size={13} />
@@ -207,7 +218,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
               <button
                 onClick={() => openExpressBuy(product, selectedSize)}
-                className="w-full min-h-[40px] sm:min-h-[38px] py-2 px-1 sm:px-2 bg-[#141413] hover:bg-black active:bg-neutral-800 text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors"
+                className="w-full min-h-[38px] py-2 px-1 sm:px-2 bg-[#141413] hover:bg-black active:bg-neutral-800 text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 aria-label={`1-Click Buy ${selectedSize}`}
               >
                 <Zap size={13} className="text-[#cc785c] fill-[#cc785c]" />
@@ -215,7 +226,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </button>
             </div>
           ) : (
-            <div className="w-full min-h-[40px] flex items-center justify-center py-2 text-center bg-neutral-100 text-neutral-500 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+            <div className="w-full min-h-[38px] flex items-center justify-center py-2 text-center bg-neutral-100 text-neutral-500 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
               SOLD OUT
             </div>
           )}
