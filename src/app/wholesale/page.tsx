@@ -1,49 +1,176 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { CheckCircle2, Send, Building2, Package, ShieldCheck, Clock } from 'lucide-react';
+import {
+  CheckCircle2,
+  Send,
+  Building2,
+  Package,
+  ShieldCheck,
+  Clock,
+  MessageSquare,
+  Sparkles,
+  Layers,
+  ChevronRight,
+  X,
+  Phone,
+  Mail,
+  Loader2,
+  Filter,
+} from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { sanitizeString } from '@/lib/sanitize';
+import { WholesaleProduct } from '@/types/wholesale';
 
 export default function WholesalePage() {
   const { addWholesaleEnquiry } = useCart();
-  const [submitted, setSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [formData, setFormData] = useState({
+
+  // Products from API
+  const [products, setProducts] = useState<WholesaleProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+
+  // Estimate Modal State
+  const [selectedProductForEstimate, setSelectedProductForEstimate] = useState<WholesaleProduct | null>(null);
+  const [modalFormData, setModalFormData] = useState({
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    cityCountry: '',
+    quantity: '50-100 Pieces',
+    customizationInterest: '',
+    message: '',
+    company_website_hp: '', // Honeypot
+  });
+  const [isModalSubmitting, setIsModalSubmitting] = useState(false);
+  const [modalSubmitted, setModalSubmitted] = useState(false);
+  const [modalError, setModalError] = useState('');
+
+  // General Bottom Form State
+  const [generalSubmitted, setGeneralSubmitted] = useState(false);
+  const [isGeneralSubmitting, setIsGeneralSubmitting] = useState(false);
+  const [generalError, setGeneralError] = useState('');
+  const [generalFormData, setGeneralFormData] = useState({
     name: '',
     company: '',
     email: '',
     phone: '',
     cityCountry: '',
     productInterest: '',
-    quantity: '',
+    quantity: '100 Pieces',
     message: '',
+    company_website_hp: '', // Honeypot
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Fetch Wholesale Products
+  useEffect(() => {
+    async function loadWholesaleProducts() {
+      try {
+        const res = await fetch('/api/wholesale/products', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products)) {
+          setProducts(data.products);
+        }
+      } catch (err) {
+        console.error('Failed to load wholesale products:', err);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    }
+    loadWholesaleProducts();
+  }, []);
+
+  // Categories list derived dynamically from products
+  const categoriesList = ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
+
+  const filteredProducts = selectedCategory === 'All'
+    ? products
+    : products.filter(p => p.category === selectedCategory);
+
+  // Open estimate modal for specific product
+  const handleOpenEstimate = (prod: WholesaleProduct) => {
+    setSelectedProductForEstimate(prod);
+    setModalFormData(prev => ({
+      ...prev,
+      quantity: prod.moq ? `MOQ: ${prod.moq}` : '50 Pieces',
+      customizationInterest: prod.customizationOptions?.[0] || 'Bulk blanks',
+      message: `Looking for an estimate for "${prod.name}" (MOQ: ${prod.moq}).`,
+    }));
+    setModalSubmitted(false);
+    setModalError('');
+  };
+
+  const handleCloseEstimateModal = () => {
+    setSelectedProductForEstimate(null);
+    setModalSubmitted(false);
+    setModalError('');
+  };
+
+  // Handle Modal Estimate Submission
+  const handleModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage('');
+    if (!selectedProductForEstimate) return;
+
+    if (modalFormData.company_website_hp) {
+      return; // Honeypot bot rejection
+    }
+
+    setIsModalSubmitting(true);
+    setModalError('');
+
+    const formattedInterest = `${selectedProductForEstimate.name} [MOQ: ${selectedProductForEstimate.moq}]`;
+    const formattedMessage = [
+      modalFormData.customizationInterest ? `Customization: ${modalFormData.customizationInterest}` : '',
+      modalFormData.message ? `Notes: ${modalFormData.message}` : '',
+    ].filter(Boolean).join(' | ');
 
     const res = await addWholesaleEnquiry({
-      name: sanitizeString(formData.name),
-      company: sanitizeString(formData.company),
-      email: sanitizeString(formData.email),
-      phone: sanitizeString(formData.phone),
-      cityCountry: sanitizeString(formData.cityCountry),
-      productInterest: sanitizeString(formData.productInterest),
-      quantity: sanitizeString(formData.quantity),
-      message: sanitizeString(formData.message),
+      name: sanitizeString(modalFormData.name),
+      company: sanitizeString(modalFormData.company),
+      email: sanitizeString(modalFormData.email),
+      phone: sanitizeString(modalFormData.phone),
+      cityCountry: sanitizeString(modalFormData.cityCountry),
+      productInterest: sanitizeString(formattedInterest),
+      quantity: sanitizeString(modalFormData.quantity),
+      message: sanitizeString(formattedMessage),
     });
 
-    setIsSubmitting(false);
+    setIsModalSubmitting(false);
 
     if (res.success) {
-      setSubmitted(true);
+      setModalSubmitted(true);
     } else {
-      setErrorMessage(res.message || 'Failed to submit enquiry. Please check the details.');
+      setModalError(res.message || 'Failed to submit estimate inquiry. Please check your details.');
+    }
+  };
+
+  // Handle General Bottom Form Submit
+  const handleGeneralSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (generalFormData.company_website_hp) return;
+
+    setIsGeneralSubmitting(true);
+    setGeneralError('');
+
+    const res = await addWholesaleEnquiry({
+      name: sanitizeString(generalFormData.name),
+      company: sanitizeString(generalFormData.company),
+      email: sanitizeString(generalFormData.email),
+      phone: sanitizeString(generalFormData.phone),
+      cityCountry: sanitizeString(generalFormData.cityCountry),
+      productInterest: sanitizeString(generalFormData.productInterest || 'General B2B Custom Apparel'),
+      quantity: sanitizeString(generalFormData.quantity),
+      message: sanitizeString(generalFormData.message),
+    });
+
+    setIsGeneralSubmitting(false);
+
+    if (res.success) {
+      setGeneralSubmitted(true);
+    } else {
+      setGeneralError(res.message || 'Failed to submit enquiry. Please check your details.');
     }
   };
 
@@ -53,13 +180,13 @@ export default function WholesalePage() {
       {/* Header Banner */}
       <div className="border-b border-[#e5e4df] pb-8 text-center max-w-3xl mx-auto">
         <span className="text-[10px] font-bold tracking-widest text-[#737373] uppercase">
-          FOR STORES, RESELLERS & BULK BUYERS
+          FOR STORES, RESELLERS & BULK BUYERS • KANPUR APPAREL FACTORY
         </span>
         <h1 className="font-heading font-extrabold text-4xl sm:text-6xl text-[#171717] tracking-tight mt-1">
           INVEINS WHOLESALE
         </h1>
         <p className="text-xs sm:text-base text-[#737373] mt-3 leading-relaxed">
-          Thoughtful product, dependable supply and flexible quantities for businesses with a clear point of view.
+          Premium heavyweight blanks, computerized embroidery, and direct DTF printing engineered for independent brands and store partners. Get custom volume estimates tailored to your production run.
         </p>
       </div>
 
@@ -68,132 +195,467 @@ export default function WholesalePage() {
         <div className="bg-white p-6 border border-[#e5e4df] space-y-2">
           <span className="font-heading font-extrabold text-2xl text-[#737373]">01</span>
           <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-[#171717]">
-            BULK PRICING
+            ESTIMATE ON DEMAND
           </h3>
           <p className="text-xs text-[#737373] leading-relaxed">
-            Clear margins that make sense for independent retail and store partners.
+            Transparent, factory-direct quotation tiers based on your exact quantity and print requirements.
           </p>
         </div>
 
         <div className="bg-white p-6 border border-[#e5e4df] space-y-2">
           <span className="font-heading font-extrabold text-2xl text-[#737373]">02</span>
           <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-[#171717]">
-            QUALITY PRODUCT
+            HEAVYWEIGHT TEXTILES
           </h3>
           <p className="text-xs text-[#737373] leading-relaxed">
-            A considered collection designed to earn repeat customers for your brand.
+            180–240 GSM combed cotton blanks and 380 GSM French Terry crafted for repeat brand loyalty.
           </p>
         </div>
 
         <div className="bg-white p-6 border border-[#e5e4df] space-y-2">
           <span className="font-heading font-extrabold text-2xl text-[#737373]">03</span>
           <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-[#171717]">
-            RELIABLE SUPPLY
+            IN-HOUSE PRINT & EMBROIDERY
           </h3>
           <p className="text-xs text-[#737373] leading-relaxed">
-            Consistent communication from first enquiry to final doorstep delivery.
+            Industrial Tajima multi-head embroidery and ultra-vibrant DTF machinery direct from Kanpur.
           </p>
         </div>
 
         <div className="bg-white p-6 border border-[#e5e4df] space-y-2">
           <span className="font-heading font-extrabold text-2xl text-[#737373]">04</span>
           <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-[#171717]">
-            FLEXIBLE QUANTITIES
+            FLEXIBLE B2B QUANTITIES
           </h3>
           <p className="text-xs text-[#737373] leading-relaxed">
-            Start with the right volume for your store and scale seamlessly as you grow.
+            Accessible MOQs starting at 30–50 pieces so independent labels can launch without holding dead stock.
           </p>
         </div>
       </div>
 
-      {/* Real IndiaMART B2B Services Showcase */}
-      <div className="space-y-6">
-        <div className="border-b border-[#e5e4df] pb-4">
-          <span className="text-[10px] font-bold tracking-widest text-[#cc785c] uppercase">
-            KANPUR FACTORY PRODUCTION
-          </span>
-          <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#141413] tracking-tight mt-0.5">
-            CUSTOM MERCHANDISING & B2B APPAREL
-          </h2>
-          <p className="text-xs text-[#6c6a64] mt-1">
-            Genuine manufacturing capabilities directly from our Kanpur studio. High-definition prints, embroidery, and blank supplies.
-          </p>
+      {/* WHOLESALE PRODUCTS CATALOG SECTION */}
+      <section className="space-y-6 pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#e5e4df] pb-4">
+          <div>
+            <span className="text-[10px] font-bold tracking-widest text-[#cc785c] uppercase">
+              B2B CATALOG & MANUFACTURING SPECIFICATIONS
+            </span>
+            <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#141413] tracking-tight mt-0.5">
+              WHOLESALE PRODUCTS & BLANKS
+            </h2>
+            <p className="text-xs text-[#6c6a64] mt-1">
+              Select any garment or service to view factory specifications and request an instant production estimate.
+            </p>
+          </div>
+
+          {/* Category Filter Pills */}
+          {categoriesList.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {categoriesList.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`text-xs font-bold uppercase tracking-wider px-3 py-1.5 border transition-all whitespace-nowrap cursor-pointer ${
+                    selectedCategory === cat
+                      ? 'bg-[#171717] text-white border-[#171717]'
+                      : 'bg-white text-[#737373] border-[#e5e4df] hover:border-[#171717] hover:text-[#171717]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            {
-              title: 'T-Shirt DTF Printing Service',
-              price: '₹100 / piece',
-              moq: 'MOQ: 50 Pieces',
-              image: 'https://5.imimg.com/data5/SELLER/Default/2026/3/590885404/MA/PR/OG/180956315/t-shirt-printing-services-500x500.jpeg',
-              desc: 'High-density Direct-to-Film transfer with vibrant multi-color reproduction on combed cotton and French Terry.',
-            },
-            {
-              title: 'Machine Embroidery Service',
-              price: '₹150 / piece',
-              moq: 'MOQ: 50 Pieces',
-              image: 'https://5.imimg.com/data5/SELLER/Default/2026/3/590934041/EV/YM/MP/180956315/embroidery-500x500.jpeg',
-              desc: 'Precision computerized multi-head embroidery for chest insignia, sleeve badges, and back artwork.',
-            },
-            {
-              title: 'Jersey Customization Service',
-              price: '₹450 / piece',
-              moq: 'MOQ: 15 Pieces',
-              image: 'https://5.imimg.com/data5/SELLER/Default/2026/4/598343279/DS/SE/FU/180956315/imported-jersey-customization-500x500.jpeg',
-              desc: 'Sublimation printing, personalized squad numbering, names, and team crests for athletic clubs.',
-            },
-            {
-              title: 'Promotional Bio-Washed Tees',
-              price: '₹210 / piece',
-              moq: 'MOQ: 100 Pieces',
-              image: 'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg',
-              desc: '180–200 GSM 100% bio-washed cotton blanks ready for corporate branding and startup merchandise.',
-            },
-          ].map(item => (
-            <div key={item.title} className="bg-white border border-[#e5e4df] overflow-hidden flex flex-col group">
-              <div className="relative aspect-square w-full bg-[#f4f1ea] overflow-hidden">
-                <Image
-                  src={item.image}
-                  alt={item.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <span className="absolute top-2 left-2 bg-[#141413] text-[#faf9f5] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5">
-                  {item.moq}
-                </span>
-              </div>
-              <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                <div>
-                  <h3 className="font-heading font-extrabold text-sm text-[#141413] leading-snug">
-                    {item.title}
-                  </h3>
-                  <p className="text-[11px] text-[#6c6a64] mt-1 leading-relaxed">
-                    {item.desc}
-                  </p>
+        {/* Loading State */}
+        {isLoadingProducts ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#737373]">
+            <Loader2 size={24} className="animate-spin text-[#171717]" />
+            <span className="text-xs font-bold uppercase tracking-wider">Loading Wholesale Catalog...</span>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="p-12 text-center bg-white border border-[#e5e4df] text-xs text-[#737373]">
+            No wholesale products found in this category.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map(item => {
+              const mainImg = item.images?.[0] || 'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg';
+              const waText = `Hi INVEINS, I want to inquire about wholesale quote and estimate for: ${item.name} (${item.moq ? `MOQ: ${item.moq}` : ''}).`;
+              const waUrl = `https://wa.me/917985232434?text=${encodeURIComponent(waText)}`;
+
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white border border-[#e5e4df] overflow-hidden flex flex-col group hover:border-[#171717] transition-all duration-300 shadow-xs"
+                >
+                  {/* Image & Badges */}
+                  <div className="relative aspect-square w-full bg-[#f4f1ea] overflow-hidden">
+                    <Image
+                      src={mainImg}
+                      alt={item.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    
+                    {/* Top Badges */}
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start z-10">
+                      {item.moq && (
+                        <span className="bg-[#141413] text-[#faf9f5] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
+                          MOQ: {item.moq}
+                        </span>
+                      )}
+                      {item.badge && (
+                        <span className="bg-[#cc785c] text-white text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    {item.gsm && (
+                      <span className="absolute bottom-2.5 right-2.5 bg-white/90 backdrop-blur-xs text-[#171717] border border-[#e5e4df] text-[9px] font-mono font-bold px-2 py-0.5 uppercase tracking-wide">
+                        {item.gsm}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Product Details (Strictly No Retail Price!) */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-bold text-[#cc785c] uppercase tracking-wider">
+                        {item.category}
+                      </div>
+
+                      <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#141413] leading-snug line-clamp-2">
+                        {item.name}
+                      </h3>
+
+                      {item.tagline && (
+                        <p className="text-[11px] text-[#6c6a64] line-clamp-2 leading-relaxed">
+                          {item.tagline}
+                        </p>
+                      )}
+
+                      {/* Sizes Chips */}
+                      {item.availableSizes && item.availableSizes.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#737373]">
+                          <span className="font-semibold uppercase tracking-wider text-[9px]">Sizes:</span>
+                          {item.availableSizes.slice(0, 4).map(sz => (
+                            <span key={sz} className="px-1.5 py-0.2 bg-[#f5f4f0] border border-[#e5e4df] font-mono font-bold text-[#171717]">
+                              {sz}
+                            </span>
+                          ))}
+                          {item.availableSizes.length > 4 && (
+                            <span className="text-[9px] font-semibold text-[#737373]">
+                              +{item.availableSizes.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pricing Display: NO PRICE DIGIT - ESTIMATE ON REQUEST */}
+                    <div className="pt-3 border-t border-[#e5e4df] space-y-3">
+                      <div className="bg-[#faf9f5] border border-[#e5e4df] p-2.5 rounded-none flex items-center justify-between">
+                        <div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">
+                            PRICING
+                          </div>
+                          <div className="font-heading font-extrabold text-xs text-[#171717] tracking-tight">
+                            Custom Estimate On Request
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5">
+                          Tiered Margins
+                        </span>
+                      </div>
+
+                      {/* Action CTAs */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEstimate(item)}
+                          className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-[10px] font-extrabold uppercase tracking-wider py-2.5 px-2 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Send size={11} /> Request Quote
+                        </button>
+
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="border border-[#171717] text-[#171717] hover:bg-[#171717] hover:text-white text-[10px] font-extrabold uppercase tracking-wider py-2.5 px-2 flex items-center justify-center gap-1 transition-colors text-center"
+                        >
+                          WhatsApp &rarr;
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="pt-2 border-t border-[#e5e4df] flex items-center justify-between">
-                  <span className="font-heading font-extrabold text-xs text-[#cc785c]">
-                    {item.price}
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ESTIMATE REQUEST MODAL */}
+      {selectedProductForEstimate && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white border border-[#e5e4df] max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 sm:p-8 shadow-2xl space-y-5 my-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-[#e5e4df] pb-4">
+              <div>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-[#cc785c]">
+                  B2B ESTIMATE & QUOTATION INQUIRY
+                </span>
+                <h3 className="font-heading font-extrabold text-lg sm:text-xl text-[#171717] uppercase tracking-tight mt-0.5">
+                  Request Wholesale Estimate
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseEstimateModal}
+                className="w-8 h-8 flex items-center justify-center border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Selected Product Summary Card */}
+            <div className="flex items-center gap-3.5 bg-[#faf9f5] border border-[#e5e4df] p-3">
+              <div className="relative w-16 h-16 bg-[#eae8e3] shrink-0 border border-[#e5e4df] overflow-hidden">
+                <Image
+                  src={selectedProductForEstimate.images?.[0] || 'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg'}
+                  alt={selectedProductForEstimate.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-heading font-extrabold text-xs sm:text-sm text-[#171717] truncate">
+                  {selectedProductForEstimate.name}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-[#737373]">
+                  {selectedProductForEstimate.moq && (
+                    <span className="bg-[#171717] text-white font-bold px-1.5 py-0.2">
+                      MOQ: {selectedProductForEstimate.moq}
+                    </span>
+                  )}
+                  {selectedProductForEstimate.gsm && (
+                    <span className="font-mono font-semibold text-[#171717]">
+                      {selectedProductForEstimate.gsm}
+                    </span>
+                  )}
+                  <span className="text-[#cc785c] font-bold">
+                    • {selectedProductForEstimate.category}
                   </span>
-                  <a
-                    href={`https://wa.me/917985232434?text=${encodeURIComponent(`Hi INVEINS, I want to inquire about bulk ordering for ${item.title}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-extrabold uppercase tracking-wider text-[#141413] hover:text-[#cc785c]"
-                  >
-                    Quick WhatsApp MOQ &rarr;
-                  </a>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Interactive Form Section */}
+            {/* Modal Body / Form */}
+            {modalSubmitted ? (
+              <div className="py-8 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h4 className="font-heading font-extrabold text-xl uppercase tracking-wider text-[#171717]">
+                  ESTIMATE REQUEST RECEIVED!
+                </h4>
+                <p className="text-xs text-[#737373] max-w-sm mx-auto leading-relaxed">
+                  Thank you, <strong>{modalFormData.name}</strong> ({modalFormData.company}). Our B2B merchandising team will prepare a formal estimate for <strong>{selectedProductForEstimate.name}</strong> and contact you via WhatsApp / email within 24 hours.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseEstimateModal}
+                    className="bg-[#171717] text-white text-xs font-bold uppercase tracking-widest py-3 px-6 hover:bg-black transition-colors"
+                  >
+                    Close Window
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleModalSubmit} className="space-y-4">
+                {modalError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 font-semibold text-center">
+                    ⚠️ {modalError}
+                  </div>
+                )}
+
+                {/* Honeypot hidden input */}
+                <input
+                  type="text"
+                  name="company_website_hp"
+                  value={modalFormData.company_website_hp}
+                  onChange={e => setModalFormData({ ...modalFormData, company_website_hp: e.target.value })}
+                  style={{ display: 'none' }}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      YOUR FULL NAME *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={modalFormData.name}
+                      onChange={e => setModalFormData({ ...modalFormData, name: e.target.value })}
+                      placeholder="e.g. Rahul Sharma"
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      COMPANY / STORE NAME *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={modalFormData.company}
+                      onChange={e => setModalFormData({ ...modalFormData, company: e.target.value })}
+                      placeholder="e.g. Studio Nine Apparel"
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      WHATSAPP / PHONE NUMBER *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={modalFormData.phone}
+                      onChange={e => setModalFormData({ ...modalFormData, phone: e.target.value })}
+                      placeholder="e.g. 9876543210"
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      EMAIL ADDRESS *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={modalFormData.email}
+                      onChange={e => setModalFormData({ ...modalFormData, email: e.target.value })}
+                      placeholder="business@example.com"
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      CITY & STATE *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={modalFormData.cityCountry}
+                      onChange={e => setModalFormData({ ...modalFormData, cityCountry: e.target.value })}
+                      placeholder="e.g. Delhi NCR, India"
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      TARGET QUANTITY *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={modalFormData.quantity}
+                      onChange={e => setModalFormData({ ...modalFormData, quantity: e.target.value })}
+                      placeholder="e.g. 50, 100, 250 pieces"
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    />
+                  </div>
+                </div>
+
+                {/* Customization Options Radio/Select */}
+                {selectedProductForEstimate.customizationOptions && selectedProductForEstimate.customizationOptions.length > 0 && (
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                      CUSTOMIZATION / BRANDING REQUIREMENT
+                    </label>
+                    <select
+                      value={modalFormData.customizationInterest}
+                      onChange={e => setModalFormData({ ...modalFormData, customizationInterest: e.target.value })}
+                      className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                    >
+                      {selectedProductForEstimate.customizationOptions.map(opt => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    SPECIFICATIONS & NOTES
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={modalFormData.message}
+                    onChange={e => setModalFormData({ ...modalFormData, message: e.target.value })}
+                    placeholder="Provide details about artwork dimensions, preferred fabric colors, delivery timeline..."
+                    className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-2.5 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#e5e4df]">
+                  <button
+                    type="button"
+                    onClick={handleCloseEstimateModal}
+                    className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-3 px-4 transition-colors"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isModalSubmitting}
+                    className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-3 px-6 flex items-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    {isModalSubmitting ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Sending Request...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={13} />
+                        <span>Submit For Estimate</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* General Wholesale Inquiry Form (Bottom Section) */}
       <div className="max-w-2xl mx-auto bg-white p-8 sm:p-12 border border-[#e5e4df] shadow-sm">
-        {submitted ? (
+        {generalSubmitted ? (
           <div className="py-12 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
               <CheckCircle2 size={36} />
@@ -202,31 +664,42 @@ export default function WholesalePage() {
               ENQUIRY SUBMITTED!
             </h2>
             <p className="text-xs text-[#737373] max-w-md mx-auto leading-relaxed">
-              Thank you for reaching out, <strong>{formData.name}</strong> ({formData.company}). Our B2B representative will review your request and get back to <strong>{formData.email}</strong> within 24 hours.
+              Thank you for reaching out, <strong>{generalFormData.name}</strong> ({generalFormData.company}). Our B2B representative will review your request and get back to <strong>{generalFormData.email}</strong> within 24 hours.
             </p>
             <button
-              onClick={() => setSubmitted(false)}
+              onClick={() => setGeneralSubmitted(false)}
               className="mt-4 bg-[#171717] text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-3 px-8 hover:bg-black transition-colors"
             >
               SUBMIT ANOTHER ENQUIRY
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleGeneralSubmit} className="space-y-6">
             <div className="border-b border-[#e5e4df] pb-4 mb-6">
               <h2 className="font-heading font-bold text-xl uppercase tracking-wider text-[#171717]">
-                WHOLESALE ENQUIRY FORM
+                CUSTOM B2B WHOLESALE ENQUIRY
               </h2>
               <p className="text-xs text-[#737373] mt-1">
-                Fill out the details below and our team will provide wholesale catalog & pricing.
+                Need a completely tailored merchandise collection, university bulk order, or specialized garment development? Send us your brief below.
               </p>
             </div>
 
-            {errorMessage && (
+            {generalError && (
               <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 font-semibold text-center">
-                ⚠️ {errorMessage}
+                ⚠️ {generalError}
               </div>
             )}
+
+            {/* Honeypot hidden input */}
+            <input
+              type="text"
+              name="company_website_hp"
+              value={generalFormData.company_website_hp}
+              onChange={e => setGeneralFormData({ ...generalFormData, company_website_hp: e.target.value })}
+              style={{ display: 'none' }}
+              tabIndex={-1}
+              autoComplete="off"
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -236,8 +709,8 @@ export default function WholesalePage() {
                 <input
                   type="text"
                   required
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  value={generalFormData.name}
+                  onChange={e => setGeneralFormData({ ...generalFormData, name: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="Your full name"
                 />
@@ -250,8 +723,8 @@ export default function WholesalePage() {
                 <input
                   type="text"
                   required
-                  value={formData.company}
-                  onChange={e => setFormData({ ...formData, company: e.target.value })}
+                  value={generalFormData.company}
+                  onChange={e => setGeneralFormData({ ...generalFormData, company: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="Store / Company name"
                 />
@@ -266,8 +739,8 @@ export default function WholesalePage() {
                 <input
                   type="email"
                   required
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  value={generalFormData.email}
+                  onChange={e => setGeneralFormData({ ...generalFormData, email: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="name@business.com"
                 />
@@ -280,8 +753,8 @@ export default function WholesalePage() {
                 <input
                   type="tel"
                   required
-                  value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  value={generalFormData.phone}
+                  onChange={e => setGeneralFormData({ ...generalFormData, phone: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="+91 98765 43210"
                 />
@@ -296,8 +769,8 @@ export default function WholesalePage() {
                 <input
                   type="text"
                   required
-                  value={formData.cityCountry}
-                  onChange={e => setFormData({ ...formData, cityCountry: e.target.value })}
+                  value={generalFormData.cityCountry}
+                  onChange={e => setGeneralFormData({ ...generalFormData, cityCountry: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="Mumbai, India"
                 />
@@ -310,8 +783,8 @@ export default function WholesalePage() {
                 <input
                   type="text"
                   required
-                  value={formData.quantity}
-                  onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+                  value={generalFormData.quantity}
+                  onChange={e => setGeneralFormData({ ...generalFormData, quantity: e.target.value })}
                   className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
                   placeholder="e.g. 50-100 pieces"
                 />
@@ -325,10 +798,10 @@ export default function WholesalePage() {
               <input
                 type="text"
                 required
-                value={formData.productInterest}
-                onChange={e => setFormData({ ...formData, productInterest: e.target.value })}
+                value={generalFormData.productInterest}
+                onChange={e => setGeneralFormData({ ...generalFormData, productInterest: e.target.value })}
                 className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
-                placeholder="e.g. Essential Tees & Studio Hoodies"
+                placeholder="e.g. Heavyweight Tees, Gymwear, Custom Uniforms"
               />
             </div>
 
@@ -339,19 +812,19 @@ export default function WholesalePage() {
               <textarea
                 required
                 rows={4}
-                value={formData.message}
-                onChange={e => setFormData({ ...formData, message: e.target.value })}
+                value={generalFormData.message}
+                onChange={e => setGeneralFormData({ ...generalFormData, message: e.target.value })}
                 className="w-full bg-[#f5f4f0] border border-[#e5e4df] p-3 text-xs text-[#171717] focus:outline-none focus:border-[#171717]"
-                placeholder="Tell us about your store, location, and requirements..."
+                placeholder="Tell us about your brand, artwork requirements, timeline..."
               />
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              disabled={isGeneralSubmitting}
+              className="w-full bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-widest py-4 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
             >
-              {isSubmitting ? (
+              {isGeneralSubmitting ? (
                 <span>SUBMITTING ENQUIRY...</span>
               ) : (
                 <>

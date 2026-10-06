@@ -218,8 +218,43 @@ DROP POLICY IF EXISTS "Deny direct anon reading of contact enquiries" ON inveins
 CREATE POLICY "Deny direct anon reading of contact enquiries"
   ON inveins_contact_enquiries FOR SELECT TO anon USING (false);
 
-DROP POLICY IF EXISTS "Allow service role full access to contact enquiries" ON inveins_contact_enquiries;
-CREATE POLICY "Allow service role full access to contact enquiries"
-  ON inveins_contact_enquiries FOR ALL TO service_role USING (true) WITH CHECK (true);
+-- ==============================================================================
+-- 10. WHOLESALE PRODUCTS TABLE (inveins_wholesale_products)
+-- Catalog for bulk B2B merchandise and factory manufacturing.
+-- STRICTLY NO PRICE FIELD: Customers browse and request custom volume estimates.
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS inveins_wholesale_products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Tees & Blanks',
+  moq TEXT NOT NULL DEFAULT '50 Pieces',
+  gsm TEXT,
+  tagline TEXT,
+  description TEXT,
+  available_sizes TEXT[] DEFAULT ARRAY['S','M','L','XL','XXL'],
+  customization_options TEXT[] DEFAULT ARRAY['DTF Printing','Embroidery','Screen Print','Blanks'],
+  images TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  badge TEXT DEFAULT 'BULK READY',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE inveins_wholesale_products ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read access to active wholesale products" ON inveins_wholesale_products;
+CREATE POLICY "Allow public read access to active wholesale products"
+  ON inveins_wholesale_products
+  FOR SELECT
+  USING (is_active = true);
+
+DROP POLICY IF EXISTS "Allow service role full access to wholesale products" ON inveins_wholesale_products;
+CREATE POLICY "Allow service role full access to wholesale products"
+  ON inveins_wholesale_products
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
 
 

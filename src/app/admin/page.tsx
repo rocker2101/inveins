@@ -5,6 +5,7 @@ import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
 import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
 import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X, Truck, Layers, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
+import WholesaleManager from './WholesaleManager';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -1252,7 +1253,7 @@ export default function AdminPage() {
             activeTab === 'wholesale' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
           }`}
         >
-          WHOLESALE ENQUIRIES ({wholesaleEnquiries.length})
+          WHOLESALE B2B ({wholesaleEnquiries.length})
         </button>
       </div>
 
@@ -2074,131 +2075,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 4: WHOLESALE ENQUIRIES */}
+      {/* TAB 4: WHOLESALE B2B PRODUCTS & ENQUIRIES */}
       {activeTab === 'wholesale' && (
-        <div className="space-y-4">
-          {wholesaleEnquiries.length === 0 ? (
-            <div className="p-12 text-center bg-white border border-[#e5e4df] text-xs text-[#737373]">
-              No B2B wholesale enquiries submitted yet.
-            </div>
-          ) : (
-            <>
-              {/* Mobile View: Wholesale Cards (< md) */}
-              <div className="md:hidden space-y-3">
-                {wholesaleEnquiries.map(enq => (
-                  <div key={enq.id} className="bg-white border border-[#e5e4df] p-4 space-y-3 shadow-xs">
-                    <div className="flex items-start justify-between gap-2 border-b border-[#e5e4df] pb-2">
-                      <div>
-                        <div className="font-heading font-extrabold text-sm text-[#171717]">
-                          {enq.company || enq.name}
-                        </div>
-                        <div className="text-[10px] text-[#737373] mt-0.5">
-                          {enq.createdAt} • ID: {enq.id}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => setEnquiryToDelete(enq)}
-                        className="min-h-[36px] min-w-[36px] flex items-center justify-center border border-red-200 text-red-700 hover:bg-red-700 hover:text-white transition-colors"
-                        title={`Delete Enquiry ${enq.id}`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-
-                    <div className="text-xs space-y-1">
-                      <div className="text-[#171717]">
-                        <span className="text-[#737373]">Contact: </span>
-                        <span className="font-bold">{enq.name}</span>
-                        {enq.cityCountry && <span className="text-[#737373]"> ({enq.cityCountry})</span>}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3 pt-0.5">
-                        <a 
-                          href={`tel:${enq.phone}`}
-                          className="text-[#cc785c] font-bold hover:underline py-0.5"
-                        >
-                          📞 {enq.phone}
-                        </a>
-                        <a 
-                          href={`mailto:${enq.email}`}
-                          className="text-[#171717] font-semibold hover:underline py-0.5"
-                        >
-                          ✉️ {enq.email}
-                        </a>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#faf9f5] p-2.5 border border-[#e5e4df] text-xs space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-[#171717]">{enq.productInterest}</span>
-                        <span className="bg-[#171717] text-white text-[10px] font-bold px-2 py-0.5">
-                          Qty: {enq.quantity}
-                        </span>
-                      </div>
-                      {enq.message && (
-                        <p className="text-[11px] text-[#737373] italic pt-1 border-t border-[#e5e4df]">
-                          "{enq.message}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop View: Wholesale Table (>= md) */}
-              <div className="hidden md:block bg-white border border-[#e5e4df] overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#171717] text-[#f5f4f0] font-bold uppercase tracking-wider">
-                    <tr>
-                      <th className="p-3.5">ID & Date</th>
-                      <th className="p-3.5">Name & Company</th>
-                      <th className="p-3.5">Contact Details</th>
-                      <th className="p-3.5">Location</th>
-                      <th className="p-3.5">Product Interest & Qty</th>
-                      <th className="p-3.5">Message</th>
-                      <th className="p-3.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
-                    {wholesaleEnquiries.map(enq => (
-                      <tr key={enq.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
-                        <td className="p-3.5">
-                          <div className="font-bold font-mono">{enq.id}</div>
-                          <div className="text-[10px] text-[#737373]">{enq.createdAt}</div>
-                        </td>
-                        <td className="p-3.5">
-                          <div className="font-bold">{enq.name}</div>
-                          <div className="text-[11px] text-[#737373]">{enq.company}</div>
-                        </td>
-                        <td className="p-3.5">
-                          <div>{enq.email}</div>
-                          <div className="text-[11px] text-[#737373]">{enq.phone}</div>
-                        </td>
-                        <td className="p-3.5 text-[#737373]">{enq.cityCountry}</td>
-                        <td className="p-3.5">
-                          <div className="font-bold">{enq.productInterest}</div>
-                          <div className="text-[11px] text-[#737373]">Qty: {enq.quantity}</div>
-                        </td>
-                        <td className="p-3.5 text-[#737373] max-w-xs">{enq.message}</td>
-                        <td className="p-3.5 text-right">
-                          <button
-                            onClick={() => setEnquiryToDelete(enq)}
-                            className="border border-red-200 text-red-700 hover:bg-red-700 hover:text-white text-[10px] font-bold uppercase tracking-wider py-1 px-2.5 transition-colors inline-flex items-center gap-1"
-                            title={`Delete Enquiry ${enq.id}`}
-                          >
-                            <Trash2 size={12} />
-                            <span>Delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+        <WholesaleManager
+          wholesaleEnquiries={wholesaleEnquiries}
+          onDeleteEnquiry={enq => setEnquiryToDelete(enq)}
+          showToast={(msg, type) => setActionToast({ message: msg, type })}
+        />
       )}
 
       {/* TAB 5: SHIPPING & CART DELIVERY CHARGES */}
