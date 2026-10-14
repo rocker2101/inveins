@@ -131,16 +131,33 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      // 4. Verify amount matches Cashfree paid amount
-      const expectedAmount = Number(orderToCommit.grand_total);
-      const paidAmount = Number(cfOrder.order_amount);
-      if (Math.abs(expectedAmount - paidAmount) > 1) {
+      // 4. Verify currency and exact amount matches Cashfree paid amount (Zero Tolerance)
+      const paidCurrency = String(cfOrder.order_currency || '').trim().toUpperCase();
+      if (paidCurrency !== 'INR') {
+        logSecurityEvent({
+          event: 'PAYMENT_CURRENCY_MISMATCH',
+          severity: 'CRITICAL',
+          ip,
+          endpoint: '/api/payment/cashfree-verify',
+          metadata: { orderId: cleanOrderId, expected: 'INR', received: paidCurrency },
+        });
+
+        return NextResponse.json(
+          { success: false, message: 'Invalid payment currency. Only INR transactions are accepted.' },
+          { status: 400 }
+        );
+      }
+
+      const expectedPaise = Math.round(Number(orderToCommit.grand_total) * 100);
+      const paidPaise = Math.round(Number(cfOrder.order_amount) * 100);
+
+      if (!Number.isFinite(expectedPaise) || !Number.isFinite(paidPaise) || paidPaise <= 0 || expectedPaise !== paidPaise) {
         logSecurityEvent({
           event: 'PAYMENT_AMOUNT_MISMATCH',
           severity: 'CRITICAL',
           ip,
           endpoint: '/api/payment/cashfree-verify',
-          metadata: { orderId: cleanOrderId, expected: expectedAmount, received: paidAmount },
+          metadata: { orderId: cleanOrderId, expectedPaise, receivedPaise: paidPaise },
         });
 
         return NextResponse.json(
@@ -149,14 +166,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 5. Insert order into Supabase ONLY NOW (Real paid order)
+      // 5. Insert or Update order into Supabase with race-safe atomic idempotency
       const paymentId = `cf_${cleanOrderId}_${Date.now()}`;
+      const alreadyDecremented = existingOrder?.customer?.inventory_decremented === true;
+
       const updatedCustomer = {
         ...(typeof orderToCommit.customer === 'object' && orderToCommit.customer !== null ? orderToCommit.customer : {}),
         payment_id: paymentId,
         paid_at: new Date().toISOString(),
         payment_status: 'SUCCESS',
         cashfree_order_id: cleanOrderId,
+        inventory_decremented: true,
       };
 
       const finalOrderPayload = {
@@ -174,15 +194,20 @@ export async function POST(req: NextRequest) {
         created_at: orderToCommit.created_at || new Date().toISOString(),
       };
 
+      let shouldDecrementStock = false;
+
       if (existingOrder) {
-        const { error: updateErr } = await supabaseAdmin
+        // Atomic conditional update: ONLY transitions if not already in CONFIRMED_STATES
+        const { data: updatedRows, error: updateErr } = await supabaseAdmin
           .from('inveins_orders')
           .update({
             status: 'Confirmed',
             payment_method: 'cashfree_upi',
             customer: updatedCustomer,
           })
-          .eq('id', cleanOrderId);
+          .eq('id', cleanOrderId)
+          .not('status', 'in', '("Confirmed","Processing","Dispatched","Shipped","Delivered")')
+          .select('id');
 
         if (updateErr) {
           console.error('[CASHFREE] Error updating order status:', updateErr);
@@ -191,22 +216,34 @@ export async function POST(req: NextRequest) {
             { status: 500 }
           );
         }
+
+        // Only decrement stock if THIS atomic update made the transition and stock was not previously decremented
+        shouldDecrementStock = Boolean(updatedRows && updatedRows.length > 0) && !alreadyDecremented;
       } else {
         const { error: insertErr } = await supabaseAdmin
           .from('inveins_orders')
-          .upsert(finalOrderPayload, { onConflict: 'id' });
+          .insert(finalOrderPayload);
 
         if (insertErr) {
-          console.error('[CASHFREE] Error recording confirmed order into Supabase:', insertErr);
-          return NextResponse.json(
-            { success: false, message: 'Database error recording confirmed order: ' + insertErr.message },
-            { status: 500 }
-          );
+          if (insertErr.code === '23505') {
+            // Concurrently created by webhook thread; duplicate stock decrement prevented
+            shouldDecrementStock = false;
+          } else {
+            console.error('[CASHFREE] Error recording confirmed order into Supabase:', insertErr);
+            return NextResponse.json(
+              { success: false, message: 'Database error recording confirmed order: ' + insertErr.message },
+              { status: 500 }
+            );
+          }
+        } else {
+          shouldDecrementStock = !alreadyDecremented;
         }
       }
 
-      // 6. Atomically Decrement Product Inventory in background (sub-second confirmation)
-      decrementOrderStock(orderToCommit.items).catch((stockErr) => console.warn('[STOCK DECREMENT BG]', stockErr));
+      // 6. Atomically Decrement Product Inventory only if this execution won the confirmation race
+      if (shouldDecrementStock && Array.isArray(orderToCommit.items) && orderToCommit.items.length > 0) {
+        decrementOrderStock(orderToCommit.items).catch((stockErr) => console.warn('[STOCK DECREMENT BG]', stockErr));
+      }
 
       // 7. Clean up draft from inveins_checkout_drafts now that it is confirmed in inveins_orders
       try {

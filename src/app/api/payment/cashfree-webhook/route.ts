@@ -93,29 +93,23 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (existingOrder) {
-        const updatedCustomer = {
-          ...(typeof existingOrder.customer === 'object' && existingOrder.customer !== null ? existingOrder.customer : {}),
-          payment_id: paymentId,
-          paid_at: new Date().toISOString(),
-          payment_status: 'SUCCESS',
-        };
+      // Currency validation
+      const rawCurrency = String(orderData.order_currency || paymentData.payment_currency || 'INR').trim().toUpperCase();
+      if (rawCurrency !== 'INR') {
+        logSecurityEvent({
+          event: 'WEBHOOK_CURRENCY_MISMATCH',
+          severity: 'CRITICAL',
+          ip,
+          endpoint: '/api/payment/cashfree-webhook',
+          metadata: { orderId, expected: 'INR', received: rawCurrency },
+        });
+        return NextResponse.json({ success: false, message: 'Invalid currency. Only INR is supported.' }, { status: 400 });
+      }
 
-        await supabaseAdmin
-          .from('inveins_orders')
-          .update({
-            status: 'Confirmed',
-            payment_method: 'cashfree_upi',
-            customer: updatedCustomer,
-          })
-          .eq('id', orderId);
-
-        if (Array.isArray(existingOrder.items) && existingOrder.items.length > 0) {
-          await decrementOrderStock(existingOrder.items);
-        }
-      } else if (!existingOrder) {
-        // If order was deferred until payment, retrieve from pending cache OR draft table
-        let pending = getPendingOrder(orderId);
+      // If order was deferred until payment, retrieve from pending cache OR draft table
+      let pending: any = null;
+      if (!existingOrder) {
+        pending = getPendingOrder(orderId);
         if (!pending) {
           const { data: draft } = await supabaseAdmin
             .from('inveins_checkout_drafts')
@@ -126,70 +120,95 @@ export async function POST(req: NextRequest) {
             pending = draft as any;
           }
         }
-        if (pending) {
-          const updatedCustomer = {
-            ...(typeof pending.customer === 'object' && pending.customer !== null ? pending.customer : {}),
-            payment_id: paymentId,
-            paid_at: new Date().toISOString(),
-            payment_status: 'SUCCESS',
-            cashfree_order_id: orderId,
-          };
+      }
 
-          await supabaseAdmin
-            .from('inveins_orders')
-            .insert({
-              id: orderId,
-              customer: updatedCustomer,
-              items: pending.items,
-              subtotal: pending.subtotal,
-              discount: pending.discount,
-              shipping_fee: pending.shipping_fee,
-              grand_total: pending.grand_total,
-              payment_method: 'cashfree_upi',
-              status: 'Confirmed',
-              tracking_number: pending.tracking_number,
-              verification_token: pending.verification_token,
-              created_at: pending.created_at || new Date().toISOString(),
-            });
+      // Exact paise amount validation if amount is present in webhook payload
+      const webhookAmount = Number(orderData.order_amount ?? paymentData.payment_amount);
+      const targetAmount = existingOrder ? Number(existingOrder.grand_total) : (pending ? Number(pending.grand_total) : null);
+      if (Number.isFinite(webhookAmount) && webhookAmount > 0 && targetAmount !== null && Number.isFinite(targetAmount)) {
+        const expectedPaise = Math.round(targetAmount * 100);
+        const paidPaise = Math.round(webhookAmount * 100);
+        if (expectedPaise !== paidPaise) {
+          logSecurityEvent({
+            event: 'WEBHOOK_AMOUNT_MISMATCH',
+            severity: 'CRITICAL',
+            ip,
+            endpoint: '/api/payment/cashfree-webhook',
+            metadata: { orderId, expectedPaise, receivedPaise: paidPaise },
+          });
+          return NextResponse.json({ success: false, message: 'Amount mismatch' }, { status: 400 });
+        }
+      }
 
-          await decrementOrderStock(pending.items);
+      let shouldDecrementStock = false;
+      const alreadyDecremented = existingOrder?.customer?.inventory_decremented === true;
 
-          // Clean up draft from inveins_checkout_drafts now that it's confirmed in inveins_orders
-          try {
-            await supabaseAdmin.from('inveins_checkout_drafts').delete().eq('id', orderId);
-          } catch {}
+      if (existingOrder) {
+        const updatedCustomer = {
+          ...(typeof existingOrder.customer === 'object' && existingOrder.customer !== null ? existingOrder.customer : {}),
+          payment_id: paymentId,
+          paid_at: new Date().toISOString(),
+          payment_status: 'SUCCESS',
+          inventory_decremented: true,
+        };
+
+        // Atomic conditional update: ONLY transitions if not already in POST_PAYMENT_STATES
+        const { data: updatedRows } = await supabaseAdmin
+          .from('inveins_orders')
+          .update({
+            status: 'Confirmed',
+            payment_method: 'cashfree_upi',
+            customer: updatedCustomer,
+          })
+          .eq('id', orderId)
+          .not('status', 'in', '("Confirmed","Processing","Dispatched","Shipped","Delivered")')
+          .select('id');
+
+        shouldDecrementStock = Boolean(updatedRows && updatedRows.length > 0) && !alreadyDecremented;
+      } else if (pending) {
+        const updatedCustomer = {
+          ...(typeof pending.customer === 'object' && pending.customer !== null ? pending.customer : {}),
+          payment_id: paymentId,
+          paid_at: new Date().toISOString(),
+          payment_status: 'SUCCESS',
+          cashfree_order_id: orderId,
+          inventory_decremented: true,
+        };
+
+        const { error: insertErr } = await supabaseAdmin
+          .from('inveins_orders')
+          .insert({
+            id: orderId,
+            customer: updatedCustomer,
+            items: pending.items,
+            subtotal: pending.subtotal,
+            discount: pending.discount,
+            shipping_fee: pending.shipping_fee,
+            grand_total: pending.grand_total,
+            payment_method: 'cashfree_upi',
+            status: 'Confirmed',
+            tracking_number: pending.tracking_number,
+            verification_token: pending.verification_token,
+            created_at: pending.created_at || new Date().toISOString(),
+          });
+
+        if (insertErr) {
+          // If another concurrent thread inserted it first (duplicate key 23505), do not decrement stock again
+          shouldDecrementStock = false;
         } else {
-          // Absolute Safety Fallback: Fetch order metadata directly from Cashfree so money is never unrecorded
-          try {
-            const { fetchCashfreeOrder } = await import('@/lib/cashfree');
-            const cfOrder = await fetchCashfreeOrder(orderId);
-            if (cfOrder && cfOrder.order_status === 'PAID') {
-              await supabaseAdmin.from('inveins_orders').upsert({
-                id: orderId,
-                customer: {
-                  name: cfOrder.customer_details?.customer_name || 'Customer',
-                  phone: cfOrder.customer_details?.customer_phone || '',
-                  email: cfOrder.customer_details?.customer_email || '',
-                  payment_id: paymentId,
-                  paid_at: new Date().toISOString(),
-                  payment_status: 'SUCCESS',
-                  cashfree_order_id: orderId,
-                },
-                items: [],
-                subtotal: Number(cfOrder.order_amount) || 0,
-                discount: 0,
-                shipping_fee: 0,
-                grand_total: Number(cfOrder.order_amount) || 0,
-                payment_method: 'cashfree_upi',
-                status: 'Confirmed',
-                tracking_number: `TRK-${orderId.replace('INV-', '')}`,
-                verification_token: `cf_${paymentId}`,
-                created_at: new Date().toISOString(),
-              });
-            }
-          } catch (fallbackErr) {
-            console.error('[CASHFREE WEBHOOK] Fallback reconstruction failed:', fallbackErr);
-          }
+          shouldDecrementStock = !alreadyDecremented;
+        }
+
+        // Clean up draft from inveins_checkout_drafts now that it's confirmed in inveins_orders
+        try {
+          await supabaseAdmin.from('inveins_checkout_drafts').delete().eq('id', orderId);
+        } catch {}
+      }
+
+      if (shouldDecrementStock) {
+        const itemsToDecrement = existingOrder?.items || pending?.items;
+        if (Array.isArray(itemsToDecrement) && itemsToDecrement.length > 0) {
+          await decrementOrderStock(itemsToDecrement);
         }
       }
 

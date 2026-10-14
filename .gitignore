@@ -37,3 +37,8 @@ Thumbs.db
 # prisma local db
 prisma/*.db
 
+# Sensitive database backups and migration scripts containing credentials/PII
+/scripts/supabase_migration_backup.json
+/scripts/old_supabase_backup.json
+/scripts/migrate_to_new_supabase.mjs
+
