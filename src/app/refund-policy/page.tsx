@@ -1,15 +1,15 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { RotateCcw, Clock, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
+import { RotateCcw, Clock, CheckCircle, AlertTriangle, ArrowRight, MessageSquare } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Refund & Cancellation Policy | INVEINS Fashion',
-  description: 'Detailed cancellation, exchange, and refund terms for orders placed with INVEINS APPARELS.',
+  description: 'Official 24-hour refund, cancellation, and exchange terms for orders placed with INVEINS APPARELS.',
 };
 
 export default function RefundPolicyPage() {
-  const lastUpdated = 'September 29, 2026';
+  const lastUpdated = 'October 16, 2026';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-12">
@@ -33,13 +33,13 @@ export default function RefundPolicyPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-6 border-b border-[#e5e4df]">
           <div className="p-4 bg-[#fbfbfa] border border-[#e5e4df] text-center space-y-1">
             <Clock size={20} className="mx-auto text-[#cc785c]" />
-            <h4 className="font-bold text-[#171717] text-xs uppercase tracking-wider">CANCELLATION</h4>
-            <p className="text-neutral-500 text-[11px]">Before dispatch / within 12 hours of order</p>
+            <h4 className="font-bold text-[#171717] text-xs uppercase tracking-wider">24-HOUR CANCELLATION</h4>
+            <p className="text-neutral-500 text-[11px]">Eligible within 24 hours of placing order</p>
           </div>
           <div className="p-4 bg-[#fbfbfa] border border-[#e5e4df] text-center space-y-1">
             <RotateCcw size={20} className="mx-auto text-[#cc785c]" />
-            <h4 className="font-bold text-[#171717] text-xs uppercase tracking-wider">7-DAY RETURNS</h4>
-            <p className="text-neutral-500 text-[11px]">Unworn items with tags intact</p>
+            <h4 className="font-bold text-[#171717] text-xs uppercase tracking-wider">24-HOUR RETURN WINDOW</h4>
+            <p className="text-neutral-500 text-[11px]">Notify within 24 hours of delivery</p>
           </div>
           <div className="p-4 bg-[#fbfbfa] border border-[#e5e4df] text-center space-y-1">
             <CheckCircle size={20} className="mx-auto text-emerald-600" />
@@ -48,28 +48,45 @@ export default function RefundPolicyPage() {
           </div>
         </div>
 
-        {/* Section 1: Order Cancellation */}
+        {/* Section 1: Order Cancellation & Refund */}
         <section className="space-y-3">
           <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#171717] uppercase tracking-wide flex items-center gap-2">
-            <span className="text-[#cc785c]">01.</span> Order Cancellation Policy
+            <span className="text-[#cc785c]">01.</span> 24-Hour Order Cancellation & Refund Policy
           </h2>
           <p>
-            You can request cancellation of your order at any point <strong>prior to order dispatch</strong> (typically within 12 to 24 hours of placing the order).
+            You can request cancellation and a 100% full refund for your order strictly <strong>within 24 hours of placing the order</strong>.
           </p>
-          <ul className="list-disc pl-5 space-y-1 text-neutral-600">
-            <li>To cancel an order before dispatch, please contact us immediately at <a href="mailto:inveins24@gmail.com" className="text-[#cc785c] underline">inveins24@gmail.com</a> or via WhatsApp at <strong>+91 79852 32434</strong> with your Order ID.</li>
-            <li>Once an order has been picked up by our courier partner and a tracking AWB has been generated, the order cannot be cancelled in transit. In such cases, you may initiate a return upon delivery.</li>
-            <li>For orders cancelled before dispatch, the entire order amount will be refunded directly to your original payment method.</li>
+          <ul className="list-disc pl-5 space-y-1.5 text-neutral-600">
+            <li>
+              <strong>Instant Request via My Orders:</strong> You can click the <strong>&ldquo;Refund / Cancel&rdquo;</strong> button directly in your{' '}
+              <Link href="/account" className="text-[#cc785c] underline font-medium">
+                Customer Account / Order History
+              </Link>{' '}
+              to instantly connect with our studio desk via WhatsApp with your pre-filled Order ID.
+            </li>
+            <li>
+              <strong>Direct WhatsApp / Email:</strong> Alternatively, contact us immediately at{' '}
+              <a href="mailto:inveins24@gmail.com" className="text-[#cc785c] underline">
+                inveins24@gmail.com
+              </a>{' '}
+              or WhatsApp at <strong>+91 79852 32434</strong> with your Order ID within the 24-hour window.
+            </li>
+            <li>
+              <strong>Post 24-Hour Dispatch:</strong> After 24 hours, orders enter automated cutting, packing, and courier dispatch. Once picked up by our courier partner with an assigned tracking AWB, the order cannot be cancelled in transit.
+            </li>
+            <li>
+              <strong>Wholesale Orders:</strong> Wholesale / B2B bulk orders are customized and strictly non-refundable once production or fabric procurement has commenced.
+            </li>
           </ul>
         </section>
 
         {/* Section 2: Returns & Exchanges Window */}
         <section className="space-y-3">
           <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#171717] uppercase tracking-wide flex items-center gap-2">
-            <span className="text-[#cc785c]">02.</span> 7-Day Return & Exchange Window
+            <span className="text-[#cc785c]">02.</span> 24-Hour Return & Exchange Window
           </h2>
           <p>
-            We take immense pride in the craftsmanship of our heavyweight textiles. If a garment does not fit as expected or you wish to exchange it, we offer a <strong>7-day return and exchange window</strong> from the date of confirmed delivery.
+            We take immense pride in the craftsmanship of our heavyweight streetwear. If an item arrives damaged, does not fit, or you wish to request a return/exchange, you must notify our team within <strong>24 hours of confirmed delivery</strong>.
           </p>
           <p className="font-semibold text-[#171717]">To qualify for a return or exchange, items must satisfy the following conditions:</p>
           <ul className="list-disc pl-5 space-y-1 text-neutral-600">
@@ -90,7 +107,7 @@ export default function RefundPolicyPage() {
               Transit Damage or Wrong Item Received
             </p>
             <p className="text-amber-900 text-xs">
-              If your package arrives physically tampered with, damaged, or contains an incorrect item, please notify us within <strong>48 hours of delivery</strong> with unboxing photographs or a short video. We will dispatch an immediate free replacement or issue a 100% full refund at no additional courier charge.
+              If your package arrives physically tampered with, damaged, or contains an incorrect item, please notify us within <strong>24 hours of delivery</strong> with unboxing photographs or a short video. We will dispatch an immediate free replacement or issue a 100% full refund at no additional courier charge.
             </p>
           </div>
         </section>
@@ -101,14 +118,14 @@ export default function RefundPolicyPage() {
             <span className="text-[#cc785c]">04.</span> Refund Processing & Timelines
           </h2>
           <p>
-            Once your returned item reaches our Kanpur fulfillment studio, our quality assurance team inspects the garment within 24–48 hours.
+            For verified 24-hour cancellations or inspected returns, refunds are initiated promptly by our accounts desk.
           </p>
           <div className="p-4 bg-[#fbfbfa] border-l-2 border-[#171717] space-y-2">
             <p className="font-bold text-[#171717]">
               Refund Turnaround Time: 5 to 7 Working Days
             </p>
             <p className="text-neutral-600">
-              Upon approval of the return, refunds are initiated immediately and credited back to the <strong>original source of payment</strong> (UPI ID, Net Banking, or Credit/Debit Card via Cashfree Payments) within <strong>5 to 7 business days</strong>, depending on your bank&apos;s settlement cycle.
+              Upon approval, refunds are initiated immediately and credited back to the <strong>original source of payment</strong> (UPI ID, Net Banking, or Credit/Debit Card via Cashfree Payments) within <strong>5 to 7 business days</strong>, depending on your bank&apos;s settlement cycle.
             </p>
             <p className="text-neutral-600 text-xs">
               For Cash on Delivery (COD) orders, our support team will contact you to collect your preferred UPI ID or Bank NEFT details to remit the refund securely.
@@ -116,20 +133,20 @@ export default function RefundPolicyPage() {
           </div>
         </section>
 
-        {/* Section 5: Step-by-Step Return Process */}
+        {/* Section 5: Step-by-Step Return / Refund Process */}
         <section className="space-y-3">
           <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#171717] uppercase tracking-wide flex items-center gap-2">
-            <span className="text-[#cc785c]">05.</span> How to Initiate a Return or Exchange
+            <span className="text-[#cc785c]">05.</span> How to Request a Refund, Cancellation or Exchange
           </h2>
           <ol className="list-decimal pl-5 space-y-2 text-neutral-600">
             <li>
-              <strong>Reach Out:</strong> Send an email to <a href="mailto:inveins24@gmail.com" className="text-[#cc785c] underline font-medium">inveins24@gmail.com</a> or WhatsApp message to <strong>+91 79852 32434</strong> with your <strong>Order ID</strong> and the reason for exchange/return.
+              <strong>One-Click via Account:</strong> Visit your <Link href="/account" className="text-[#cc785c] underline font-medium">My Orders</Link> section and click <strong>&ldquo;Refund / Cancel&rdquo;</strong> to chat directly with the store owner on WhatsApp with your Order ID pre-filled.
             </li>
             <li>
-              <strong>Reverse Pickup:</strong> Our logistics partner will arrange a reverse pickup from your registered delivery address within 2–3 working days.
+              <strong>WhatsApp / Email:</strong> Alternatively, reach out directly to <strong>+91 79852 32434</strong> or <a href="mailto:inveins24@gmail.com" className="text-[#cc785c] underline font-medium">inveins24@gmail.com</a> within 24 hours of ordering/delivery.
             </li>
             <li>
-              <strong>Inspection & Settlement:</strong> Once the product arrives at our studio and passes our quality check, your replacement size is dispatched or your refund is initiated within 24 hours.
+              <strong>Prompt Resolution:</strong> For pre-dispatch cancellations, refunds are initiated on the same day. For physical returns, reverse pickup is scheduled within 2 working days.
             </li>
           </ol>
         </section>
@@ -141,15 +158,17 @@ export default function RefundPolicyPage() {
               Need assistance with an active order?
             </h4>
             <p className="text-neutral-500 text-xs mt-0.5">
-              Our studio care desk is available Monday through Friday, 10:00 AM – 6:00 PM IST.
+              Our studio care desk is available Monday through Saturday, 10:00 AM – 7:00 PM IST.
             </p>
           </div>
-          <Link
-            href="/contact"
+          <a
+            href="https://wa.me/917985232434?text=Hi%20INVEINS%2C%20I%20have%20a%20query%20about%20Refund%20%26%20Cancellation."
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-[#171717] text-[#f5f4f0] text-xs font-bold uppercase tracking-wider px-5 py-2.5 hover:bg-black transition-colors"
           >
-            Contact Support <ArrowRight size={14} />
-          </Link>
+            <MessageSquare size={14} /> WhatsApp Studio Desk
+          </a>
         </div>
 
       </div>

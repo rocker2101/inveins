@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       details = [],
       materialCare = [],
       shippingInfo = 'Complimentary shipping across India on orders above ₹999.',
-      returnsInfo = 'Hassle-free 7-day exchange & return policy.',
+      returnsInfo = 'Hassle-free 24-hour exchange & refund policy.',
     } = body;
 
     if (!name || price === undefined) {

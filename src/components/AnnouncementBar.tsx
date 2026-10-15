@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
-import { Truck, ShieldCheck, Zap } from 'lucide-react';
+import { Truck, ShieldCheck, Zap, Globe } from 'lucide-react';
 
 const MESSAGES = [
   { text: 'Complimentary Pan-India Express Shipping on orders above ₹999', icon: Truck },
+  { text: 'Exporting Heavyweight Textiles to 5+ Countries Worldwide', icon: Globe },
   { text: 'Instant 1-Click WhatsApp Express Buy Available on all pieces', icon: Zap },
   { text: 'Direct from Kanpur Studio • Verified GST: 09CLWPV7429M2ZO', icon: ShieldCheck },
 ];
@@ -21,6 +22,7 @@ export const AnnouncementBar: React.FC = () => {
         : `Complimentary Pan-India Express Shipping on orders above ₹${freeShippingThreshold}`,
       icon: Truck,
     },
+    { text: 'Global Delivery: Exporting Heavyweight Apparel to 5+ Countries', icon: Globe },
     { text: 'Instant 1-Click WhatsApp Express Buy Available on all pieces', icon: Zap },
     { text: 'Direct from Kanpur Studio • Verified GST: 09CLWPV7429M2ZO', icon: ShieldCheck },
   ];

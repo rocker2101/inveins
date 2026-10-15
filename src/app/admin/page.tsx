@@ -734,7 +734,7 @@ export default function AdminPage() {
             'Machine wash cold inside-out, dry flat in shade',
           ],
       shippingInfo: 'Complimentary shipping across India on orders above ₹999.',
-      returnsInfo: 'Hassle-free 7-day exchange & return policy.',
+      returnsInfo: 'Hassle-free 24-hour exchange & refund policy.',
     });
 
     setProductAddedSuccess(true);

@@ -241,7 +241,7 @@ export const CartDrawer: React.FC = () => {
 
               <div className="flex items-center justify-center gap-2 text-[10px] text-[#6c6a64]">
                 <ShieldCheck size={13} className="text-[#15803D]" />
-                <span>Encrypted 256-Bit SSL Checkout • 7-Day Free Exchange</span>
+                <span>Encrypted 256-Bit SSL Checkout • 24-Hour Refund & Exchange</span>
               </div>
             </div>
           )}

@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Instagram, Globe } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -110,7 +110,7 @@ export default function AboutPage() {
             </p>
 
             <p className="text-xs sm:text-sm text-[#737373] leading-relaxed">
-              From our studio in Kanpur, we oversee every textile blend personally — from custom 280-420 GSM French Terry knits that drape without clinging, to 4-way stretch compression gear designed for high-performance recovery. Every garment is crafted to become your everyday uniform.
+              From our studio in Kanpur, we oversee every textile blend personally — from custom 280-420 GSM French Terry knits that drape without clinging, to 4-way stretch compression gear designed for high-performance recovery. Today, INVEINS exports premium blanks and finished garments to brands and partners across <strong>5+ countries worldwide</strong>.
             </p>
 
             <div className="pt-4 border-t border-[#e5e4df] flex items-center justify-between flex-wrap gap-4">
@@ -122,12 +122,22 @@ export default function AboutPage() {
                   Founder & Craftsman • INVEINS Apparel Studio, Kanpur
                 </span>
               </div>
-              <Link
-                href="/contact"
-                className="text-xs font-bold uppercase tracking-wider text-[#171717] hover:text-[#cc785c] flex items-center gap-1.5"
-              >
-                Get In Touch <ArrowRight size={14} />
-              </Link>
+              <div className="flex items-center gap-4">
+                <a
+                  href="https://www.instagram.com/brand_inveins"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold uppercase tracking-wider text-[#171717] hover:text-[#E1306C] flex items-center gap-1.5 transition-colors"
+                >
+                  <Instagram size={14} className="text-[#E1306C]" /> @brand_inveins
+                </a>
+                <Link
+                  href="/contact"
+                  className="text-xs font-bold uppercase tracking-wider text-[#171717] hover:text-[#cc785c] flex items-center gap-1.5"
+                >
+                  Get In Touch <ArrowRight size={14} />
+                </Link>
+              </div>
             </div>
           </div>
         </div>

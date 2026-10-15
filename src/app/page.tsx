@@ -292,7 +292,11 @@ export default function HomePage() {
                 We custom-knit our French Terry cotton between 280 and 420 GSM to ensure clothes fall cleanly away from the body without clinging. From hand-washed acid finishes to form-locking gym compression wear, every seam is reinforced with double-needle construction.
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-[#e6e2d8]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-[#e6e2d8]">
+                <div>
+                  <h4 className="font-heading font-extrabold text-xl text-[#cc785c]">5+</h4>
+                  <p className="text-[11px] text-[#141413] uppercase font-bold tracking-wider">Countries Exported</p>
+                </div>
                 <div>
                   <h4 className="font-heading font-extrabold text-xl text-[#141413]">280–420</h4>
                   <p className="text-[11px] text-[#6c6a64] uppercase font-bold tracking-wider">GSM Organic Knit</p>

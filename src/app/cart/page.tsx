@@ -311,7 +311,7 @@ export default function CartPage() {
                 <p className="flex items-center justify-center gap-1">
                   <ShieldCheck size={12} className="text-[#15803D]" /> 256-Bit SSL Encrypted Checkout
                 </p>
-                <p>7-Day Hassle-Free Size & Fit Exchanges</p>
+                <p>24-Hour Refund & Easy Size Exchanges</p>
               </div>
             </div>
 

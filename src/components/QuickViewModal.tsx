@@ -196,7 +196,7 @@ export const QuickViewModal: React.FC = () => {
                   View Full Product Details <ArrowRight size={13} />
                 </Link>
                 <span className="flex items-center gap-1 text-[10px]">
-                  <ShieldCheck size={13} className="text-[#15803D]" /> 7-Day Free Exchange
+                  <ShieldCheck size={13} className="text-[#15803D]" /> 24-Hour Refund & Exchange
                 </span>
               </div>
             </div>

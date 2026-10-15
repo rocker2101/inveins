@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, Clock, MessageSquare, Send, CheckCircle2, MapPin } from 'lucide-react';
+import { Mail, Phone, Clock, MessageSquare, Send, CheckCircle2, MapPin, Instagram } from 'lucide-react';
 import { sanitizeString, isValidEmail } from '@/lib/sanitize';
 
 export default function ContactPage() {
@@ -111,6 +111,21 @@ export default function ContactPage() {
                   <p className="font-bold">PHONE & WHATSAPP</p>
                   <a href="tel:+917985232434" className="text-[#737373] hover:underline">
                     +91 79852 32434
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Instagram size={18} className="text-[#E1306C] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">INSTAGRAM</p>
+                  <a 
+                    href="https://www.instagram.com/brand_inveins" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-[#737373] hover:text-[#E1306C] hover:underline"
+                  >
+                    @brand_inveins
                   </a>
                 </div>
               </div>

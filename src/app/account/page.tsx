@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   User, Package, MapPin, Heart, ShieldCheck, 
   ExternalLink, Phone, Mail, Clock, CheckCircle2, 
-  Truck, ArrowRight, Save 
+  Truck, ArrowRight, Save, RotateCcw, MessageSquare 
 } from 'lucide-react';
 import { useCart, SavedAddress } from '@/context/CartContext';
 
@@ -124,11 +124,34 @@ export default function AccountPage() {
                     ))}
                   </div>
 
-                  <div className="flex justify-between items-center pt-3 border-t border-[#e6e2d8] text-xs">
-                    <span className="text-[#6c6a64]">Payment: <strong className="uppercase text-[#141413]">{order.paymentMethod}</strong></span>
-                    <span className="font-heading font-extrabold text-sm text-[#141413]">
-                      Total: ₹{order.grandTotal.toLocaleString('en-IN')}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#e6e2d8] text-xs">
+                    <div className="flex items-center gap-4">
+                      <span className="text-[#6c6a64]">Payment: <strong className="uppercase text-[#141413]">{order.paymentMethod}</strong></span>
+                      <span className="font-heading font-extrabold text-sm text-[#141413]">
+                        Total: ₹{order.grandTotal.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '917985232434'}?text=${encodeURIComponent(
+                          `Hi INVEINS, I want to request a Refund / Cancellation for my Order #${order.id} (Total: ₹${order.grandTotal}). Placed on: ${order.createdAt}. Please assist.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#faf9f5] border border-[#cc785c] text-[#cc785c] hover:bg-[#cc785c] hover:text-white transition-colors text-[11px] font-bold uppercase tracking-wider"
+                      >
+                        <RotateCcw size={12} />
+                        Refund / Cancel
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-[#6c6a64] bg-[#faf9f5] px-3 py-1.5 border border-[#e6e2d8]/60">
+                    <span>*Refund & Cancellation requests eligible within 24 hours of order placement.</span>
+                    <Link href="/refund-policy" className="underline hover:text-[#141413]">
+                      Policy Details
+                    </Link>
                   </div>
                 </div>
               ))}

@@ -96,7 +96,7 @@ export default function TermsPage() {
             <span className="text-[#cc785c]">05.</span> Returns, Exchanges & Refunds
           </h2>
           <p>
-            We offer a 7-day hassle-free size exchange and return window on eligible, unworn items with original tags and packaging intact. Refunds are credited back to the original source of payment within 5 to 7 business days following quality inspection. Complete details are governed by our{' '}
+            We offer a 24-hour cancellation, return, and refund request window on eligible orders. For delivered goods, unworn items with original tags and packaging intact must be reported within 24 hours of delivery. Refunds are credited back to the original source of payment within 5 to 7 business days following verification. Complete details are governed by our{' '}
             <Link href="/refund-policy" className="text-[#cc785c] underline font-semibold">
               Refund & Cancellation Policy
             </Link>.

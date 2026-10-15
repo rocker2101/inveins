@@ -711,7 +711,7 @@ function CheckoutContent() {
                 <Truck size={13} className="text-[#cc785c]" /> Dispatched from Kanpur Studio via Express Air
               </p>
               <p className="flex items-center gap-1.5">
-                <ShieldCheck size={13} className="text-[#15803D]" /> 7-Day Free Size & Fit Exchange Guarantee
+                <ShieldCheck size={13} className="text-[#15803D]" /> 24-Hour Refund & Exchange Guarantee
               </p>
             </div>
           </div>

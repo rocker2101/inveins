@@ -21,6 +21,7 @@ import {
   Phone,
   Layers,
   Package,
+  Instagram,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
@@ -1299,19 +1300,29 @@ export const Header: React.FC = () => {
                 </Link>
               </div>
 
-              {/* WhatsApp Assistant Direct Link */}
-              <a
-                href="https://wa.me/917985232434?text=Hi%20INVEINS%2C%20I%20have%20an%20order%20or%20product%20enquiry."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-[#15803D] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#166534] transition-colors"
-              >
-                <Phone size={14} /> Direct WhatsApp Assistant
-              </a>
+              {/* WhatsApp Assistant & Instagram Direct Links */}
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href="https://wa.me/917985232434?text=Hi%20INVEINS%2C%20I%20have%20an%20order%20or%20product%20enquiry."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-[#15803D] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#166534] transition-colors"
+                >
+                  <Phone size={13} /> WhatsApp
+                </a>
+                <a
+                  href="https://www.instagram.com/brand_inveins"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-[#141413] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-neutral-800 transition-colors"
+                >
+                  <Instagram size={13} className="text-[#E1306C]" /> Instagram
+                </a>
+              </div>
 
               <div className="flex items-center justify-between text-[11px] text-[#6c6a64] pt-1">
                 <span>GST: 09CLWPV7429M2ZO</span>
-                <span>Kanpur Studio, UP</span>
+                <span>Exporting 5+ Countries</span>
               </div>
             </div>
           </div>

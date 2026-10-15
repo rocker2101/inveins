@@ -569,20 +569,20 @@ function ProductDetailContent({ product }: { product: Product }) {
               )}
             </div>
 
-            {/* 7-Day Free Returns & Exchanges */}
+            {/* 24-Hour Easy Refund & Exchanges */}
             <div className="py-3.5">
               <button
                 onClick={() => toggleAccordion('returns')}
                 className="w-full flex items-center justify-between font-bold uppercase tracking-wider text-[#141413]"
               >
-                <span>7-DAY EASY SIZE EXCHANGE</span>
+                <span>24-HOUR EASY REFUND & EXCHANGE</span>
                 {openAccordions.returns ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
               {openAccordions.returns && (
                 <div className="pt-3 text-[#6c6a64] leading-relaxed space-y-1.5">
-                  <p>• Need a different size? We offer doorstep reverse pickup for free size exchanges within 7 days of delivery.</p>
+                  <p>• Need a cancellation, refund or different size? Request within 24 hours of ordering or delivery.</p>
                   <p>• Items must be unwashed, unworn, and retain original tags.</p>
-                  <p>• Initiate instantly via our WhatsApp support desk at +91 7985232434.</p>
+                  <p>• Initiate directly via your Account orders page or our WhatsApp desk at +91 79852 32434.</p>
                 </div>
               )}
             </div>

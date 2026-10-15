@@ -30,8 +30,8 @@ const FAQ_DATA: FAQItem[] = [
   },
   {
     category: 'Orders & Tracking',
-    question: 'Can I cancel or modify my order after placing it?',
-    answer: 'Yes, you can request order modifications (like size adjustments or shipping address changes) or cancellation before your parcel is dispatched. Please contact our studio care desk immediately at inveins24@gmail.com or WhatsApp us at +91 79852 32434 within 12 hours of placing the order.',
+    question: 'Can I cancel or request a refund for my order?',
+    answer: 'Yes! You can request cancellation and a full refund within 24 hours of placing your order. Simply go to your My Orders section (/account) and click "Refund / Cancel" to connect directly with our studio desk via WhatsApp with your Order ID pre-filled, or message us at +91 79852 32434.',
   },
   {
     category: 'Orders & Tracking',
@@ -94,7 +94,7 @@ const FAQ_DATA: FAQItem[] = [
   {
     category: 'Returns & Refunds',
     question: 'What is your exchange and return policy?',
-    answer: 'We provide a hassle-free 7-day return and exchange window from the date your order is delivered. Garments must be unworn, unwashed, and returned with original tags intact.',
+    answer: 'We provide a 24-hour return and exchange window from the date your order is delivered. Garments must be unworn, unwashed, and returned with original tags intact. You can initiate a request directly through your account or via WhatsApp.',
   },
   {
     category: 'Returns & Refunds',

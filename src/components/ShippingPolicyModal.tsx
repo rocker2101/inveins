@@ -47,9 +47,9 @@ export const ShippingPolicyModal: React.FC = () => {
           <div className="flex gap-4 p-4 bg-white border border-[#e5e4df]">
             <RefreshCw size={24} className="text-[#171717] flex-shrink-0" />
             <div>
-              <h3 className="font-bold uppercase tracking-wider mb-1">EASY 7-DAY RETURNS & EXCHANGES</h3>
+              <h3 className="font-bold uppercase tracking-wider mb-1">EASY 24-HOUR REFUND & RETURNS</h3>
               <p className="text-[#737373]">
-                Unworn items with tags attached can be exchanged for alternate sizes or refunded to store credit within 7 days of delivery.
+                Unworn items with tags attached can be exchanged for alternate sizes or refunded within 24 hours of delivery.
               </p>
             </div>
           </div>

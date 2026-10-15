@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
-import { ShieldCheck, Truck, RotateCcw, Lock, Phone, Mail, MapPin } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Lock, Phone, Mail, MapPin, Instagram, Globe } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const { setIsShippingPolicyOpen } = useCart();
@@ -14,7 +14,7 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Trust Value Propositions Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pb-12 border-b border-[#2a2927] text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 pb-12 border-b border-[#2a2927] text-xs">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-neutral-800 text-[#cc785c]">
               <Truck size={18} />
@@ -27,11 +27,21 @@ export const Footer: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-neutral-800 text-[#cc785c]">
+              <Globe size={18} />
+            </div>
+            <div>
+              <h5 className="font-bold text-white uppercase tracking-wider">GLOBAL EXPORT</h5>
+              <p className="text-[11px] text-[#cc785c] font-semibold">Exporting in 5+ countries</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-neutral-800 text-[#cc785c]">
               <RotateCcw size={18} />
             </div>
             <div>
-              <h5 className="font-bold text-white uppercase tracking-wider">7-DAY EXCHANGE</h5>
-              <p className="text-[11px] text-neutral-400">Hassle-free size exchanges</p>
+              <h5 className="font-bold text-white uppercase tracking-wider">24-HOUR REFUND</h5>
+              <p className="text-[11px] text-neutral-400">Easy 24h refund & cancellation</p>
             </div>
           </div>
 
@@ -45,13 +55,13 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 col-span-2 sm:col-span-1">
             <div className="p-2.5 bg-neutral-800 text-[#cc785c]">
               <Lock size={18} />
             </div>
             <div>
               <h5 className="font-bold text-white uppercase tracking-wider">VERIFIED BUSINESS</h5>
-              <p className="text-[11px] text-neutral-400">GST: 09CLWPV7429M2ZO • UDYAM-UP-43-0147583</p>
+              <p className="text-[11px] text-neutral-400">GST: 09CLWPV7429M2ZO</p>
             </div>
           </div>
         </div>
@@ -197,6 +207,16 @@ export const Footer: React.FC = () => {
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">DIRECT REACH</h4>
             <ul className="space-y-2.5 text-xs text-neutral-400">
               <li>
+                <a 
+                  href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://www.instagram.com/brand_inveins'} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <Instagram size={13} className="text-[#E1306C]" /> Instagram: @brand_inveins
+                </a>
+              </li>
+              <li>
                 <a href="mailto:inveins24@gmail.com" className="hover:text-white transition-colors flex items-center gap-1.5">
                   <Mail size={13} className="text-[#cc785c]" /> inveins24@gmail.com
                 </a>
@@ -238,12 +258,20 @@ export const Footer: React.FC = () => {
               FAQ
             </Link>
             <a 
+              href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://www.instagram.com/brand_inveins'} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover:text-[#E1306C] transition-colors flex items-center gap-1 font-medium"
+            >
+              <Instagram size={12} className="text-[#E1306C]" /> Instagram
+            </a>
+            <a 
               href="https://www.indiamart.com/inveins/" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="hover:text-white transition-colors text-neutral-500"
             >
-              IndiaMART Profile
+              IndiaMART
             </a>
           </div>
         </div>

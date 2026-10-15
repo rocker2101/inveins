@@ -836,6 +836,27 @@ export default function WholesalePage() {
         )}
       </div>
 
+      {/* Wholesale Order Policy & WhatsApp Support Desk */}
+      <div className="max-w-2xl mx-auto p-4 sm:p-5 bg-white border border-[#e5e4df] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs shadow-xs">
+        <div>
+          <span className="font-bold text-[#171717] uppercase tracking-wider block">
+            Wholesale Orders & Production Policy
+          </span>
+          <p className="text-[#737373] text-[11px] mt-0.5">
+            B2B bulk orders are custom manufactured and exported to 5+ countries worldwide. For order status, production stage review, or refund inquiries, connect directly with our studio head on WhatsApp.
+          </p>
+        </div>
+        <a
+          href="https://wa.me/917985232434?text=Hi%20INVEINS%2C%20I%20have%20an%20inquiry%20regarding%20Wholesale%20Order%20Review%20%2F%20Refund."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-[#171717] text-white hover:bg-black transition-colors text-[10px] font-bold uppercase tracking-wider"
+        >
+          <MessageSquare size={13} />
+          WhatsApp Support
+        </a>
+      </div>
+
     </div>
   );
 }
