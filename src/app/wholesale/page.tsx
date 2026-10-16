@@ -13,11 +13,14 @@ import {
   Sparkles,
   Layers,
   ChevronRight,
+  ChevronLeft,
   X,
   Phone,
   Mail,
   Loader2,
   Filter,
+  Eye,
+  Maximize2,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { sanitizeString } from '@/lib/sanitize';
@@ -31,8 +34,12 @@ export default function WholesalePage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
+  // Quick View & Photo Gallery Modal State (Like Retail Catalog)
+  const [viewingProduct, setViewingProduct] = useState<WholesaleProduct | null>(null);
+
   // Estimate Modal State
   const [selectedProductForEstimate, setSelectedProductForEstimate] = useState<WholesaleProduct | null>(null);
+  const [modalActiveImgIndex, setModalActiveImgIndex] = useState(0);
   const [modalFormData, setModalFormData] = useState({
     name: '',
     company: '',
@@ -92,6 +99,7 @@ export default function WholesalePage() {
   // Open estimate modal for specific product
   const handleOpenEstimate = (prod: WholesaleProduct) => {
     setSelectedProductForEstimate(prod);
+    setModalActiveImgIndex(0);
     setModalFormData(prev => ({
       ...prev,
       quantity: prod.moq ? `MOQ: ${prod.moq}` : '50 Pieces',
@@ -280,125 +288,29 @@ export default function WholesalePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map(item => {
-              const mainImg = item.images?.[0] || 'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg';
-              const waText = `Hi INVEINS, I want to inquire about wholesale quote and estimate for: ${item.name} (${item.moq ? `MOQ: ${item.moq}` : ''}).`;
-              const waUrl = `https://wa.me/917985232434?text=${encodeURIComponent(waText)}`;
-
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white border border-[#e5e4df] overflow-hidden flex flex-col group hover:border-[#171717] transition-all duration-300 shadow-xs"
-                >
-                  {/* Image & Badges */}
-                  <div className="relative aspect-square w-full bg-[#f4f1ea] overflow-hidden">
-                    <Image
-                      src={mainImg}
-                      alt={item.name}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    
-                    {/* Top Badges */}
-                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start z-10">
-                      {item.moq && (
-                        <span className="bg-[#141413] text-[#faf9f5] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
-                          MOQ: {item.moq}
-                        </span>
-                      )}
-                      {item.badge && (
-                        <span className="bg-[#cc785c] text-white text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    {item.gsm && (
-                      <span className="absolute bottom-2.5 right-2.5 bg-white/90 backdrop-blur-xs text-[#171717] border border-[#e5e4df] text-[9px] font-mono font-bold px-2 py-0.5 uppercase tracking-wide">
-                        {item.gsm}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Product Details (Strictly No Retail Price!) */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                    <div className="space-y-2">
-                      <div className="text-[10px] font-bold text-[#cc785c] uppercase tracking-wider">
-                        {item.category}
-                      </div>
-
-                      <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#141413] leading-snug line-clamp-2">
-                        {item.name}
-                      </h3>
-
-                      {item.tagline && (
-                        <p className="text-[11px] text-[#6c6a64] line-clamp-2 leading-relaxed">
-                          {item.tagline}
-                        </p>
-                      )}
-
-                      {/* Sizes Chips */}
-                      {item.availableSizes && item.availableSizes.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#737373]">
-                          <span className="font-semibold uppercase tracking-wider text-[9px]">Sizes:</span>
-                          {item.availableSizes.slice(0, 4).map(sz => (
-                            <span key={sz} className="px-1.5 py-0.2 bg-[#f5f4f0] border border-[#e5e4df] font-mono font-bold text-[#171717]">
-                              {sz}
-                            </span>
-                          ))}
-                          {item.availableSizes.length > 4 && (
-                            <span className="text-[9px] font-semibold text-[#737373]">
-                              +{item.availableSizes.length - 4} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Pricing Display: NO PRICE DIGIT - ESTIMATE ON REQUEST */}
-                    <div className="pt-3 border-t border-[#e5e4df] space-y-3">
-                      <div className="bg-[#faf9f5] border border-[#e5e4df] p-2.5 rounded-none flex items-center justify-between">
-                        <div>
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">
-                            PRICING
-                          </div>
-                          <div className="font-heading font-extrabold text-xs text-[#171717] tracking-tight">
-                            Custom Estimate On Request
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5">
-                          Tiered Margins
-                        </span>
-                      </div>
-
-                      {/* Action CTAs */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEstimate(item)}
-                          className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-[10px] font-extrabold uppercase tracking-wider py-2.5 px-2 flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Send size={11} /> Request Quote
-                        </button>
-
-                        <a
-                          href={waUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="border border-[#171717] text-[#171717] hover:bg-[#171717] hover:text-white text-[10px] font-extrabold uppercase tracking-wider py-2.5 px-2 flex items-center justify-center gap-1 transition-colors text-center"
-                        >
-                          WhatsApp &rarr;
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredProducts.map(item => (
+              <WholesaleProductCard
+                key={item.id}
+                item={item}
+                onOpenEstimate={handleOpenEstimate}
+                onViewProduct={(prod) => setViewingProduct(prod)}
+              />
+            ))}
           </div>
         )}
       </section>
+
+      {/* PHOTO GALLERY & QUICK VIEW MODAL (LIKE RETAIL CATALOG) */}
+      {viewingProduct && (
+        <WholesaleGalleryModal
+          product={viewingProduct}
+          onClose={() => setViewingProduct(null)}
+          onRequestEstimate={(prod) => {
+            setViewingProduct(null);
+            handleOpenEstimate(prod);
+          }}
+        />
+      )}
 
       {/* ESTIMATE REQUEST MODAL */}
       {selectedProductForEstimate && (
@@ -425,35 +337,64 @@ export default function WholesalePage() {
             </div>
 
             {/* Selected Product Summary Card */}
-            <div className="flex items-center gap-3.5 bg-[#faf9f5] border border-[#e5e4df] p-3">
-              <div className="relative w-16 h-16 bg-[#eae8e3] shrink-0 border border-[#e5e4df] overflow-hidden">
-                <Image
-                  src={selectedProductForEstimate.images?.[0] || 'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg'}
-                  alt={selectedProductForEstimate.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-heading font-extrabold text-xs sm:text-sm text-[#171717] truncate">
-                  {selectedProductForEstimate.name}
+            <div className="bg-[#faf9f5] border border-[#e5e4df] p-3 space-y-2">
+              <div className="flex items-center gap-3.5">
+                <div className="relative w-16 h-16 bg-[#eae8e3] shrink-0 border border-[#e5e4df] overflow-hidden">
+                  <Image
+                    src={
+                      (selectedProductForEstimate.images && selectedProductForEstimate.images[modalActiveImgIndex]) ||
+                      selectedProductForEstimate.images?.[0] ||
+                      'https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg'
+                    }
+                    alt={selectedProductForEstimate.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-[#737373]">
-                  {selectedProductForEstimate.moq && (
-                    <span className="bg-[#171717] text-white font-bold px-1.5 py-0.2">
-                      MOQ: {selectedProductForEstimate.moq}
+                <div className="min-w-0 flex-1">
+                  <div className="font-heading font-extrabold text-xs sm:text-sm text-[#171717] truncate">
+                    {selectedProductForEstimate.name}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-[#737373]">
+                    {selectedProductForEstimate.moq && (
+                      <span className="bg-[#171717] text-white font-bold px-1.5 py-0.2">
+                        MOQ: {selectedProductForEstimate.moq}
+                      </span>
+                    )}
+                    {selectedProductForEstimate.gsm && (
+                      <span className="font-mono font-semibold text-[#171717]">
+                        {selectedProductForEstimate.gsm}
+                      </span>
+                    )}
+                    <span className="text-[#cc785c] font-bold">
+                      • {selectedProductForEstimate.category}
                     </span>
-                  )}
-                  {selectedProductForEstimate.gsm && (
-                    <span className="font-mono font-semibold text-[#171717]">
-                      {selectedProductForEstimate.gsm}
-                    </span>
-                  )}
-                  <span className="text-[#cc785c] font-bold">
-                    • {selectedProductForEstimate.category}
+                  </div>
+                </div>
+              </div>
+
+              {/* Thumbnails switcher in Estimate Modal if product has multiple photos */}
+              {selectedProductForEstimate.images && selectedProductForEstimate.images.length > 1 && (
+                <div className="flex items-center gap-1.5 pt-2 border-t border-[#e5e4df] overflow-x-auto">
+                  <span className="text-[9px] font-bold uppercase text-[#737373] tracking-wider shrink-0 mr-1">
+                    Photos ({selectedProductForEstimate.images.length}):
                   </span>
+                  {selectedProductForEstimate.images.map((imgUrl, idx) => (
+                    <button
+                      key={imgUrl + idx}
+                      type="button"
+                      onClick={() => setModalActiveImgIndex(idx)}
+                      className={`relative w-8 h-8 border shrink-0 overflow-hidden cursor-pointer transition-all ${
+                        modalActiveImgIndex === idx
+                          ? 'border-[#171717] ring-1 ring-[#171717]'
+                          : 'border-[#e5e4df] opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <Image src={imgUrl} alt="Thumb" fill className="object-cover" />
+                    </button>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Body / Form */}
@@ -860,3 +801,515 @@ export default function WholesalePage() {
     </div>
   );
 }
+
+function WholesaleProductCard({
+  item,
+  onOpenEstimate,
+  onViewProduct,
+}: {
+  item: WholesaleProduct;
+  onOpenEstimate: (prod: WholesaleProduct) => void;
+  onViewProduct: (prod: WholesaleProduct) => void;
+}) {
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const images = Array.isArray(item.images) && item.images.length > 0
+    ? item.images
+    : ['https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg'];
+
+  const currentImg = images[activeImgIndex] || images[0];
+
+  const waText = `Hi INVEINS, I want to inquire about wholesale quote and estimate for: ${item.name} (${item.moq ? `MOQ: ${item.moq}` : ''}).`;
+  const waUrl = `https://wa.me/917985232434?text=${encodeURIComponent(waText)}`;
+
+  return (
+    <div 
+      className="bg-white border border-[#e5e4df] overflow-hidden flex flex-col group hover:border-[#171717] transition-all duration-300 shadow-xs hover:shadow-lg"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Clickable Image Container (Like Retail Catalog) */}
+      <div 
+        onClick={() => onViewProduct(item)}
+        className="relative aspect-square w-full bg-[#f4f1ea] overflow-hidden cursor-pointer"
+        title="Click to view all photos & manufacturing specs"
+      >
+        {/* Ambient blurred backdrop so any aspect ratio looks complete */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center blur-md opacity-25 scale-110 pointer-events-none"
+          style={{ backgroundImage: `url(${currentImg})` }}
+        />
+
+        {/* Primary Photo */}
+        <Image
+          src={images[0]}
+          alt={item.name}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className={`object-cover transition-all duration-500 ease-out ${
+            images[1] && isHovered && activeImgIndex === 0
+              ? 'opacity-0 scale-105'
+              : 'opacity-100 group-hover:scale-105'
+          }`}
+        />
+
+        {/* Alternate view on hover (like retail catalog ProductCard) */}
+        {images[1] && activeImgIndex === 0 && (
+          <Image
+            src={images[1]}
+            alt={`${item.name} alternate view`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className={`object-cover transition-all duration-500 ease-out ${
+              isHovered ? 'opacity-100 scale-105' : 'opacity-0'
+            }`}
+          />
+        )}
+
+        {/* Selected non-zero photo */}
+        {activeImgIndex > 0 && (
+          <Image
+            src={images[activeImgIndex]}
+            alt={`${item.name} view ${activeImgIndex + 1}`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        )}
+
+        {/* Top Badges */}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start z-10 pointer-events-none">
+          {item.moq && (
+            <span className="bg-[#141413] text-[#faf9f5] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
+              MOQ: {item.moq}
+            </span>
+          )}
+          {item.badge && (
+            <span className="bg-[#cc785c] text-white text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
+              {item.badge}
+            </span>
+          )}
+        </div>
+
+        {/* Top-Right Quick View Eye Button */}
+        <div className="absolute top-2.5 right-2.5 z-10">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewProduct(item);
+            }}
+            className="min-w-[34px] min-h-[34px] rounded-full bg-white/95 hover:bg-[#171717] hover:text-white text-[#171717] transition-all duration-200 shadow-sm flex items-center justify-center cursor-pointer"
+            title="View All Photos & Details"
+          >
+            <Eye size={15} />
+          </button>
+        </div>
+
+        {item.gsm && (
+          <span className="absolute bottom-2.5 right-2.5 bg-white/90 backdrop-blur-xs text-[#171717] border border-[#e5e4df] text-[9px] font-mono font-bold px-2 py-0.5 uppercase tracking-wide z-10 pointer-events-none">
+            {item.gsm}
+          </span>
+        )}
+
+        {/* Multi-Photo Dots & Photo Count Badge */}
+        {images.length > 1 && (
+          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 z-10">
+            <span className="bg-[#171717]/85 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5">
+              📸 {images.length}
+            </span>
+            <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xs px-2 py-1">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImgIndex(idx);
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                    activeImgIndex === idx ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white'
+                  }`}
+                  aria-label={`Photo ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Product Details (Strictly No Retail Price!) */}
+      <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+        <div className="space-y-2">
+          <div className="text-[10px] font-bold text-[#cc785c] uppercase tracking-wider">
+            {item.category}
+          </div>
+
+          <h3 
+            onClick={() => onViewProduct(item)}
+            className="font-heading font-extrabold text-sm sm:text-base text-[#141413] hover:text-[#cc785c] cursor-pointer transition-colors leading-snug line-clamp-2"
+            title={item.name}
+          >
+            {item.name}
+          </h3>
+
+          {item.tagline && (
+            <p className="text-[11px] text-[#6c6a64] line-clamp-2 leading-relaxed">
+              {item.tagline}
+            </p>
+          )}
+
+          {/* Sizes Chips */}
+          {item.availableSizes && item.availableSizes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#737373]">
+              <span className="font-semibold uppercase tracking-wider text-[9px]">Sizes:</span>
+              {item.availableSizes.slice(0, 4).map(sz => (
+                <span key={sz} className="px-1.5 py-0.2 bg-[#f5f4f0] border border-[#e5e4df] font-mono font-bold text-[#171717]">
+                  {sz}
+                </span>
+              ))}
+              {item.availableSizes.length > 4 && (
+                <span className="text-[9px] font-semibold text-[#737373]">
+                  +{item.availableSizes.length - 4} more
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Pricing Display: NO PRICE DIGIT - ESTIMATE ON REQUEST */}
+        <div className="pt-3 border-t border-[#e5e4df] space-y-3">
+          <div className="bg-[#faf9f5] border border-[#e5e4df] p-2.5 rounded-none flex items-center justify-between">
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">
+                PRICING
+              </div>
+              <div className="font-heading font-extrabold text-xs text-[#171717] tracking-tight">
+                Custom Estimate On Request
+              </div>
+            </div>
+            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5">
+              Tiered Margins
+            </span>
+          </div>
+
+          {/* Action CTAs */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => onOpenEstimate(item)}
+              className="bg-[#171717] hover:bg-black text-[#f5f4f0] text-[10px] font-extrabold uppercase tracking-wider py-2.5 px-2 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+            >
+              <Send size={11} /> Request Quote
+            </button>
+
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border border-[#171717] text-[#171717] hover:bg-[#171717] hover:text-white text-[10px] font-extrabold uppercase tracking-wider py-2.5 px-2 flex items-center justify-center gap-1 transition-colors text-center"
+            >
+              WhatsApp &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * WHOLESALE PHOTO GALLERY & QUICK VIEW MODAL
+ * Matches the retail catalog's QuickViewModal and /product/[id] interactive gallery.
+ */
+function WholesaleGalleryModal({
+  product,
+  onClose,
+  onRequestEstimate,
+}: {
+  product: WholesaleProduct;
+  onClose: () => void;
+  onRequestEstimate: (prod: WholesaleProduct) => void;
+}) {
+  const images = Array.isArray(product.images) && product.images.length > 0
+    ? product.images
+    : ['https://5.imimg.com/data5/SELLER/Default/2026/4/599804502/KY/OU/QE/180956315/cotton-t-shirts-500x500.jpeg'];
+
+  const [selectedImgIdx, setSelectedImgIdx] = useState(0);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+
+  const currentImg = images[selectedImgIdx] || images[0];
+  const waText = `Hi INVEINS, I want to inquire about wholesale quote and estimate for: ${product.name} (${product.moq ? `MOQ: ${product.moq}` : ''}).`;
+  const waUrl = `https://wa.me/917985232434?text=${encodeURIComponent(waText)}`;
+
+  return (
+    <>
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
+        onClick={onClose}
+      >
+        <div 
+          className="relative w-full max-w-4xl bg-[#faf9f5] border border-[#e6e2d8] shadow-2xl overflow-hidden animate-scale-up my-auto max-h-[92vh] flex flex-col md:flex-row"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 z-30 min-h-[40px] min-w-[40px] flex items-center justify-center bg-white/95 hover:bg-white text-[#141413] transition-colors rounded-full shadow-md cursor-pointer border border-[#e5e4df]"
+            aria-label="Close Gallery"
+          >
+            <X size={18} />
+          </button>
+
+          {/* Left Column: Interactive Image Gallery */}
+          <div className="md:w-1/2 bg-[#f0ede6] flex flex-col justify-between border-b md:border-b-0 md:border-r border-[#e5e4df] p-4 sm:p-6 space-y-3">
+            {/* Main Image Stage */}
+            <div className="relative aspect-square w-full bg-white border border-[#e5e4df] overflow-hidden group">
+              <div 
+                className="absolute inset-0 bg-cover bg-center blur-md opacity-25 scale-110 pointer-events-none"
+                style={{ backgroundImage: `url(${currentImg})` }}
+              />
+              <Image
+                src={currentImg}
+                alt={product.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="relative z-1 object-contain object-center p-2"
+                priority
+              />
+
+              {/* Badges */}
+              <div className="absolute top-3 left-3 z-10 flex flex-col gap-1 items-start">
+                {product.moq && (
+                  <span className="bg-[#141413] text-white text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
+                    MOQ: {product.moq}
+                  </span>
+                )}
+                {product.badge && (
+                  <span className="bg-[#cc785c] text-white text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 shadow-xs">
+                    {product.badge}
+                  </span>
+                )}
+              </div>
+
+              {/* Zoom Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(true)}
+                className="absolute bottom-3 right-3 z-10 p-2 bg-white/90 hover:bg-white text-[#141413] rounded-full shadow-sm cursor-pointer"
+                title="Fullscreen Zoom"
+              >
+                <Maximize2 size={16} />
+              </button>
+
+              {/* Prev / Next Arrows */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImgIdx((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/85 hover:bg-white text-[#141413] flex items-center justify-center shadow-md cursor-pointer transition-colors"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImgIdx((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/85 hover:bg-white text-[#141413] flex items-center justify-center shadow-md cursor-pointer transition-colors"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnail Strip with Photo Count */}
+            {images.length > 1 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#737373]">
+                  <span>Product Gallery ({images.length} Photos)</span>
+                  <span className="font-mono">{selectedImgIdx + 1} of {images.length}</span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {images.map((img, idx) => (
+                    <button
+                      key={img + idx}
+                      type="button"
+                      onClick={() => setSelectedImgIdx(idx)}
+                      className={`relative w-16 h-16 bg-white shrink-0 border-2 overflow-hidden transition-all cursor-pointer ${
+                        selectedImgIdx === idx
+                          ? 'border-[#171717] shadow-xs'
+                          : 'border-[#e5e4df] opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <Image src={img} alt="Thumb" fill className="object-contain p-1" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Full Manufacturing Specifications */}
+          <div className="md:w-1/2 p-5 sm:p-7 flex flex-col justify-between space-y-4 overflow-y-auto">
+            <div className="space-y-3.5">
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#cc785c]">
+                  <span>{product.category}</span>
+                  {product.gsm && (
+                    <span className="font-mono text-[#171717] bg-[#f5f4f0] border border-[#e5e4df] px-1.5 py-0.2">
+                      {product.gsm}
+                    </span>
+                  )}
+                </div>
+                <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#171717] tracking-tight mt-1 leading-snug">
+                  {product.name}
+                </h2>
+              </div>
+
+              {/* Pricing Display */}
+              <div className="bg-[#faf9f5] border border-[#e5e4df] p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">
+                    B2B PRICING & TIER
+                  </div>
+                  <div className="font-heading font-extrabold text-sm text-[#171717] mt-0.5">
+                    Custom Volume Estimate On Request
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5">
+                  Factory Direct
+                </span>
+              </div>
+
+              {product.tagline && (
+                <p className="text-xs font-semibold text-[#171717] leading-relaxed">
+                  {product.tagline}
+                </p>
+              )}
+
+              {product.description && (
+                <div className="text-xs text-[#737373] leading-relaxed space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#171717] block">
+                    Manufacturing Details:
+                  </span>
+                  <p>{product.description}</p>
+                </div>
+              )}
+
+              {/* Available Sizes */}
+              {product.availableSizes && product.availableSizes.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-[#e5e4df]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#171717] block">
+                    Available Sizes:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {product.availableSizes.map(sz => (
+                      <span
+                        key={sz}
+                        className="px-2 py-1 bg-white border border-[#e5e4df] text-xs font-mono font-bold text-[#171717]"
+                      >
+                        {sz}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Customization Services */}
+              {product.customizationOptions && product.customizationOptions.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-[#e5e4df]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#171717] block">
+                    Supported Print & Customization Services:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {product.customizationOptions.map(opt => (
+                      <span
+                        key={opt}
+                        className="px-2 py-1 bg-[#f5f4f0] text-[11px] font-bold text-[#171717] border border-[#e5e4df]"
+                      >
+                        ✓ {opt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-3 border-t border-[#e5e4df] space-y-2">
+              <button
+                type="button"
+                onClick={() => onRequestEstimate(product)}
+                className="w-full bg-[#171717] hover:bg-black text-[#faf9f5] text-xs font-extrabold uppercase tracking-widest py-3 px-4 flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
+              >
+                <Send size={13} />
+                REQUEST CUSTOM ESTIMATE
+              </button>
+
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold uppercase tracking-widest py-3 px-4 flex items-center justify-center gap-2 transition-colors text-center"
+              >
+                <MessageSquare size={14} />
+                WhatsApp Direct Estimate
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FULLSCREEN ZOOM LIGHTBOX */}
+      {isZoomOpen && (
+        <div 
+          className="fixed inset-0 z-60 bg-black/95 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsZoomOpen(false)}
+        >
+          <button
+            onClick={() => setIsZoomOpen(false)}
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 hover:bg-white text-white hover:text-black flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <X size={22} />
+          </button>
+
+          <div 
+            className="relative w-full max-w-5xl h-[85vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <Image
+              src={currentImg}
+              alt={product.name}
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+
+          {images.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImgIdx(idx);
+                  }}
+                  className={`w-3 h-3 rounded-full transition-all cursor-pointer ${
+                    selectedImgIdx === idx ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+

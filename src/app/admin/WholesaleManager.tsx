@@ -77,6 +77,7 @@ export default function WholesaleManager({
   const [newCustomSize, setNewCustomSize] = useState('');
   const [newCustomOption, setNewCustomOption] = useState('');
   const [isUploadingNewPhoto, setIsUploadingNewPhoto] = useState(false);
+  const [newUploadProgress, setNewUploadProgress] = useState<string | null>(null);
   const [newUploadError, setNewUploadError] = useState<string | null>(null);
   const newFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,6 +100,7 @@ export default function WholesaleManager({
   const [editCustomSize, setEditCustomSize] = useState('');
   const [editCustomOption, setEditCustomOption] = useState('');
   const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false);
+  const [editUploadProgress, setEditUploadProgress] = useState<string | null>(null);
   const [editUploadError, setEditUploadError] = useState<string | null>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,7 +129,62 @@ export default function WholesaleManager({
     loadProducts();
   }, []);
 
-  // Upload handler to Cloudinary via /api/admin/upload
+  // Smart client-side image compressor: downsizes large phone camera/HEIC/DSLR images to max 1600px 85% JPEG
+  const optimizeImageForUpload = (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/') || file.type.includes('svg')) {
+      return Promise.resolve(file);
+    }
+    return new Promise<File>((resolve) => {
+      try {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new window.Image();
+          img.onload = () => {
+            try {
+              const maxDim = 1600;
+              let { width, height } = img;
+              if (width > maxDim || height > maxDim) {
+                const ratio = Math.min(maxDim / width, maxDim / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                resolve(file);
+                return;
+              }
+              ctx.drawImage(img, 0, 0, width, height);
+              canvas.toBlob(
+                (blob) => {
+                  if (blob) {
+                    const cleanName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+                    resolve(new File([blob], cleanName, { type: 'image/jpeg' }));
+                  } else {
+                    resolve(file);
+                  }
+                },
+                'image/jpeg',
+                0.85
+              );
+            } catch {
+              resolve(file);
+            }
+          };
+          img.onerror = () => resolve(file);
+          img.src = ev.target?.result as string;
+        };
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+      } catch {
+        resolve(file);
+      }
+    });
+  };
+
+  // Upload handler to Cloudinary via /api/admin/upload supporting multiple photos reliably
   const handlePhotoUpload = async (
     files: FileList | null,
     isEdit: boolean = false
@@ -138,54 +195,83 @@ export default function WholesaleManager({
     if (isEdit) {
       setIsUploadingEditPhoto(true);
       setEditUploadError(null);
+      setEditUploadProgress(`Optimizing ${filesArray.length} photo(s)...`);
     } else {
       setIsUploadingNewPhoto(true);
       setNewUploadError(null);
+      setNewUploadProgress(`Optimizing ${filesArray.length} photo(s)...`);
     }
 
+    const uploadedUrls: string[] = [];
+    const failedFiles: string[] = [];
+
     try {
-      const formData = new FormData();
-      for (const file of filesArray) {
-        formData.append('files', file);
+      for (let i = 0; i < filesArray.length; i++) {
+        const origFile = filesArray[i];
+        const progressMsg = `Uploading photo ${i + 1} of ${filesArray.length}...`;
+        if (isEdit) setEditUploadProgress(progressMsg);
+        else setNewUploadProgress(progressMsg);
+
+        try {
+          const optimizedFile = await optimizeImageForUpload(origFile);
+          const formData = new FormData();
+          formData.append('file', optimizedFile);
+
+          const res = await fetch('/api/admin/upload', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (!res.ok || (!data.success && !data.urls && !data.url)) {
+            throw new Error(data.message || `Upload failed for ${origFile.name}`);
+          }
+
+          const fileUrl = data.url || data.urls?.[0];
+          if (fileUrl) {
+            uploadedUrls.push(fileUrl);
+            if (isEdit) {
+              setEditForm(prev => ({
+                ...prev,
+                images: Array.from(new Set([...prev.images, fileUrl])),
+              }));
+            } else {
+              setNewForm(prev => ({
+                ...prev,
+                images: Array.from(new Set([...prev.images, fileUrl])),
+              }));
+            }
+          }
+        } catch (singleErr: any) {
+          console.error(`Error uploading photo ${origFile.name}:`, singleErr);
+          failedFiles.push(`${origFile.name}: ${singleErr?.message || 'Failed'}`);
+        }
       }
 
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok || (!data.success && !data.urls && !data.url)) {
-        throw new Error(data.message || 'Image upload failed');
+      if (uploadedUrls.length > 0) {
+        showToast(`✓ ${uploadedUrls.length} photo(s) uploaded successfully to Cloudinary!`, 'success');
       }
 
-      const returnedUrls: string[] = data.urls || (data.url ? [data.url] : []);
-
-      if (isEdit) {
-        setEditForm(prev => ({
-          ...prev,
-          images: Array.from(new Set([...prev.images, ...returnedUrls])),
-        }));
-      } else {
-        setNewForm(prev => ({
-          ...prev,
-          images: Array.from(new Set([...prev.images, ...returnedUrls])),
-        }));
+      if (failedFiles.length > 0) {
+        const errMsg = failedFiles.join(', ');
+        if (isEdit) setEditUploadError(errMsg);
+        else setNewUploadError(errMsg);
+        showToast(`Upload failed for ${failedFiles.length} file(s)`, 'error');
       }
-
-      showToast(`✓ ${returnedUrls.length} image(s) uploaded via Cloudinary!`, 'success');
     } catch (err: any) {
-      console.error('Photo upload failed:', err);
+      console.error('Photo upload process failed:', err);
       if (isEdit) setEditUploadError(err?.message || 'Upload failed');
       else setNewUploadError(err?.message || 'Upload failed');
       showToast(err?.message || 'Failed to upload photo', 'error');
     } finally {
       if (isEdit) {
         setIsUploadingEditPhoto(false);
+        setEditUploadProgress(null);
         if (editFileInputRef.current) editFileInputRef.current.value = '';
       } else {
         setIsUploadingNewPhoto(false);
+        setNewUploadProgress(null);
         if (newFileInputRef.current) newFileInputRef.current.value = '';
       }
     }
@@ -652,7 +738,9 @@ export default function WholesaleManager({
                     {isUploadingNewPhoto ? (
                       <div className="flex items-center gap-2 py-1">
                         <Loader2 size={16} className="animate-spin text-[#171717]" />
-                        <span className="text-xs font-bold uppercase text-[#171717]">Uploading to Cloudinary CDN...</span>
+                        <span className="text-xs font-bold uppercase text-[#171717]">
+                          {newUploadProgress || 'Uploading to Cloudinary CDN...'}
+                        </span>
                       </div>
                     ) : (
                       <>
@@ -1141,7 +1229,9 @@ export default function WholesaleManager({
                   {isUploadingEditPhoto ? (
                     <div className="flex items-center gap-2 py-1">
                       <Loader2 size={16} className="animate-spin text-[#171717]" />
-                      <span className="text-xs font-bold uppercase text-[#171717]">Uploading...</span>
+                      <span className="text-xs font-bold uppercase text-[#171717]">
+                        {editUploadProgress || 'Uploading to Cloudinary...'}
+                      </span>
                     </div>
                   ) : (
                     <>
