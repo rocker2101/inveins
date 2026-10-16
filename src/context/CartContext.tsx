@@ -51,8 +51,11 @@ export interface WholesaleEnquiry {
 
 export interface Coupon {
   code: string;
-  discountPercent: number;
+  discountType?: 'flat' | 'percent';
+  discountValue?: number;
+  discountPercent?: number;
   discountAmount: number;
+  minOrderValue?: number;
 }
 
 interface CartContextType {
@@ -79,7 +82,7 @@ interface CartContextType {
 
   // Coupons
   coupon: Coupon | null;
-  applyCoupon: (code: string) => { success: boolean; message: string };
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
   removeCoupon: () => void;
 
   // Wishlist
@@ -438,19 +441,48 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isInWishlist = (productId: string) => wishlist.includes(productId);
 
   // Coupon action
-  const applyCoupon = (code: string) => {
+  const applyCoupon = async (code: string): Promise<{ success: boolean; message: string }> => {
     const cleanCode = code.trim().toUpperCase();
-    if (VALID_COUPONS[cleanCode]) {
-      const discountPercent = VALID_COUPONS[cleanCode];
-      const discountAmount = Math.round((subtotal * discountPercent) / 100);
-      setCoupon({
-        code: cleanCode,
-        discountPercent,
-        discountAmount,
+    if (!cleanCode) return { success: false, message: 'Please enter a promo code.' };
+
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: cleanCode, subtotal }),
       });
-      return { success: true, message: `Coupon applied: ${discountPercent}% off!` };
+      const data = await res.json();
+      if (res.ok && data.success && data.coupon) {
+        setCoupon({
+          code: data.coupon.code,
+          discountType: data.coupon.discountType,
+          discountValue: data.coupon.discountValue,
+          discountPercent: data.coupon.discountType === 'percent' ? data.coupon.discountValue : undefined,
+          discountAmount: data.coupon.discountAmount,
+          minOrderValue: data.coupon.minOrderValue,
+        });
+        const label = data.coupon.discountType === 'flat'
+          ? `₹${data.coupon.discountValue} off`
+          : `${data.coupon.discountValue}% off`;
+        return { success: true, message: `Promo code ${data.coupon.code} applied (${label})!` };
+      }
+      return { success: false, message: data.message || 'Invalid or expired promo code.' };
+    } catch {
+      // Local fallback for legacy codes if network fails
+      if (VALID_COUPONS[cleanCode]) {
+        const discountPercent = VALID_COUPONS[cleanCode];
+        const discountAmt = Math.round((subtotal * discountPercent) / 100);
+        setCoupon({
+          code: cleanCode,
+          discountType: 'percent',
+          discountPercent,
+          discountValue: discountPercent,
+          discountAmount: discountAmt,
+        });
+        return { success: true, message: `Coupon applied: ${discountPercent}% off!` };
+      }
+      return { success: false, message: 'Unable to validate promo code. Please try again.' };
     }
-    return { success: false, message: 'Invalid promo code. Try FIRST10 for 10% off.' };
   };
 
   const removeCoupon = () => {
@@ -780,7 +812,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isFreeShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) || standardShippingFee === 0;
   const amountNeededForFreeShipping = freeShippingThreshold > 0 ? Math.max(0, freeShippingThreshold - subtotal) : 0;
   const shippingFee = subtotal > 0 && !isFreeShipping ? standardShippingFee : 0;
-  const discountAmount = coupon ? Math.round((subtotal * coupon.discountPercent) / 100) : 0;
+  let discountAmount = 0;
+  if (coupon) {
+    if (coupon.minOrderValue && subtotal < coupon.minOrderValue) {
+      discountAmount = 0;
+    } else if (coupon.discountType === 'flat') {
+      discountAmount = Math.min(subtotal, Math.max(0, coupon.discountValue || coupon.discountAmount || 0));
+    } else {
+      const pct = coupon.discountPercent ?? coupon.discountValue ?? 0;
+      discountAmount = Math.min(subtotal, Math.round((subtotal * pct) / 100));
+    }
+  }
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
 
   return (

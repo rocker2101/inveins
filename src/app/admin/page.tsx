@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCart, Order, WholesaleEnquiry } from '@/context/CartContext';
 import { Product } from '@/data/products';
 import { CategoryItem, DEFAULT_CATEGORIES } from '@/data/categories';
-import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X, Truck, Layers, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Lock, Package, ShoppingBag, MessageSquare, Plus, Trash2, Check, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, Database, UploadCloud, Loader2, Image as ImageIcon, Eye, EyeOff, Pencil, X, Truck, Layers, ArrowUp, ArrowDown, ChevronRight, Ticket, Copy, Tag } from 'lucide-react';
 import WholesaleManager from './WholesaleManager';
 
 interface DashboardStats {
@@ -49,8 +49,144 @@ export default function AdminPage() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [pinError, setPinError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product' | 'shipping' | 'categories'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'wholesale' | 'add-product' | 'shipping' | 'categories' | 'coupons'>('orders');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Dispatched' | 'Delivered'>('All');
+
+  // Promo Codes / Coupons Management State
+  interface AdminCoupon {
+    id: string;
+    code: string;
+    discount_type: 'flat' | 'percent';
+    discount_value: number;
+    min_order_value: number;
+    is_active: boolean;
+    created_at?: string;
+  }
+  const [couponsList, setCouponsList] = useState<AdminCoupon[]>([]);
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponType, setNewCouponType] = useState<'flat' | 'percent'>('flat');
+  const [newCouponValue, setNewCouponValue] = useState('');
+  const [newCouponMinOrder, setNewCouponMinOrder] = useState('');
+  const [newCouponActive, setNewCouponActive] = useState(true);
+  const [isCreatingCoupon, setIsCreatingCoupon] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState<AdminCoupon | null>(null);
+  const [isDeletingCoupon, setIsDeletingCoupon] = useState(false);
+  const [copiedCouponCode, setCopiedCouponCode] = useState<string | null>(null);
+
+  const generateRandomCode = () => {
+    const prefixes = ['INVEINS', 'SAVE', 'STYLE', 'OFFER', 'FASHION'];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const num = Math.floor(100 + Math.random() * 900);
+    setNewCouponCode(`${prefix}${num}`);
+  };
+
+  const copyCouponCode = (code: string) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(code);
+      setCopiedCouponCode(code);
+      setTimeout(() => setCopiedCouponCode(null), 2000);
+    }
+  };
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = newCouponCode.trim().toUpperCase();
+    if (!cleanCode) {
+      setActionToast({ message: 'Please enter a promo code.', type: 'error' });
+      return;
+    }
+    const val = parseFloat(newCouponValue);
+    if (isNaN(val) || val <= 0) {
+      setActionToast({ message: 'Please enter a valid positive discount value.', type: 'error' });
+      return;
+    }
+    if (newCouponType === 'percent' && val > 100) {
+      setActionToast({ message: 'Percentage discount cannot exceed 100%.', type: 'error' });
+      return;
+    }
+    const minOrder = newCouponMinOrder ? parseFloat(newCouponMinOrder) : 0;
+    if (isNaN(minOrder) || minOrder < 0) {
+      setActionToast({ message: 'Minimum order value must be 0 or greater.', type: 'error' });
+      return;
+    }
+
+    setIsCreatingCoupon(true);
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: cleanCode,
+          discountType: newCouponType,
+          discountValue: val,
+          minOrderValue: minOrder,
+          isActive: newCouponActive,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionToast({ message: `✓ Promo code "${cleanCode}" created successfully!`, type: 'success' });
+        setNewCouponCode('');
+        setNewCouponValue('');
+        setNewCouponMinOrder('');
+        setNewCouponActive(true);
+        loadAdminData();
+      } else {
+        setActionToast({ message: data.message || 'Failed to create promo code.', type: 'error' });
+      }
+    } catch (err: any) {
+      setActionToast({ message: err?.message || 'Error creating promo code.', type: 'error' });
+    } finally {
+      setIsCreatingCoupon(false);
+    }
+  };
+
+  const handleToggleCouponStatus = async (coupon: AdminCoupon) => {
+    const updatedActive = !coupon.is_active;
+    setCouponsList(prev => prev.map(c => c.id === coupon.id ? { ...c, is_active: updatedActive } : c));
+    try {
+      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: updatedActive }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setCouponsList(prev => prev.map(c => c.id === coupon.id ? { ...c, is_active: coupon.is_active } : c));
+        setActionToast({ message: data.message || 'Failed to update coupon status.', type: 'error' });
+      } else {
+        setActionToast({
+          message: updatedActive ? `✓ Promo code ${coupon.code} activated.` : `Promo code ${coupon.code} paused.`,
+          type: updatedActive ? 'success' : 'info',
+        });
+      }
+    } catch {
+      setCouponsList(prev => prev.map(c => c.id === coupon.id ? { ...c, is_active: coupon.is_active } : c));
+      setActionToast({ message: 'Error updating coupon status.', type: 'error' });
+    }
+  };
+
+  const handleConfirmDeleteCoupon = async () => {
+    if (!couponToDelete) return;
+    setIsDeletingCoupon(true);
+    try {
+      const res = await fetch(`/api/admin/coupons/${couponToDelete.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActionToast({ message: `✓ Promo code ${couponToDelete.code} deleted.`, type: 'success' });
+        setCouponsList(prev => prev.filter(c => c.id !== couponToDelete.id));
+        setCouponToDelete(null);
+      } else {
+        setActionToast({ message: data.message || 'Failed to delete coupon.', type: 'error' });
+      }
+    } catch {
+      setActionToast({ message: 'Error deleting coupon.', type: 'error' });
+    } finally {
+      setIsDeletingCoupon(false);
+    }
+  };
 
   // Shipping Configuration Editing State
   const [shippingFeeInput, setShippingFeeInput] = useState<string>(String(standardShippingFee));
@@ -552,11 +688,12 @@ export default function AdminPage() {
   const loadAdminData = useCallback(async () => {
     setIsLoadingOrders(true);
     try {
-      const [statsRes, ordersRes, wsRes, prodsRes] = await Promise.allSettled([
+      const [statsRes, ordersRes, wsRes, prodsRes, couponsRes] = await Promise.allSettled([
         fetch('/api/admin/dashboard', { cache: 'no-store' }),
         fetch('/api/orders/list', { cache: 'no-store' }),
         fetch('/api/wholesale/list', { cache: 'no-store' }),
         fetch(`/api/products?all=true&t=${Date.now()}`, { cache: 'no-store' }),
+        fetch('/api/admin/coupons', { cache: 'no-store' }),
       ]);
 
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
@@ -584,6 +721,13 @@ export default function AdminPage() {
         const prodData = await prodsRes.value.json();
         if (prodData.success && Array.isArray(prodData.products)) {
           setProductsList(prodData.products);
+        }
+      }
+
+      if (couponsRes.status === 'fulfilled' && couponsRes.value.ok) {
+        const coupData = await couponsRes.value.json();
+        if (coupData.success && Array.isArray(coupData.coupons)) {
+          setCouponsList(coupData.coupons);
         }
       }
     } catch (err) {
@@ -1226,6 +1370,16 @@ export default function AdminPage() {
         >
           <Layers size={13} />
           CATEGORIES ({localCategories.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('coupons')}
+          className={`pb-3 transition-colors flex items-center gap-1.5 ${
+            activeTab === 'coupons' ? 'border-b-2 border-[#171717] text-[#171717]' : 'text-[#737373] hover:text-[#171717]'
+          }`}
+        >
+          <Ticket size={13} />
+          COUPONS & OFFERS ({couponsList.length})
         </button>
 
         <button
@@ -2432,6 +2586,246 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* TAB 7: PROMO CODES & OFFERS MANAGEMENT */}
+      {activeTab === 'coupons' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white border border-[#e5e4df] p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e5e4df] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#171717] text-[#f5f4f0] flex items-center justify-center font-bold flex-shrink-0">
+                  <Ticket size={20} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#171717] uppercase tracking-wide">
+                    Promo Codes & Discount Offers
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-[#737373] mt-0.5">
+                    Create promo codes, configure flat ₹ or % discounts, set minimum cart rules, and toggle active status.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadAdminData}
+                  className="px-3 py-2 bg-[#f5f4f0] hover:bg-[#eae8e3] text-[#171717] border border-[#e5e4df] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  Refresh Codes
+                </button>
+              </div>
+            </div>
+
+            {/* Create Promo Code Form */}
+            <form onSubmit={handleCreateCoupon} className="bg-[#faf9f5] border border-[#e5e4df] p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#e5e4df] pb-2.5">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#171717] flex items-center gap-1.5">
+                  <Plus size={14} className="text-[#cc785c]" />
+                  Create New Promo Code
+                </span>
+                <button
+                  type="button"
+                  onClick={generateRandomCode}
+                  className="text-[11px] font-bold text-[#cc785c] hover:text-[#b8674c] flex items-center gap-1 underline uppercase"
+                >
+                  <Sparkles size={12} />
+                  Generate Random Code
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Code input */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    PROMO CODE *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newCouponCode}
+                    onChange={e => setNewCouponCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. SAVE200"
+                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-mono font-bold uppercase text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+
+                {/* Discount Type */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    DISCOUNT TYPE *
+                  </label>
+                  <select
+                    value={newCouponType}
+                    onChange={e => setNewCouponType(e.target.value as 'flat' | 'percent')}
+                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  >
+                    <option value="flat">Flat Amount (₹ Off)</option>
+                    <option value="percent">Percentage (% Off)</option>
+                  </select>
+                </div>
+
+                {/* Discount Value */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    {newCouponType === 'flat' ? 'DISCOUNT AMOUNT (₹) *' : 'DISCOUNT PERCENT (%) *'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={newCouponType === 'percent' ? 100 : 100000}
+                    value={newCouponValue}
+                    onChange={e => setNewCouponValue(e.target.value)}
+                    placeholder={newCouponType === 'flat' ? 'e.g. 200' : 'e.g. 15'}
+                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+
+                {/* Min Order Value */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#171717] mb-1">
+                    MIN ORDER VALUE (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newCouponMinOrder}
+                    onChange={e => setNewCouponMinOrder(e.target.value)}
+                    placeholder="0 (No minimum)"
+                    className="w-full bg-white border border-[#e5e4df] p-2.5 text-xs font-bold text-[#171717] focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                <label className="flex items-center gap-2 text-xs font-bold text-[#171717] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newCouponActive}
+                    onChange={e => setNewCouponActive(e.target.checked)}
+                    className="w-4 h-4 accent-[#171717]"
+                  />
+                  <span>Activate this code immediately on live storefront</span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={isCreatingCoupon}
+                  className="px-5 py-2.5 bg-[#171717] hover:bg-black text-[#f5f4f0] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {isCreatingCoupon ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} /> Save & Publish Code
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Promo Codes List Table */}
+          <div className="bg-white border border-[#e5e4df] overflow-hidden">
+            <div className="p-4 border-b border-[#e5e4df] flex items-center justify-between">
+              <h4 className="font-heading font-extrabold text-xs uppercase tracking-wider text-[#171717]">
+                Existing Promo Codes ({couponsList.length})
+              </h4>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#f5f4f0] border-b border-[#e5e4df] uppercase text-[10px] tracking-wider text-[#737373] font-bold">
+                  <tr>
+                    <th className="p-3.5">Code</th>
+                    <th className="p-3.5">Discount</th>
+                    <th className="p-3.5">Min Order</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e5e4df] text-[#171717]">
+                  {couponsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-10 text-center text-xs text-[#737373]">
+                        <Ticket size={28} className="mx-auto text-[#737373]/50 mb-2" />
+                        <span className="font-bold text-[#171717] uppercase tracking-wider block">No Promo Codes Found</span>
+                        <span>Use the form above to create your first discount code.</span>
+                      </td>
+                    </tr>
+                  ) : (
+                    couponsList.map(coup => (
+                      <tr key={coup.id} className="hover:bg-[#f5f4f0]/50 transition-colors">
+                        <td className="p-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm bg-neutral-100 border border-neutral-300 px-2 py-0.5">
+                              {coup.code}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyCouponCode(coup.code)}
+                              className="text-[#737373] hover:text-[#171717] p-1"
+                              title="Copy code"
+                            >
+                              {copiedCouponCode === coup.code ? (
+                                <Check size={13} className="text-emerald-600" />
+                              ) : (
+                                <Copy size={13} />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-bold text-[#171717]">
+                            {coup.discount_type === 'flat' ? `₹${Number(coup.discount_value).toLocaleString('en-IN')} Flat Off` : `${coup.discount_value}% Off`}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-[#737373]">
+                          {coup.min_order_value && Number(coup.min_order_value) > 0 ? (
+                            <span className="font-semibold text-neutral-800">
+                              ₹{Number(coup.min_order_value).toLocaleString('en-IN')}
+                            </span>
+                          ) : (
+                            <span className="text-neutral-400">None</span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCouponStatus(coup)}
+                            className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider border rounded-full transition-colors ${
+                              coup.is_active
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                : 'bg-neutral-100 text-neutral-500 border-neutral-300 hover:bg-neutral-200'
+                            }`}
+                          >
+                            {coup.is_active ? '● Active' : '○ Paused'}
+                          </button>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setCouponToDelete(coup)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 transition-colors rounded"
+                            title="Delete Promo Code"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: EDIT PRODUCT DETAILS (FULL EDITING SUITE) */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
@@ -2945,6 +3339,53 @@ export default function AdminPage() {
                 className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm"
               >
                 <Trash2 size={13} /> Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Promo Code Confirmation */}
+      {couponToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-[#e5e4df] max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-heading font-extrabold text-base text-[#171717]">
+                  Delete Promo Code?
+                </h3>
+                <p className="text-[11px] text-[#737373]">
+                  Code <span className="font-mono font-bold text-neutral-900">{couponToDelete.code}</span> ({couponToDelete.discount_type === 'flat' ? `₹${couponToDelete.discount_value} Flat` : `${couponToDelete.discount_value}%`}) will be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCouponToDelete(null)}
+                className="border border-[#e5e4df] hover:bg-[#f5f4f0] text-[#171717] text-xs font-bold uppercase tracking-wider py-2.5 px-4 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingCoupon}
+                onClick={handleConfirmDeleteCoupon}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-5 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                {isDeletingCoupon ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} /> Confirm Delete
+                  </>
+                )}
               </button>
             </div>
           </div>

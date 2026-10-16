@@ -7,13 +7,9 @@ import { createCashfreeOrder, isCashfreeConfigured } from '@/lib/cashfree';
 import { getStoreSettings } from '@/lib/store-settings';
 import { decrementOrderStock, getOrderSigningSecret } from '@/lib/payment-security';
 import { setPendingOrder, signOrderToken, PendingOrderPayload } from '@/lib/pending-orders';
+import { validateCoupon } from '@/lib/coupons';
 
 export const dynamic = 'force-dynamic';
-const VALID_COUPONS: Record<string, number> = {
-  FIRST10: 10,
-  INVEINS15: 15,
-  HEAVY20: 20,
-};
 const FREE_SHIPPING_THRESHOLD = 999;
 const STANDARD_SHIPPING_FEE = 70;
 
@@ -136,42 +132,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Validate & Apply Coupon
+    // 3. Authoritatively Validate & Apply Coupon from Database
     let discountAmount = 0;
     let appliedCoupon = null;
 
     if (couponCode && typeof couponCode === 'string') {
-      const cleanCode = couponCode.trim().toUpperCase();
-      if (VALID_COUPONS[cleanCode]) {
-        // Enforce FIRST10 is single-use for first-time orders only
-        if (cleanCode === 'FIRST10' && sanitizedCustomer.phone) {
-          try {
-            const { data: priorOrders } = await supabaseAdmin
-              .from('inveins_orders')
-              .select('id')
-              .contains('customer', { phone: sanitizedCustomer.phone })
-              .in('status', ['Confirmed', 'Processing', 'Dispatched', 'Delivered'])
-              .limit(1);
-
-            if (priorOrders && priorOrders.length > 0) {
-              return NextResponse.json(
-                { success: false, message: 'Coupon FIRST10 is valid for first-time orders only.' },
-                { status: 400 }
-              );
-            }
-          } catch (e) {
-            // Graceful fallback if database column indexing is building
-          }
-        }
-
-        const percent = VALID_COUPONS[cleanCode];
-        discountAmount = Math.round((calculatedSubtotal * percent) / 100);
-        appliedCoupon = {
-          code: cleanCode,
-          discountPercent: percent,
-          discountAmount,
-        };
+      const couponRes = await validateCoupon(couponCode, calculatedSubtotal, sanitizedCustomer.phone);
+      if (!couponRes.valid) {
+        return NextResponse.json(
+          { success: false, message: couponRes.message || 'Invalid or ineligible promo code.' },
+          { status: 400 }
+        );
       }
+
+      discountAmount = couponRes.coupon!.discountAmount;
+      appliedCoupon = {
+        code: couponRes.coupon!.code,
+        discountType: couponRes.coupon!.discountType,
+        discountValue: couponRes.coupon!.discountValue,
+        discountPercent: couponRes.coupon!.discountType === 'percent' ? couponRes.coupon!.discountValue : undefined,
+        discountAmount,
+      };
     }
 
     // 4. Calculate Shipping & Grand Total Authoritatively from Store Settings

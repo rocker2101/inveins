@@ -24,11 +24,30 @@ function CheckoutContent() {
     shippingFee,
     grandTotal,
     coupon,
+    applyCoupon,
+    removeCoupon,
     savedAddress,
     saveAddress,
     addOrder,
     clearCart,
   } = useCart();
+
+  const [checkoutCouponInput, setCheckoutCouponInput] = useState('');
+  const [checkoutCouponMsg, setCheckoutCouponMsg] = useState<{ success: boolean; text: string } | null>(null);
+  const [isApplyingCheckoutCoupon, setIsApplyingCheckoutCoupon] = useState(false);
+
+  const handleApplyCheckoutCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checkoutCouponInput.trim() || isApplyingCheckoutCoupon) return;
+    setIsApplyingCheckoutCoupon(true);
+    try {
+      const res = await applyCoupon(checkoutCouponInput);
+      setCheckoutCouponMsg({ success: res.success, text: res.message });
+      if (res.success) setCheckoutCouponInput('');
+    } finally {
+      setIsApplyingCheckoutCoupon(false);
+    }
+  };
 
   const [step, setStep] = useState<'address' | 'payment' | 'confirmation'>('address');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
@@ -681,6 +700,43 @@ function CheckoutContent() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Promo Code Box on Checkout */}
+            <div className="pt-3 border-t border-[#e6e2d8]">
+              {coupon ? (
+                <div className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#15803D]">
+                  <span className="truncate">
+                    {coupon.code} ({coupon.discountType === 'flat' ? `₹${coupon.discountValue} off` : `${coupon.discountPercent || coupon.discountValue}% off`})
+                  </span>
+                  <button onClick={removeCoupon} className="text-red-600 hover:underline text-[11px] ml-2 flex-shrink-0">
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleApplyCheckoutCoupon} className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={checkoutCouponInput}
+                    onChange={e => setCheckoutCouponInput(e.target.value)}
+                    placeholder="Promo code"
+                    disabled={isApplyingCheckoutCoupon}
+                    className="flex-1 px-2.5 py-1.5 bg-[#faf9f5] border border-[#e6e2d8] text-xs font-bold uppercase focus:outline-none focus:border-[#141413] disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isApplyingCheckoutCoupon}
+                    className="px-3 py-1.5 bg-[#141413] hover:bg-black text-white text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+                  >
+                    {isApplyingCheckoutCoupon ? '...' : 'Apply'}
+                  </button>
+                </form>
+              )}
+              {checkoutCouponMsg && (
+                <p className={`text-[10px] font-bold mt-1 ${checkoutCouponMsg.success ? 'text-[#15803D]' : 'text-[#c64545]'}`}>
+                  {checkoutCouponMsg.text}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 pt-3 border-t border-[#e6e2d8] text-xs">

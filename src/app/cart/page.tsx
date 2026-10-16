@@ -29,12 +29,19 @@ export default function CartPage() {
 
   const progressPercent = freeShippingThreshold > 0 ? Math.min(100, (subtotal / freeShippingThreshold) * 100) : 100;
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!couponInput.trim()) return;
-    const res = applyCoupon(couponInput);
-    setCouponMessage({ success: res.success, text: res.message });
-    if (res.success) setCouponInput('');
+    if (!couponInput.trim() || isApplyingCoupon) return;
+    setIsApplyingCoupon(true);
+    try {
+      const res = await applyCoupon(couponInput);
+      setCouponMessage({ success: res.success, text: res.message });
+      if (res.success) setCouponInput('');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
   };
 
   const handleWhatsAppCheckout = () => {
@@ -221,7 +228,9 @@ export default function CartPage() {
 
               {coupon ? (
                 <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#15803D]">
-                  <span>Applied: {coupon.code} ({coupon.discountPercent}% off)</span>
+                  <span>
+                    Applied: {coupon.code} ({coupon.discountType === 'flat' ? `₹${coupon.discountValue} off` : `${coupon.discountPercent || coupon.discountValue}% off`})
+                  </span>
                   <button onClick={removeCoupon} className="text-red-600 hover:underline">Remove</button>
                 </div>
               ) : (
@@ -231,13 +240,15 @@ export default function CartPage() {
                     value={couponInput}
                     onChange={e => setCouponInput(e.target.value)}
                     placeholder="e.g. FIRST10"
-                    className="flex-1 px-3 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-bold uppercase focus:outline-none focus:border-[#141413]"
+                    disabled={isApplyingCoupon}
+                    className="flex-1 px-3 py-2.5 bg-[#faf9f5] border border-[#e6e2d8] text-base sm:text-xs font-bold uppercase focus:outline-none focus:border-[#141413] disabled:opacity-50"
                   />
                   <button
                     type="submit"
-                    className="px-4 min-h-[44px] bg-[#141413] hover:bg-black text-white text-xs font-bold uppercase tracking-wider transition-colors"
+                    disabled={isApplyingCoupon}
+                    className="px-4 min-h-[44px] bg-[#141413] hover:bg-black text-white text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
                   >
-                    Apply
+                    {isApplyingCoupon ? '...' : 'Apply'}
                   </button>
                 </form>
               )}
@@ -263,7 +274,9 @@ export default function CartPage() {
 
                 {coupon && (
                   <div className="flex justify-between text-[#15803D]">
-                    <span>Discount ({coupon.discountPercent}%)</span>
+                    <span>
+                      Discount ({coupon.discountType === 'flat' ? `Flat ₹${coupon.discountValue}` : `${coupon.discountPercent || coupon.discountValue}%`})
+                    </span>
                     <span className="font-semibold">-₹{discountAmount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
