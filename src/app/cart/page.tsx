@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag, ArrowRight, Trash2, Plus, Minus, ShieldCheck, Heart, Zap, Tag, Check } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Trash2, Plus, Minus, ShieldCheck, Heart, Zap, Tag, Check, Sparkles } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 export default function CartPage() {
@@ -22,6 +22,7 @@ export default function CartPage() {
     removeCoupon,
     toggleWishlist,
     isInWishlist,
+    setIsOffersModalOpen,
   } = useCart();
 
   const [couponInput, setCouponInput] = useState('');
@@ -221,9 +222,19 @@ export default function CartPage() {
             
             {/* Promo Code Box */}
             <div className="bg-white border border-[#e6e2d8] p-5 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#141413]">
-                <Tag size={15} className="text-[#cc785c]" />
-                <span>HAVE A PROMO CODE?</span>
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#141413]">
+                <div className="flex items-center gap-2">
+                  <Tag size={15} className="text-[#cc785c]" />
+                  <span>HAVE A PROMO CODE?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOffersModalOpen(true)}
+                  className="text-[11px] font-bold text-[#cc785c] hover:text-[#b8674c] underline uppercase flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles size={12} />
+                  View Offers
+                </button>
               </div>
 
               {coupon ? (

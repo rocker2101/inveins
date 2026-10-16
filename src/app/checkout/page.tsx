@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   ShieldCheck, Lock, CheckCircle2, Truck, CreditCard, 
   ArrowLeft, ArrowRight, Zap, ShoppingBag, MapPin, 
-  Phone, Mail, Package, AlertCircle, Loader2
+  Phone, Mail, Package, AlertCircle, Loader2, Tag, Sparkles
 } from 'lucide-react';
 import { useCart, SavedAddress, Order } from '@/context/CartContext';
 import { sanitizeString, isValidPhone, isValidPincode } from '@/lib/sanitize';
@@ -26,6 +26,7 @@ function CheckoutContent() {
     coupon,
     applyCoupon,
     removeCoupon,
+    setIsOffersModalOpen,
     savedAddress,
     saveAddress,
     addOrder,
@@ -704,6 +705,18 @@ function CheckoutContent() {
 
             {/* Promo Code Box on Checkout */}
             <div className="pt-3 border-t border-[#e6e2d8]">
+              <div className="flex items-center justify-between pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#737373]">Promo Code</span>
+                <button
+                  type="button"
+                  onClick={() => setIsOffersModalOpen(true)}
+                  className="text-[10px] font-bold text-[#cc785c] hover:text-[#b8674c] underline uppercase flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles size={11} />
+                  View Offers
+                </button>
+              </div>
+
               {coupon ? (
                 <div className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#15803D]">
                   <span className="truncate">

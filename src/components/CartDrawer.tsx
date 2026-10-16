@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Heart, Zap } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, ShieldCheck, Heart, Zap, Tag, Sparkles } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 export const CartDrawer: React.FC = () => {
@@ -22,6 +22,7 @@ export const CartDrawer: React.FC = () => {
     coupon,
     toggleWishlist,
     isInWishlist,
+    setIsOffersModalOpen,
   } = useCart();
 
   if (!isCartOpen) return null;
@@ -186,6 +187,21 @@ export const CartDrawer: React.FC = () => {
           {/* Footer & Checkout CTAs */}
           {items.length > 0 && (
             <div className="p-4 sm:p-5 border-t border-[#e6e2d8] bg-white space-y-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              {/* Available Offers Quick Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsOffersModalOpen(true)}
+                className="w-full py-2 px-3 bg-[#faf9f5] border border-dashed border-[#d5d4ce] hover:border-[#141413] text-xs font-bold text-[#141413] flex items-center justify-between transition-colors group mb-2"
+              >
+                <span className="flex items-center gap-1.5 text-[#cc785c]">
+                  <Tag size={13} />
+                  <span>{coupon ? `Applied Offer: ${coupon.code}` : 'View Available Offers & Coupons'}</span>
+                </span>
+                <span className="text-[10px] font-extrabold uppercase underline group-hover:text-black">
+                  {coupon ? 'Change →' : 'Explore →'}
+                </span>
+              </button>
+
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between text-[#6c6a64]">
                   <span>Subtotal</span>

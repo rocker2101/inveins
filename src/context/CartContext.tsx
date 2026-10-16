@@ -129,6 +129,8 @@ interface CartContextType {
   setIsCheckoutOpen: (open: boolean) => void;
   isShippingPolicyOpen: boolean;
   setIsShippingPolicyOpen: (open: boolean) => void;
+  isOffersModalOpen: boolean;
+  setIsOffersModalOpen: (open: boolean) => void;
 
   // Quick View Modal
   quickViewProduct: Product | null;
@@ -174,6 +176,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isShippingPolicyOpen, setIsShippingPolicyOpen] = useState(false);
+  const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   // Express 1-Click Buy State
@@ -883,6 +886,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsCheckoutOpen,
         isShippingPolicyOpen,
         setIsShippingPolicyOpen,
+        isOffersModalOpen,
+        setIsOffersModalOpen,
         quickViewProduct,
         openQuickView,
         closeQuickView,

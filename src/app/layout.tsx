@@ -11,6 +11,7 @@ import { CheckoutModal } from "@/components/CheckoutModal";
 import { ShippingPolicyModal } from "@/components/ShippingPolicyModal";
 import { ExpressCheckoutModal } from "@/components/ExpressCheckoutModal";
 import { QuickViewModal } from "@/components/QuickViewModal";
+import { AvailableOffersModal } from "@/components/AvailableOffersModal";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -124,6 +125,7 @@ export default function RootLayout({
           <ShippingPolicyModal />
           <ExpressCheckoutModal />
           <QuickViewModal />
+          <AvailableOffersModal />
         </CartProvider>
       </body>
     </html>

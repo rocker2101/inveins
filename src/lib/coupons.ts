@@ -198,3 +198,41 @@ export async function validateCoupon(
     },
   };
 }
+
+export interface PublicCoupon {
+  code: string;
+  discountType: 'flat' | 'percent';
+  discountValue: number;
+  minOrderValue: number;
+}
+
+/**
+ * Returns safe public information for active coupons so customers can view and pick available offers
+ */
+export async function getActivePublicCoupons(): Promise<PublicCoupon[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('inveins_coupons')
+      .select('code, discount_type, discount_value, min_order_value')
+      .eq('is_active', true)
+      .order('discount_value', { ascending: false });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(c => ({
+        code: c.code,
+        discountType: c.discount_type,
+        discountValue: Number(c.discount_value),
+        minOrderValue: Number(c.min_order_value || 0),
+      }));
+    }
+  } catch (err) {
+    // Graceful fallback if database table not yet migrated
+  }
+
+  return Object.entries(LEGACY_FALLBACK_COUPONS).map(([code, conf]) => ({
+    code,
+    discountType: conf.discount_type,
+    discountValue: conf.discount_value,
+    minOrderValue: conf.min_order_value,
+  }));
+}
