@@ -104,11 +104,11 @@ function ProductDetailContent({ product }: { product: Product }) {
     if (!pincode.trim()) return;
     if (pincode.length === 6 && /^\d+$/.test(pincode)) {
       const today = new Date();
-      const deliverDate = new Date(today.setDate(today.getDate() + 3));
+      const deliverDate = new Date(today.setDate(today.getDate() + 7));
       const formattedDate = deliverDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', weekday: 'short' });
       setPincodeResult({
         success: true,
-        message: `Express Delivery Available to ${pincode} by ${formattedDate}. Cash on Delivery & UPI supported.`,
+        message: `Standard Delivery Available to ${pincode} by ${formattedDate} (within 6–7 business days). Cash on Delivery & UPI supported.`,
       });
     } else {
       setPincodeResult({
@@ -562,8 +562,8 @@ function ProductDetailContent({ product }: { product: Product }) {
               </button>
               {openAccordions.shipping && (
                 <div className="pt-3 text-[#6c6a64] leading-relaxed space-y-1.5">
-                  <p>• Dispatched from our Kanpur Studio within 24 hours of order confirmation.</p>
-                  <p>• Express air shipping delivers within 2–4 business days across India.</p>
+                  <p>• Dispatched from our Kanpur Studio within 24–48 hours of order confirmation.</p>
+                  <p>• Standard express courier delivers within 5–7 business days (approx. 1 week) across India.</p>
                   <p>• Complimentary shipping automatically applies on all orders above ₹999.</p>
                 </div>
               )}
