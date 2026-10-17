@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { normalizeCouponCode, LEGACY_FALLBACK_COUPONS } from '@/lib/coupons';
+import { normalizeCouponCode } from '@/lib/coupons';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,18 +19,8 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      // If table has not yet been migrated in Supabase, return fallback list
-      console.warn('[ADMIN COUPONS] Table query returned error, returning fallback seeds:', error.message);
-      const fallbackList = Object.entries(LEGACY_FALLBACK_COUPONS).map(([code, conf]) => ({
-        id: `legacy_${code.toLowerCase()}`,
-        code,
-        discount_type: conf.discount_type,
-        discount_value: conf.discount_value,
-        min_order_value: conf.min_order_value,
-        is_active: true,
-        created_at: new Date().toISOString(),
-      }));
-      return NextResponse.json({ success: true, coupons: fallbackList, isFallback: true });
+      console.error('[ADMIN COUPONS] Table query error:', error.message);
+      return NextResponse.json({ success: true, coupons: [] });
     }
 
     return NextResponse.json({ success: true, coupons: data || [] });

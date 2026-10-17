@@ -145,12 +145,6 @@ interface CartContextType {
   setIsExpressOpen: (open: boolean) => void;
 }
 
-const VALID_COUPONS: Record<string, number> = {
-  FIRST10: 10,
-  INVEINS15: 15,
-  HEAVY20: 20,
-};
-
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -471,20 +465,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { success: false, message: data.message || 'Invalid or expired promo code.' };
     } catch {
-      // Local fallback for legacy codes if network fails
-      if (VALID_COUPONS[cleanCode]) {
-        const discountPercent = VALID_COUPONS[cleanCode];
-        const discountAmt = Math.round((subtotal * discountPercent) / 100);
-        setCoupon({
-          code: cleanCode,
-          discountType: 'percent',
-          discountPercent,
-          discountValue: discountPercent,
-          discountAmount: discountAmt,
-        });
-        return { success: true, message: `Coupon applied: ${discountPercent}% off!` };
-      }
-      return { success: false, message: 'Unable to validate promo code. Please try again.' };
+      return { success: false, message: 'Unable to connect to verify promo code. Please check your connection and try again.' };
     }
   };
 

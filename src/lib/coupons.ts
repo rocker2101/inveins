@@ -24,19 +24,6 @@ export interface CouponValidationResult {
 }
 
 /**
- * Built-in fallback coupons to guarantee zero downtime and 100% backward compatibility
- * even before the database migration is executed in Supabase.
- */
-export const LEGACY_FALLBACK_COUPONS: Record<
-  string,
-  { discount_type: 'flat' | 'percent'; discount_value: number; min_order_value: number }
-> = {
-  FIRST10: { discount_type: 'percent', discount_value: 10, min_order_value: 0 },
-  INVEINS15: { discount_type: 'percent', discount_value: 15, min_order_value: 0 },
-  HEAVY20: { discount_type: 'percent', discount_value: 20, min_order_value: 0 },
-};
-
-/**
  * Consistently normalize coupon codes across application:
  * Trims leading/trailing whitespace and converts to uppercase.
  */
@@ -92,7 +79,8 @@ export function calculateCouponDiscount(
 }
 
 /**
- * Fetches a coupon record by code from Supabase, falling back gracefully to legacy codes.
+ * Fetches a coupon record by code from Supabase database.
+ * Returns null if the coupon does not exist.
  */
 export async function getCouponByCode(rawCode: string): Promise<DbCoupon | null> {
   const cleanCode = normalizeCouponCode(rawCode);
@@ -118,20 +106,7 @@ export async function getCouponByCode(rawCode: string): Promise<DbCoupon | null>
       };
     }
   } catch (err) {
-    // Database table may not be migrated yet; fallback seamlessly
-  }
-
-  // Fallback to legacy hardcoded codes if not yet present in database
-  if (LEGACY_FALLBACK_COUPONS[cleanCode]) {
-    const fb = LEGACY_FALLBACK_COUPONS[cleanCode];
-    return {
-      id: `legacy_${cleanCode.toLowerCase()}`,
-      code: cleanCode,
-      discount_type: fb.discount_type,
-      discount_value: fb.discount_value,
-      min_order_value: fb.min_order_value,
-      is_active: true,
-    };
+    console.error('Error fetching coupon from database:', err);
   }
 
   return null;
@@ -207,7 +182,8 @@ export interface PublicCoupon {
 }
 
 /**
- * Returns safe public information for active coupons so customers can view and pick available offers
+ * Returns safe public information for active coupons so customers can view and pick available offers.
+ * Returns an empty array if no active coupons exist in the database.
  */
 export async function getActivePublicCoupons(): Promise<PublicCoupon[]> {
   try {
@@ -217,7 +193,7 @@ export async function getActivePublicCoupons(): Promise<PublicCoupon[]> {
       .eq('is_active', true)
       .order('discount_value', { ascending: false });
 
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       return data.map(c => ({
         code: c.code,
         discountType: c.discount_type,
@@ -226,13 +202,8 @@ export async function getActivePublicCoupons(): Promise<PublicCoupon[]> {
       }));
     }
   } catch (err) {
-    // Graceful fallback if database table not yet migrated
+    console.error('Error fetching active public coupons:', err);
   }
 
-  return Object.entries(LEGACY_FALLBACK_COUPONS).map(([code, conf]) => ({
-    code,
-    discountType: conf.discount_type,
-    discountValue: conf.discount_value,
-    minOrderValue: conf.min_order_value,
-  }));
+  return [];
 }
